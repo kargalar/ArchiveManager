@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import '../models/photo.dart';
 import '../viewmodels/photo_view_model.dart';
 import 'widgets/folder_item.dart';
@@ -74,12 +75,25 @@ class _HomePageState extends State<HomePage> {
           viewModel.toggleFavorite(selectedPhoto!);
           return;
         }
+
+        // Handle key presses for ratings and tag shortcuts
         final key = event.logicalKey.keyLabel;
-        if (key.length == 1 &&
-            RegExp(r'[1-5]').hasMatch(key) &&
-            selectedPhoto != null) {
-          viewModel.setRating(selectedPhoto!, int.parse(key));
-          return;
+        if (key.length == 1) {
+          // Check for rating keys (1-5)
+          if (RegExp(r'[1-5]').hasMatch(key)) {
+            viewModel.setRating(selectedPhoto!, int.parse(key));
+            return;
+          } else {
+            // Check for tag shortcuts
+            final tags = viewModel.tags;
+            final matchingTag =
+                tags.where((tag) => tag.shortcut == key).toList();
+            if (matchingTag.isNotEmpty) {
+              viewModel.addTagToPhoto(selectedPhoto!, matchingTag.first.name);
+              setState(() {}); // Refresh UI to show the new tag
+              return;
+            }
+          }
         }
         return;
       }
@@ -406,39 +420,143 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _showSettingsDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    final shortcutController = TextEditingController();
+    Color selectedColor = Colors.blue;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Settings'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Photos per Row'),
-            Consumer<PhotoViewModel>(
-              builder: (context, viewModel, child) {
-                return Column(
-                  children: [
-                    Slider(
-                      value: viewModel.photosPerRow.toDouble(),
-                      min: 1,
-                      max: 10,
-                      divisions: 9,
-                      label: viewModel.photosPerRow.toString(),
-                      onChanged: (value) {
-                        viewModel.setPhotosPerRow(value.toInt());
-                      },
-                    ),
-                    Text('${viewModel.photosPerRow} photos'),
-                  ],
-                );
-              },
-            ),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Photos per Row'),
+              Consumer<PhotoViewModel>(
+                builder: (context, viewModel, child) {
+                  return Column(
+                    children: [
+                      Slider(
+                        value: viewModel.photosPerRow.toDouble(),
+                        min: 1,
+                        max: 10,
+                        divisions: 9,
+                        label: viewModel.photosPerRow.toString(),
+                        onChanged: (value) {
+                          viewModel.setPhotosPerRow(value.toInt());
+                        },
+                      ),
+                      Text('${viewModel.photosPerRow} photos'),
+                    ],
+                  );
+                },
+              ),
+              const Divider(),
+              const Text('Tags', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Consumer<PhotoViewModel>(
+                builder: (context, viewModel, child) {
+                  return Column(
+                    children: [
+                      ...viewModel.tags.map((tag) => ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: tag.tagColor,
+                              radius: 12,
+                            ),
+                            title: Text(tag.name),
+                            subtitle: Text('Shortcut: ${tag.shortcut}'),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete),
+                              onPressed: () => viewModel.removeTag(tag),
+                            ),
+                          )),
+                      const Divider(),
+                      TextField(
+                        controller: nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Tag Name',
+                          hintText: 'Enter tag name',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Text('Color: '),
+                          GestureDetector(
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Pick a color'),
+                                  content: SingleChildScrollView(
+                                    child: ColorPicker(
+                                      pickerColor: selectedColor,
+                                      onColorChanged: (color) {
+                                        selectedColor = color;
+                                      },
+                                      pickerAreaHeightPercent: 0.8,
+                                    ),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('OK'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              margin: const EdgeInsets.symmetric(horizontal: 8),
+                              decoration: BoxDecoration(
+                                color: selectedColor,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.grey),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: shortcutController,
+                        decoration: const InputDecoration(
+                          labelText: 'Shortcut Key',
+                          hintText: 'Enter a single character',
+                        ),
+                        maxLength: 1,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          if (nameController.text.isNotEmpty &&
+                              shortcutController.text.isNotEmpty) {
+                            viewModel.addTag(
+                              nameController.text,
+                              selectedColor,
+                              shortcutController.text,
+                            );
+                            nameController.clear();
+                            shortcutController.clear();
+                          }
+                        },
+                        child: const Text('Add Tag'),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+            child: const Text('Close'),
           ),
         ],
       ),

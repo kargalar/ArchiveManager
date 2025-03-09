@@ -2,22 +2,25 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
-import 'package:path/path.dart' as path;
 import '../models/photo.dart';
 import '../models/folder.dart';
+import '../models/tag.dart';
 
 class PhotoViewModel extends ChangeNotifier {
   final Box<Photo> _photoBox;
   final Box<Folder> _folderBox;
+  final Box<Tag> _tagBox;
   final List<String> _folders = [];
   String? _selectedFolder;
   List<Photo> _photos = [];
   int _photosPerRow = 4; // Default value
   final Map<String, List<String>> _folderHierarchy = {};
   final Map<String, bool> _expandedFolders = {};
+  final Map<String, Tag> _tagShortcuts = {};
 
-  PhotoViewModel(this._photoBox) : _folderBox = Hive.box<Folder>('folders') {
+  PhotoViewModel(this._photoBox, this._folderBox, this._tagBox) {
     _loadFolders();
+    _loadTags();
   }
 
   void _loadFolders() {
@@ -172,21 +175,57 @@ class PhotoViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addTag(Photo photo, String tag) {
-    photo.addTag(tag);
+  void addTagToPhoto(Photo photo, String tagName) {
+    photo.addTag(tagName);
     notifyListeners();
   }
 
-  void removeTag(Photo photo, String tag) {
-    photo.removeTag(tag);
+  void removeTagFromPhoto(Photo photo, String tagName) {
+    photo.removeTag(tagName);
+    notifyListeners();
+  }
+
+  void _loadTags() {
+    for (var tag in _tagBox.values) {
+      _tagShortcuts[tag.shortcut] = tag;
+    }
+  }
+
+  List<Tag> get tags => _tagBox.values.toList();
+
+  void addTag(String name, Color color, String shortcut) {
+    if (!_tagShortcuts.containsKey(shortcut)) {
+      final tag = Tag(
+        name: name,
+        color: color.value,
+        shortcut: shortcut,
+      );
+      _tagBox.add(tag);
+      _tagShortcuts[shortcut] = tag;
+      notifyListeners();
+    }
+  }
+
+  void removeTag(Tag tag) {
+    _tagShortcuts.remove(tag.shortcut);
+    tag.delete();
     notifyListeners();
   }
 
   void handleKeyEvent(RawKeyEvent event, Photo? selectedPhoto) {
     if (event is RawKeyDownEvent && selectedPhoto != null) {
       final key = event.logicalKey.keyLabel;
-      if (key.length == 1 && RegExp(r'[1-5]').hasMatch(key)) {
-        setRating(selectedPhoto, int.parse(key));
+      if (key.length == 1) {
+        // Check for rating keys (1-5)
+        if (RegExp(r'[1-5]').hasMatch(key)) {
+          setRating(selectedPhoto, int.parse(key));
+        } else {
+          // Check for tag shortcuts
+          final tag = _tagShortcuts[key];
+          if (tag != null) {
+            addTagToPhoto(selectedPhoto, tag.name);
+          }
+        }
       }
     }
   }
