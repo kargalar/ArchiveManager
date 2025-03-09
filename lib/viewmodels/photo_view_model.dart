@@ -10,46 +10,50 @@ class PhotoViewModel extends ChangeNotifier {
   final Box<Photo> _photoBox;
   final Box<Folder> _folderBox;
   final List<String> _folders = [];
-  final Map<String, List<String>> _folderHierarchy = {};
   String? _selectedFolder;
   List<Photo> _photos = [];
-  Map<String, bool> _expandedFolders = {};
+  int _photosPerRow = 4; // Default value
+  final Map<String, List<String>> _folderHierarchy = {};
+  final Map<String, bool> _expandedFolders = {};
 
   PhotoViewModel(this._photoBox) : _folderBox = Hive.box<Folder>('folders') {
-    _loadSavedFolders();
+    _loadFolders();
   }
 
-  void _loadSavedFolders() {
+  void _loadFolders() {
     for (var folder in _folderBox.values) {
+      _folders.add(folder.path);
       _addToHierarchy(folder.path);
       for (var subFolder in folder.subFolders) {
         if (!_folders.contains(subFolder)) {
+          _folders.add(subFolder);
           _addToHierarchy(subFolder);
         }
       }
     }
-    notifyListeners();
   }
 
-  void _addToHierarchy(String folderPath) {
-    if (!_folders.contains(folderPath)) {
-      _folders.add(folderPath);
-      _expandedFolders[folderPath] = false;
-
-      final parentPath = path.dirname(folderPath);
-      if (_folders.contains(parentPath)) {
-        _folderHierarchy.putIfAbsent(parentPath, () => []).add(folderPath);
-      } else {
-        _folderHierarchy[folderPath] = [];
-      }
+  void _addToHierarchy(String path) {
+    final parentPath =
+        path.substring(0, path.lastIndexOf(Platform.pathSeparator));
+    if (_folders.contains(parentPath)) {
+      _folderHierarchy.putIfAbsent(parentPath, () => []).add(path);
     }
   }
 
   List<String> get folders => _folders;
   String? get selectedFolder => _selectedFolder;
   List<Photo> get photos => _photos;
+  int get photosPerRow => _photosPerRow;
   Map<String, List<String>> get folderHierarchy => _folderHierarchy;
   Map<String, bool> get expandedFolders => _expandedFolders;
+
+  void setPhotosPerRow(int value) {
+    if (value > 0) {
+      _photosPerRow = value;
+      notifyListeners();
+    }
+  }
 
   String getFolderName(String path) => path.split(Platform.pathSeparator).last;
 
@@ -64,7 +68,8 @@ class PhotoViewModel extends ChangeNotifier {
     if (!_folders.contains(path)) {
       final folder = Folder(path: path);
       _folderBox.add(folder);
-      
+      _folders.add(path);
+
       // Scan for subfolders
       try {
         final directory = Directory(path);
@@ -74,6 +79,7 @@ class PhotoViewModel extends ChangeNotifier {
             final subPath = entity.path;
             if (!_folders.contains(subPath)) {
               folder.addSubFolder(subPath);
+              _folders.add(subPath);
               _addToHierarchy(subPath);
             }
           }
@@ -85,6 +91,32 @@ class PhotoViewModel extends ChangeNotifier {
       }
     }
     notifyListeners();
+  }
+
+  void removeFolder(String path) {
+    if (_folders.contains(path)) {
+      // Remove from Hive
+      final folder = _folderBox.values.firstWhere((f) => f.path == path);
+      folder.delete();
+
+      // Remove from lists and maps
+      _folders.remove(path);
+      _folderHierarchy.remove(path);
+      _expandedFolders.remove(path);
+
+      // Remove associated photos
+      final photosToRemove =
+          _photoBox.values.where((p) => p.path.startsWith(path));
+      for (var photo in photosToRemove) {
+        photo.delete();
+      }
+
+      if (_selectedFolder == path) {
+        selectFolder(null);
+      }
+
+      notifyListeners();
+    }
   }
 
   void selectFolder(String? path) {

@@ -79,6 +79,50 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Photo Archive Manager'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Ayarlar'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Satır Başına Fotoğraf Sayısı'),
+                      Consumer<PhotoViewModel>(
+                        builder: (context, viewModel, child) {
+                          return Column(
+                            children: [
+                              Slider(
+                                value: viewModel.photosPerRow.toDouble(),
+                                min: 1,
+                                max: 10,
+                                divisions: 9,
+                                label: viewModel.photosPerRow.toString(),
+                                onChanged: (value) {
+                                  viewModel.setPhotosPerRow(value.toInt());
+                                },
+                              ),
+                              Text('${viewModel.photosPerRow} fotoğraf'),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Tamam'),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: Row(
         children: [
@@ -146,8 +190,8 @@ class _HomePageState extends State<HomePage> {
 
                 return GridView.builder(
                   padding: const EdgeInsets.all(8),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 4,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: viewModel.photosPerRow,
                     crossAxisSpacing: 8,
                     mainAxisSpacing: 8,
                   ),
@@ -166,6 +210,7 @@ class _HomePageState extends State<HomePage> {
                           Image.file(
                             File(photo.path),
                             fit: BoxFit.cover,
+                            cacheHeight: 500,
                           ),
                           Positioned(
                             top: 8,
