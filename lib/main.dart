@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'package:archive_manager_v3/models/folder.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -8,13 +12,15 @@ import 'viewmodels/photo_view_model.dart';
 void main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(PhotoAdapter());
+  Hive.registerAdapter(FolderAdapter());
   final photoBox = await Hive.openBox<Photo>('photos');
+  await Hive.openBox<Folder>('folders');
   runApp(MyApp(photoBox: photoBox));
 }
 
 class MyApp extends StatelessWidget {
   final Box<Photo> photoBox;
-  
+
   const MyApp({super.key, required this.photoBox});
 
   @override
@@ -22,21 +28,21 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (context) => PhotoViewModel(photoBox),
       child: MaterialApp(
-      title: 'Photo Archive Manager',
-      theme: ThemeData.dark().copyWith(
-        colorScheme: ColorScheme.dark(
-          primary: Colors.blue,
-          secondary: Colors.blueAccent,
-          surface: Colors.grey[900]!,
-          background: Colors.black,
+        title: 'Photo Archive Manager',
+        theme: ThemeData.dark().copyWith(
+          colorScheme: ColorScheme.dark(
+            primary: Colors.blue,
+            secondary: Colors.blueAccent,
+            surface: Colors.grey[900]!,
+            background: Colors.black,
+          ),
+          scaffoldBackgroundColor: Colors.black,
+          appBarTheme: AppBarTheme(
+            backgroundColor: Colors.grey[900],
+            elevation: 0,
+          ),
         ),
-        scaffoldBackgroundColor: Colors.black,
-        appBarTheme: AppBarTheme(
-          backgroundColor: Colors.grey[900],
-          elevation: 0,
-        ),
-      ),
-      home: const HomePage(),
+        home: const HomePage(),
       ),
     );
   }
@@ -103,15 +109,25 @@ class _HomePageState extends State<HomePage> {
                   child: ListView.builder(
                     itemCount: context.watch<PhotoViewModel>().folders.length,
                     itemBuilder: (context, index) {
-                      final folder = context.watch<PhotoViewModel>().folders[index];
-                      return ListTile(
-                        leading: const Icon(Icons.folder),
-                        title: Text(folder),
-                        selected: folder == context.watch<PhotoViewModel>().selectedFolder,
-                        onTap: () {
-                          context.read<PhotoViewModel>().selectFolder(folder);
-                        },
-                      );
+                      final folder =
+                          context.watch<PhotoViewModel>().folders[index];
+                      final hasChildren = context
+                              .watch<PhotoViewModel>()
+                              .folderHierarchy[folder]
+                              ?.isNotEmpty ??
+                          false;
+                      final isExpanded = context
+                          .watch<PhotoViewModel>()
+                          .isFolderExpanded(folder);
+                      final isRoot = !context
+                          .watch<PhotoViewModel>()
+                          .folderHierarchy
+                          .values
+                          .any((list) => list.contains(folder));
+
+                      if (!isRoot) return const SizedBox.shrink();
+
+                      return _buildFolderItem(context, folder, 0);
                     },
                   ),
                 ),
@@ -127,7 +143,7 @@ class _HomePageState extends State<HomePage> {
                     child: Text('Select a folder to view images'),
                   );
                 }
-                
+
                 return GridView.builder(
                   padding: const EdgeInsets.all(8),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -158,18 +174,21 @@ class _HomePageState extends State<HomePage> {
                               children: [
                                 if (photo.rating > 0)
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
                                       color: Colors.black54,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Row(
                                       children: [
-                                        const Icon(Icons.star, size: 16, color: Colors.yellow),
+                                        const Icon(Icons.star,
+                                            size: 16, color: Colors.yellow),
                                         const SizedBox(width: 4),
                                         Text(
                                           photo.rating.toString(),
-                                          style: const TextStyle(color: Colors.white),
+                                          style: const TextStyle(
+                                              color: Colors.white),
                                         ),
                                       ],
                                     ),
@@ -184,9 +203,13 @@ class _HomePageState extends State<HomePage> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Icon(
-                                      photo.isFavorite ? Icons.favorite : Icons.favorite_border,
+                                      photo.isFavorite
+                                          ? Icons.favorite
+                                          : Icons.favorite_border,
                                       size: 16,
-                                      color: photo.isFavorite ? Colors.red : Colors.white,
+                                      color: photo.isFavorite
+                                          ? Colors.red
+                                          : Colors.white,
                                     ),
                                   ),
                                 ),
@@ -198,10 +221,66 @@ class _HomePageState extends State<HomePage> {
                     );
                   },
                 );
-                  ),
+              },
+            ),
           ),
         ],
       ),
     );
   }
+}
+
+Widget _buildFolderItem(BuildContext context, String folderPath, int level) {
+  final viewModel = context.watch<PhotoViewModel>();
+  final hasChildren =
+      viewModel.folderHierarchy[folderPath]?.isNotEmpty ?? false;
+  final isExpanded = viewModel.isFolderExpanded(folderPath);
+  final isSelected = viewModel.selectedFolder == folderPath;
+  final folderName = viewModel.getFolderName(folderPath);
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      InkWell(
+        onTap: () => viewModel.selectFolder(folderPath),
+        child: Container(
+          padding: EdgeInsets.only(left: 16.0 * level),
+          height: 40,
+          child: Row(
+            children: [
+              if (hasChildren)
+                IconButton(
+                  icon: Icon(
+                    isExpanded ? Icons.expand_more : Icons.chevron_right,
+                    size: 20,
+                  ),
+                  onPressed: () => viewModel.toggleFolderExpanded(folderPath),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                )
+              else
+                const SizedBox(width: 20),
+              const Icon(Icons.folder, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  folderName,
+                  style: TextStyle(
+                    color: isSelected ? Colors.blue : Colors.white,
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      if (isExpanded && hasChildren)
+        ...viewModel.folderHierarchy[folderPath]!.map(
+          (childPath) => _buildFolderItem(context, childPath, level + 1),
+        ),
+    ],
+  );
 }
