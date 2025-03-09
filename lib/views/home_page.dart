@@ -70,6 +70,17 @@ class _HomePageState extends State<HomePage> {
         );
         return;
       } else {
+        if (event.logicalKey == LogicalKeyboardKey.keyF) {
+          viewModel.toggleFavorite(selectedPhoto!);
+          return;
+        }
+        final key = event.logicalKey.keyLabel;
+        if (key.length == 1 &&
+            RegExp(r'[1-5]').hasMatch(key) &&
+            selectedPhoto != null) {
+          viewModel.setRating(selectedPhoto!, int.parse(key));
+          return;
+        }
         return;
       }
 
@@ -82,62 +93,115 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildFullScreenImage(Photo photo) {
-    return RawKeyboardListener(
-      focusNode: FocusNode(),
-      autofocus: true,
-      onKey: (RawKeyEvent event) {
-        if (event is RawKeyDownEvent) {
-          final viewModel = context.read<PhotoViewModel>();
-          final currentIndex = viewModel.photos.indexOf(photo);
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return RawKeyboardListener(
+          focusNode: FocusNode(),
+          autofocus: true,
+          onKey: (RawKeyEvent event) {
+            if (event is RawKeyDownEvent) {
+              final viewModel = context.read<PhotoViewModel>();
+              final currentIndex = viewModel.photos.indexOf(photo);
 
-          if (event.logicalKey == LogicalKeyboardKey.arrowLeft &&
-              currentIndex > 0) {
-            setState(() {
-              selectedPhoto = viewModel.photos[currentIndex - 1];
-            });
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (context) =>
-                    _buildFullScreenImage(viewModel.photos[currentIndex - 1]),
-              ),
-            );
-          } else if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
-              currentIndex < viewModel.photos.length - 1) {
-            setState(() {
-              selectedPhoto = viewModel.photos[currentIndex + 1];
-            });
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (context) =>
-                    _buildFullScreenImage(viewModel.photos[currentIndex + 1]),
-              ),
-            );
-          } else if (event.logicalKey == LogicalKeyboardKey.escape) {
-            Navigator.of(context).pop();
-          }
-        }
+              if (event.logicalKey == LogicalKeyboardKey.arrowLeft &&
+                  currentIndex > 0) {
+                setState(() {
+                  photo = viewModel.photos[currentIndex - 1];
+                });
+              } else if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
+                  currentIndex < viewModel.photos.length - 1) {
+                setState(() {
+                  photo = viewModel.photos[currentIndex + 1];
+                });
+              } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
+                context.read<PhotoViewModel>().toggleFavorite(photo);
+                setState(() {});
+              } else if (event.logicalKey == LogicalKeyboardKey.escape) {
+                Navigator.of(context).pop();
+              } else {
+                final key = event.logicalKey.keyLabel;
+                if (key.length == 1 && RegExp(r'[1-5]').hasMatch(key)) {
+                  context
+                      .read<PhotoViewModel>()
+                      .setRating(photo, int.parse(key));
+                  setState(() {});
+                }
+              }
+              final key = event.logicalKey.keyLabel;
+              if (key.length == 1 && RegExp(r'[1-5]').hasMatch(key)) {
+                context.read<PhotoViewModel>().setRating(photo, int.parse(key));
+                setState(() {});
+              }
+            }
+          },
+          child: Scaffold(
+            backgroundColor: Colors.black,
+            body: Stack(
+              children: [
+                Center(
+                  child: Image.file(
+                    File(photo.path),
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Row(
+                    children: [
+                      if (photo.rating > 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.star,
+                                  size: 16, color: Colors.yellow),
+                              const SizedBox(width: 4),
+                              Text(
+                                photo.rating.toString(),
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => context
+                            .read<PhotoViewModel>()
+                            .toggleFavorite(photo),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            photo.isFavorite
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            size: 16,
+                            color: photo.isFavorite ? Colors.red : Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
       },
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        body: Stack(
-          children: [
-            Center(
-              child: Image.file(
-                File(photo.path),
-                fit: BoxFit.contain,
-              ),
-            ),
-            Positioned(
-              top: 0,
-              right: 0,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -260,7 +324,24 @@ class _HomePageState extends State<HomePage> {
                           child: Image.file(
                             File(photo.path),
                             fit: BoxFit.cover,
-                            cacheHeight: 500 * viewModel.photosPerRow,
+                            cacheHeight: viewModel.photosPerRow < 2
+                                ? null
+                                : viewModel.photosPerRow < 3
+                                    ? 2000
+                                    : viewModel.photosPerRow < 4
+                                        ? 1500
+                                        : viewModel.photosPerRow < 5
+                                            ? 900
+                                            : viewModel.photosPerRow < 6
+                                                ? 700
+                                                : viewModel.photosPerRow < 7
+                                                    ? 500
+                                                    : viewModel.photosPerRow < 8
+                                                        ? 400
+                                                        : viewModel.photosPerRow <
+                                                                10
+                                                            ? 300
+                                                            : 200,
                           ),
                         ),
                         Positioned(

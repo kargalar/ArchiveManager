@@ -164,7 +164,11 @@ class PhotoViewModel extends ChangeNotifier {
   }
 
   void setRating(Photo photo, int rating) {
-    photo.setRating(rating);
+    if (photo.rating == rating) {
+      photo.setRating(0);
+    } else {
+      photo.setRating(rating);
+    }
     notifyListeners();
   }
 
