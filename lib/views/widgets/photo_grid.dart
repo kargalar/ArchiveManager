@@ -47,63 +47,8 @@ class PhotoGrid extends StatelessWidget {
                 );
               }
 
-              return Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        ToggleButtons(
-                          isSelected: [
-                            photoViewModel.filterType == 'all',
-                            photoViewModel.filterType == 'favorites',
-                            photoViewModel.filterType == 'unrated',
-                          ],
-                          onPressed: (index) {
-                            switch (index) {
-                              case 0:
-                                photoViewModel.setFilterType('all');
-                                break;
-                              case 1:
-                                photoViewModel.setFilterType('favorites');
-                                break;
-                              case 2:
-                                photoViewModel.setFilterType('unrated');
-                                break;
-                            }
-                          },
-                          children: const [
-                            Tooltip(
-                              message: 'All Photos',
-                              child: Padding(
-                                padding: EdgeInsets.all(8.0),
-                                child: Icon(Icons.photo_library),
-                              ),
-                            ),
-                            Tooltip(
-                              message: 'Favorites',
-                              child: Padding(
-                                padding: EdgeInsets.all(8.0),
-                                child: Icon(Icons.favorite),
-                              ),
-                            ),
-                            Tooltip(
-                              message: 'Unrated',
-                              child: Padding(
-                                padding: EdgeInsets.all(8.0),
-                                child: Icon(Icons.star_border),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: _buildGrid(context, photoViewModel, homeViewModel),
-                  ),
-                ],
+              return Expanded(
+                child: _buildGrid(context, photoViewModel, homeViewModel),
               );
             },
           ),

@@ -202,13 +202,38 @@ class _HomePageState extends State<HomePage> {
                 default:
                   arrowIcon = Icons.remove;
               }
-              return TextButton.icon(
-                onPressed: viewModel.toggleSortState,
-                icon: Icon(arrowIcon, size: 16),
-                label: const Text('Rating'),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.white,
-                ),
+              return Row(
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      Icons.star,
+                      color: viewModel.showFavoritesOnly
+                          ? Colors.yellow
+                          : Colors.white,
+                    ),
+                    onPressed: () => viewModel.toggleFavoritesFilter(),
+                    tooltip: 'Show Favorites Only',
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.star_border,
+                      color: viewModel.showUnratedOnly
+                          ? Colors.yellow
+                          : Colors.white,
+                    ),
+                    onPressed: () => viewModel.toggleUnratedFilter(),
+                    tooltip: 'Show Unrated Only',
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton.icon(
+                    onPressed: viewModel.toggleSortState,
+                    icon: Icon(arrowIcon, size: 16),
+                    label: const Text('Rating'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
               );
             },
           ),

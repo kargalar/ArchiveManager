@@ -274,13 +274,35 @@ class PhotoViewModel extends ChangeNotifier {
   String _filterType = 'all';
   String get filterType => _filterType;
 
-  List<Photo> get filteredPhotos {
-    if (_filterType == 'favorites') {
-      return _photos.where((photo) => photo.isFavorite).toList();
-    } else if (_filterType == 'unrated') {
-      return _photos.where((photo) => photo.rating == 0).toList();
+  bool _showFavoritesOnly = false;
+  bool get showFavoritesOnly => _showFavoritesOnly;
+
+  bool _showUnratedOnly = false;
+  bool get showUnratedOnly => _showUnratedOnly;
+
+  void toggleFavoritesFilter() {
+    _showFavoritesOnly = !_showFavoritesOnly;
+    if (_showFavoritesOnly) {
+      _showUnratedOnly = false;
     }
-    return _photos;
+    notifyListeners();
+  }
+
+  void toggleUnratedFilter() {
+    _showUnratedOnly = !_showUnratedOnly;
+    if (_showUnratedOnly) {
+      _showFavoritesOnly = false;
+    }
+    notifyListeners();
+  }
+
+  List<Photo> get filteredPhotos {
+    if (_showFavoritesOnly) {
+      return photos.where((photo) => photo.isFavorite).toList();
+    } else if (_showUnratedOnly) {
+      return photos.where((photo) => photo.rating == 0).toList();
+    }
+    return photos;
   }
 
   void setFilterType(String type) {
