@@ -39,8 +39,18 @@ class HomeViewModel extends ChangeNotifier {
       newIndex = currentIndex + photosPerRow;
     } else if (event.logicalKey == LogicalKeyboardKey.delete &&
         _selectedPhoto != null) {
+      final currentIndex = photoViewModel.photos.indexOf(_selectedPhoto!);
       photoViewModel.deletePhoto(_selectedPhoto!);
-      setSelectedPhoto(null);
+
+      // Select next photo after deletion
+      if (photoViewModel.photos.isNotEmpty) {
+        final nextIndex = currentIndex < photoViewModel.photos.length
+            ? currentIndex
+            : photoViewModel.photos.length - 1;
+        setSelectedPhoto(photoViewModel.photos[nextIndex]);
+      } else {
+        setSelectedPhoto(null);
+      }
       return;
     }
 
