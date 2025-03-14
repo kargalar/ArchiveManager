@@ -27,7 +27,7 @@ class FolderItem extends StatelessWidget {
           onTap: () => viewModel.selectFolder(folder),
           child: Container(
             padding: EdgeInsets.only(left: 16.0 * level),
-            height: 40,
+            height: 36,
             child: Row(
               children: [
                 if (hasChildren)
@@ -49,7 +49,8 @@ class FolderItem extends StatelessWidget {
                     folderName,
                     style: TextStyle(
                       color: isSelected ? Colors.blue : Colors.white,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),

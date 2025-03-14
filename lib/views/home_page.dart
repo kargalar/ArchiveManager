@@ -224,10 +224,31 @@ class _HomePageState extends State<HomePage> {
                     onPressed: () => viewModel.toggleUnratedFilter(),
                     tooltip: 'Show Unrated Only',
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.filter_list),
-                    onPressed: () => _showRatingFilterDialog(context),
-                    tooltip: 'Filter by Rating Range',
+                  Container(
+                    width: 150,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Expanded(
+                          child: RangeSlider(
+                            values: RangeValues(viewModel.minRatingFilter,
+                                viewModel.maxRatingFilter),
+                            min: 0,
+                            max: 5,
+                            divisions: 5,
+                            labels: RangeLabels(
+                              viewModel.minRatingFilter.toStringAsFixed(0),
+                              viewModel.maxRatingFilter.toStringAsFixed(0),
+                            ),
+                            onChanged: (RangeValues values) {
+                              viewModel.setRatingFilter(
+                                  values.start, values.end);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(width: 8),
                   TextButton.icon(
