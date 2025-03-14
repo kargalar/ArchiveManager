@@ -188,6 +188,10 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Photo Archive Manager'),
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => _homeViewModel.toggleMenu(),
+        ),
         actions: [
           Consumer<PhotoViewModel>(
             builder: (context, viewModel, child) {
@@ -237,15 +241,19 @@ class _HomePageState extends State<HomePage> {
                             min: 0,
                             max: 5,
                             divisions: 5,
-                            labels: RangeLabels(
-                              viewModel.minRatingFilter.toStringAsFixed(0),
-                              viewModel.maxRatingFilter.toStringAsFixed(0),
-                            ),
+                            // labels: RangeLabels(
+                            //   viewModel.minRatingFilter.toStringAsFixed(0),
+                            //   viewModel.maxRatingFilter.toStringAsFixed(0),
+                            // ),
                             onChanged: (RangeValues values) {
                               viewModel.setRatingFilter(
                                   values.start, values.end);
                             },
                           ),
+                        ),
+                        Text(
+                          "${viewModel.minRatingFilter.toInt()}-${viewModel.maxRatingFilter.toInt()}",
+                          style: const TextStyle(color: Colors.white),
                         ),
                       ],
                     ),
@@ -271,7 +279,13 @@ class _HomePageState extends State<HomePage> {
       ),
       body: Row(
         children: [
-          _buildFolderList(),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: _homeViewModel.isMenuVisible ? 250 : 0,
+            child: _homeViewModel.isMenuVisible
+                ? _buildFolderList()
+                : const SizedBox(),
+          ),
           _buildPhotoGrid(),
         ],
       ),

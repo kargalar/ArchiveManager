@@ -100,49 +100,45 @@ class PhotoGrid extends StatelessWidget {
   Widget _buildPhotoOverlay(Photo photo, PhotoViewModel viewModel) {
     return Stack(
       children: [
-        Positioned(
-          top: 8,
-          right: 8,
-          child: Row(
-            children: [
-              if (photo.rating > 0)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.star, size: 16, color: Colors.yellow),
-                      const SizedBox(width: 4),
-                      Text(
-                        photo.rating.toString(),
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ],
-                  ),
-                ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () => viewModel.toggleFavorite(photo),
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    photo.isFavorite ? Icons.favorite : Icons.favorite_border,
-                    size: 16,
-                    color: photo.isFavorite ? Colors.red : Colors.white,
-                  ),
+        if (photo.rating > 0)
+          Positioned(
+            top: 8,
+            left: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: List.generate(
+                  photo.rating,
+                  (index) =>
+                      const Icon(Icons.star, size: 13, color: Colors.yellow),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        if (photo.isFavorite)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: GestureDetector(
+              onTap: () => viewModel.toggleFavorite(photo),
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  photo.isFavorite ? Icons.favorite : Icons.favorite_border,
+                  size: 13,
+                  color: photo.isFavorite ? Colors.red : Colors.white,
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }

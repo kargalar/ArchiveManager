@@ -12,7 +12,8 @@ class HomeViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void handleKeyEvent(RawKeyEvent event, BuildContext context, PhotoViewModel photoViewModel) {
+  void handleKeyEvent(
+      RawKeyEvent event, BuildContext context, PhotoViewModel photoViewModel) {
     if (event is! RawKeyDownEvent) return;
     if (photoViewModel.photos.isEmpty) return;
 
@@ -27,15 +28,20 @@ class HomeViewModel extends ChangeNotifier {
 
     if (event.logicalKey == LogicalKeyboardKey.arrowLeft && currentIndex > 0) {
       newIndex = currentIndex - 1;
-    } else if (event.logicalKey == LogicalKeyboardKey.arrowRight && 
-               currentIndex < photoViewModel.photos.length - 1) {
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
+        currentIndex < photoViewModel.photos.length - 1) {
       newIndex = currentIndex + 1;
-    } else if (event.logicalKey == LogicalKeyboardKey.arrowUp && 
-               currentIndex >= photosPerRow) {
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowUp &&
+        currentIndex >= photosPerRow) {
       newIndex = currentIndex - photosPerRow;
-    } else if (event.logicalKey == LogicalKeyboardKey.arrowDown && 
-               currentIndex + photosPerRow < photoViewModel.photos.length) {
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowDown &&
+        currentIndex + photosPerRow < photoViewModel.photos.length) {
       newIndex = currentIndex + photosPerRow;
+    } else if (event.logicalKey == LogicalKeyboardKey.delete &&
+        _selectedPhoto != null) {
+      photoViewModel.deletePhoto(_selectedPhoto!);
+      setSelectedPhoto(null);
+      return;
     }
 
     if (newIndex != currentIndex) {
@@ -45,5 +51,13 @@ class HomeViewModel extends ChangeNotifier {
 
   void handlePhotoTap(Photo photo) {
     setSelectedPhoto(photo);
+  }
+
+  bool _isMenuVisible = true;
+  bool get isMenuVisible => _isMenuVisible;
+
+  void toggleMenu() {
+    _isMenuVisible = !_isMenuVisible;
+    notifyListeners();
   }
 }

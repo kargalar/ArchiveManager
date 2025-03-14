@@ -329,4 +329,23 @@ class PhotoViewModel extends ChangeNotifier {
     _filterType = type;
     notifyListeners();
   }
+
+  void deletePhoto(Photo photo) {
+    try {
+      // Delete the file from the file system
+      final file = File(photo.path);
+      if (file.existsSync()) {
+        file.deleteSync();
+      }
+
+      // Remove from Hive box
+      photo.delete();
+
+      // Remove from current photos list
+      _photos.remove(photo);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error deleting photo: $e');
+    }
+  }
 }

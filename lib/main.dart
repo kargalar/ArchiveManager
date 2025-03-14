@@ -24,14 +24,18 @@ class MyApp extends StatelessWidget {
   final Box<Folder> folderBox;
   final Box<Tag> tagBox;
 
-  const MyApp({super.key, required this.photoBox, required this.folderBox, required this.tagBox});
+  const MyApp(
+      {super.key,
+      required this.photoBox,
+      required this.folderBox,
+      required this.tagBox});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
-      create: (context) => PhotoViewModel(photoBox, folderBox, tagBox),
+          create: (context) => PhotoViewModel(photoBox, folderBox, tagBox),
         ),
         ChangeNotifierProvider(
           create: (context) => HomeViewModel(),
