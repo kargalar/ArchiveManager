@@ -334,20 +334,56 @@ class PhotoViewModel extends ChangeNotifier {
 
   void deletePhoto(Photo photo) {
     try {
-      // Delete the file from the file system
+      if (Platform.isWindows) {
+        final file = File(photo.path);
+        if (file.existsSync()) {
+          // Use shell command to move file to recycle bin
+          Process.run('powershell', [
+            '-command',
+            '''
+            Add-Type -AssemblyName Microsoft.VisualBasic
+            [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile(
+              '${photo.path.replaceAll('\\', '\\\\')}',
+              'OnlyErrorDialogs',
+              'SendToRecycleBin'
+            )
+            '''
+          ]);
+        }
+      }
+
+      // Remove from database and current photos list
+      photo.delete();
+      _photos.remove(photo);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error moving photo to recycle bin: $e');
+    }
+  }
+
+  void restorePhoto(Photo photo) {
+    try {
+      photo.isRecycled = false;
+      photo.save();
+      if (_selectedFolder != null && photo.path.startsWith(_selectedFolder!)) {
+        _photos.add(photo);
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error restoring photo: $e');
+    }
+  }
+
+  void permanentlyDeletePhoto(Photo photo) {
+    try {
       final file = File(photo.path);
       if (file.existsSync()) {
         file.deleteSync();
       }
-
-      // Remove from Hive box
       photo.delete();
-
-      // Remove from current photos list
-      _photos.remove(photo);
       notifyListeners();
     } catch (e) {
-      debugPrint('Error deleting photo: $e');
+      debugPrint('Error permanently deleting photo: $e');
     }
   }
 }

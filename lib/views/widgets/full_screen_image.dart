@@ -51,9 +51,8 @@ class _FullScreenImageState extends State<FullScreenImage> {
       if (viewModel.photos.isEmpty) {
         Navigator.of(context).pop();
       } else {
-        final nextIndex = currentIndex < viewModel.photos.length ? currentIndex : viewModel.photos.length - 1;
         setState(() {
-          _currentPhoto = viewModel.photos[nextIndex];
+          _currentPhoto = viewModel.photos[currentIndex < viewModel.photos.length ? currentIndex : viewModel.photos.length - 1];
         });
       }
     } else if (event.logicalKey == LogicalKeyboardKey.escape) {

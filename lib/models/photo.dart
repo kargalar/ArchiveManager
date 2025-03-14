@@ -16,11 +16,15 @@ class Photo extends HiveObject {
   @HiveField(3)
   List<String> tags;
 
+  @HiveField(4)
+  bool isRecycled;
+
   Photo({
     required this.path,
     this.isFavorite = false,
     this.rating = 0,
     List<String>? tags,
+    this.isRecycled = false,
   }) : tags = tags ?? [];
 
   void toggleFavorite() {

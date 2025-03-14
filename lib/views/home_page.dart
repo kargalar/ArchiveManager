@@ -20,6 +20,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late HomeViewModel _homeViewModel;
+  bool _isMenuExpanded = true;
 
   @override
   void initState() {
@@ -68,6 +69,10 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(_isMenuExpanded ? Icons.menu_open : Icons.menu),
+          onPressed: () => setState(() => _isMenuExpanded = !_isMenuExpanded),
+        ),
         title: Consumer<PhotoViewModel>(
           builder: (context, viewModel, child) {
             return Text(viewModel.selectedFolder != null ? viewModel.getFolderName(viewModel.selectedFolder!) : 'Photo Archive Manager');
@@ -162,8 +167,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildFolderList() {
-    return Container(
-      width: 250,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      width: _isMenuExpanded ? 250 : 0,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         border: Border(
           right: BorderSide(
