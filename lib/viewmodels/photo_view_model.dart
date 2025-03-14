@@ -270,4 +270,21 @@ class PhotoViewModel extends ChangeNotifier {
         break;
     }
   }
+
+  String _filterType = 'all';
+  String get filterType => _filterType;
+
+  List<Photo> get filteredPhotos {
+    if (_filterType == 'favorites') {
+      return _photos.where((photo) => photo.isFavorite).toList();
+    } else if (_filterType == 'unrated') {
+      return _photos.where((photo) => photo.rating == 0).toList();
+    }
+    return _photos;
+  }
+
+  void setFilterType(String type) {
+    _filterType = type;
+    notifyListeners();
+  }
 }
