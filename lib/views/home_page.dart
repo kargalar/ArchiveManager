@@ -218,138 +218,61 @@ class _HomePageState extends State<HomePage> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Settings'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Photos per Row'),
-              Consumer<PhotoViewModel>(
-                builder: (context, viewModel, child) {
-                  return Column(
-                    children: [
-                      Slider(
-                        value: viewModel.photosPerRow.toDouble(),
-                        min: 1,
-                        max: 10,
-                        divisions: 9,
-                        label: viewModel.photosPerRow.toString(),
-                        onChanged: (value) {
-                          viewModel.setPhotosPerRow(value.toInt());
-                        },
-                      ),
-                      Text('${viewModel.photosPerRow} photos'),
-                    ],
-                  );
-                },
-              ),
-              const Divider(),
-              const Text('Tags', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Consumer<PhotoViewModel>(
-                builder: (context, viewModel, child) {
-                  return Column(
-                    children: [
-                      ...viewModel.tags.map((tag) => ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: tag.tagColor,
-                              radius: 12,
-                            ),
-                            title: Text(tag.name),
-                            subtitle: Text('Shortcut: ${tag.shortcut}'),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete),
-                              onPressed: () => viewModel.removeTag(tag),
-                            ),
-                          )),
-                      const Divider(),
-                      TextField(
-                        controller: nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Tag Name',
-                          hintText: 'Enter tag name',
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Text('Color: '),
-                          GestureDetector(
-                            onTap: () {
-                              showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Pick a color'),
-                                  content: SingleChildScrollView(
-                                    child: ColorPicker(
-                                      pickerColor: selectedColor,
-                                      onColorChanged: (color) {
-                                        selectedColor = color;
-                                      },
-                                      pickerAreaHeightPercent: 0.8,
-                                    ),
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: const Text('OK'),
-                                    ),
-                                  ],
+      builder: (context) => Dialog(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8, maxHeight: MediaQuery.of(context).size.height * 0.9),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Settings', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Photos per Row', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 16),
+                        Consumer<PhotoViewModel>(
+                          builder: (context, viewModel, child) {
+                            return Column(
+                              children: [
+                                Slider(
+                                  value: viewModel.photosPerRow.toDouble(),
+                                  min: 1,
+                                  max: 10,
+                                  divisions: 9,
+                                  label: viewModel.photosPerRow.toString(),
+                                  onChanged: (value) {
+                                    viewModel.setPhotosPerRow(value.toInt());
+                                  },
                                 ),
-                              );
-                            },
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              margin: const EdgeInsets.symmetric(horizontal: 8),
-                              decoration: BoxDecoration(
-                                color: selectedColor,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.grey),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: shortcutController,
-                        decoration: const InputDecoration(
-                          labelText: 'Shortcut Key',
-                          hintText: 'Enter a single character',
-                        ),
-                        maxLength: 1,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () {
-                          if (nameController.text.isNotEmpty && shortcutController.text.isNotEmpty) {
-                            viewModel.addTag(
-                              nameController.text,
-                              selectedColor,
-                              shortcutController.text,
+                                Text('${viewModel.photosPerRow} photos'),
+                              ],
                             );
-                            nameController.clear();
-                            shortcutController.clear();
-                          }
-                        },
-                        child: const Text('Add Tag'),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ],
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
       ),
     );
   }

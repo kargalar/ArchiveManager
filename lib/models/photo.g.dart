@@ -20,31 +20,24 @@ class PhotoAdapter extends TypeAdapter<Photo> {
       path: fields[0] as String,
       isFavorite: fields[1] as bool,
       rating: fields[2] as int,
-      tags: (fields[3] as List?)?.cast<String>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Photo obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(3)
       ..writeByte(0)
       ..write(obj.path)
       ..writeByte(1)
       ..write(obj.isFavorite)
       ..writeByte(2)
-      ..write(obj.rating)
-      ..writeByte(3)
-      ..write(obj.tags);
+      ..write(obj.rating);
   }
 
   @override
   int get hashCode => typeId.hashCode;
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is PhotoAdapter &&
-          runtimeType == other.runtimeType &&
-          typeId == other.typeId;
+  bool operator ==(Object other) => identical(this, other) || other is PhotoAdapter && runtimeType == other.runtimeType && typeId == other.typeId;
 }

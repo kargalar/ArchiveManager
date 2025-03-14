@@ -7,24 +7,20 @@ import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import '../models/photo.dart';
 import '../models/folder.dart';
-import '../models/tag.dart';
 import '../models/sort_state.dart';
 
 class PhotoViewModel extends ChangeNotifier {
   final Box<Photo> _photoBox;
   final Box<Folder> _folderBox;
-  final Box<Tag> _tagBox;
   final List<String> _folders = [];
   String? _selectedFolder;
   final List<Photo> _photos = [];
-  int _photosPerRow = 4; // Default value
+  int _photosPerRow = 5; // Default value
   final Map<String, List<String>> _folderHierarchy = {};
   final Map<String, bool> _expandedFolders = {};
-  final Map<String, Tag> _tagShortcuts = {};
 
-  PhotoViewModel(this._photoBox, this._folderBox, this._tagBox) {
+  PhotoViewModel(this._photoBox, this._folderBox) {
     _loadFolders();
-    _loadTags();
   }
 
   void _loadFolders() {
@@ -184,43 +180,6 @@ class PhotoViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addTagToPhoto(Photo photo, String tagName) {
-    photo.addTag(tagName);
-    notifyListeners();
-  }
-
-  void removeTagFromPhoto(Photo photo, String tagName) {
-    photo.removeTag(tagName);
-    notifyListeners();
-  }
-
-  void _loadTags() {
-    for (var tag in _tagBox.values) {
-      _tagShortcuts[tag.shortcut] = tag;
-    }
-  }
-
-  List<Tag> get tags => _tagBox.values.toList();
-
-  void addTag(String name, Color color, String shortcut) {
-    if (!_tagShortcuts.containsKey(shortcut)) {
-      final tag = Tag(
-        name: name,
-        color: color.value,
-        shortcut: shortcut,
-      );
-      _tagBox.add(tag);
-      _tagShortcuts[shortcut] = tag;
-      notifyListeners();
-    }
-  }
-
-  void removeTag(Tag tag) {
-    _tagShortcuts.remove(tag.shortcut);
-    tag.delete();
-    notifyListeners();
-  }
-
   void sortPhotosByRating({bool ascending = false}) {
     _photos.sort((a, b) => ascending ? a.rating.compareTo(b.rating) : b.rating.compareTo(a.rating));
     notifyListeners();
@@ -233,12 +192,6 @@ class PhotoViewModel extends ChangeNotifier {
         // Check for rating keys (1-5)
         if (RegExp(r'[1-5]').hasMatch(key)) {
           setRating(selectedPhoto, int.parse(key));
-        } else {
-          // Check for tag shortcuts
-          final tag = _tagShortcuts[key];
-          if (tag != null) {
-            addTagToPhoto(selectedPhoto, tag.name);
-          }
         }
       }
     }
@@ -363,7 +316,6 @@ class PhotoViewModel extends ChangeNotifier {
 
   void restorePhoto(Photo photo) {
     try {
-      photo.isRecycled = false;
       photo.save();
       if (_selectedFolder != null && photo.path.startsWith(_selectedFolder!)) {
         _photos.add(photo);

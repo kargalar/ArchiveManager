@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'models/photo.dart';
-import 'models/tag.dart';
 import 'viewmodels/photo_view_model.dart';
 import 'viewmodels/home_view_model.dart';
 import 'views/home_page.dart';
@@ -11,29 +10,27 @@ import 'views/home_page.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   Hive.registerAdapter(PhotoAdapter());
   Hive.registerAdapter(FolderAdapter());
-  Hive.registerAdapter(TagAdapter());
   final photoBox = await Hive.openBox<Photo>('photos');
   final folderBox = await Hive.openBox<Folder>('folders');
-  final tagBox = await Hive.openBox<Tag>('tags');
-  runApp(MyApp(photoBox: photoBox, folderBox: folderBox, tagBox: tagBox));
+  runApp(MyApp(photoBox: photoBox, folderBox: folderBox));
 }
 
 class MyApp extends StatelessWidget {
   final Box<Photo> photoBox;
   final Box<Folder> folderBox;
-  final Box<Tag> tagBox;
 
-  const MyApp({super.key, required this.photoBox, required this.folderBox, required this.tagBox});
+  const MyApp({super.key, required this.photoBox, required this.folderBox});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (context) => PhotoViewModel(photoBox, folderBox, tagBox),
+          create: (context) => PhotoViewModel(photoBox, folderBox),
         ),
         ChangeNotifierProvider(
           create: (context) => HomeViewModel(),
