@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'models/photo.dart';
 import 'models/tag.dart';
 import 'viewmodels/photo_view_model.dart';
+import 'viewmodels/home_view_model.dart';
 import 'views/home_page.dart';
 
 void main() async {
@@ -27,8 +28,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
       create: (context) => PhotoViewModel(photoBox, folderBox, tagBox),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => HomeViewModel(),
+        ),
+      ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Photo Archive Manager',

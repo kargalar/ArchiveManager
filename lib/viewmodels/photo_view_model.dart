@@ -212,6 +212,11 @@ class PhotoViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void sortPhotosByRating({bool ascending = false}) {
+    _photos.sort((a, b) => ascending ? a.rating.compareTo(b.rating) : b.rating.compareTo(a.rating));
+    notifyListeners();
+  }
+
   void handleKeyEvent(RawKeyEvent event, Photo? selectedPhoto) {
     if (event is RawKeyDownEvent && selectedPhoto != null) {
       final key = event.logicalKey.keyLabel;

@@ -1,13 +1,16 @@
 import 'dart:io';
+import 'package:archive_manager_v3/models/photo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
-import '../models/photo.dart';
 import '../viewmodels/photo_view_model.dart';
+import '../viewmodels/home_view_model.dart';
 import 'widgets/folder_item.dart';
+import 'widgets/photo_grid.dart';
+import 'widgets/full_screen_image.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -17,11 +20,12 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  Photo? selectedPhoto;
+  late HomeViewModel _homeViewModel;
 
   @override
   void initState() {
     super.initState();
+    _homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
     RawKeyboard.instance.addListener(_handleKeyEvent);
     GestureBinding.instance.pointerRouter.addGlobalRoute(_handlePointerEvent);
   }
@@ -36,72 +40,17 @@ class _HomePageState extends State<HomePage> {
 
   void _handleKeyEvent(RawKeyEvent event) {
     if (event is RawKeyDownEvent) {
-      final viewModel = context.read<PhotoViewModel>();
-      if (viewModel.photos.isEmpty) return;
+      final photoViewModel = context.read<PhotoViewModel>();
+      _homeViewModel.handleKeyEvent(event, context, photoViewModel);
 
-      if (selectedPhoto == null) {
-        setState(() {
-          selectedPhoto = viewModel.photos[0];
-        });
-        return;
-      }
-
-      final currentIndex = viewModel.photos.indexOf(selectedPhoto!);
-      final photosPerRow = viewModel.photosPerRow;
-      int newIndex = currentIndex;
-
-      if (event.logicalKey == LogicalKeyboardKey.arrowLeft &&
-          currentIndex > 0) {
-        newIndex = currentIndex - 1;
-      } else if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
-          currentIndex < viewModel.photos.length - 1) {
-        newIndex = currentIndex + 1;
-      } else if (event.logicalKey == LogicalKeyboardKey.arrowUp &&
-          currentIndex >= photosPerRow) {
-        newIndex = currentIndex - photosPerRow;
-      } else if (event.logicalKey == LogicalKeyboardKey.arrowDown &&
-          currentIndex + photosPerRow < viewModel.photos.length) {
-        newIndex = currentIndex + photosPerRow;
-      } else if (event.logicalKey == LogicalKeyboardKey.enter &&
-          selectedPhoto != null) {
+      if (event.logicalKey == LogicalKeyboardKey.enter &&
+          _homeViewModel.selectedPhoto != null) {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => _buildFullScreenImage(selectedPhoto!),
+            builder: (context) =>
+                FullScreenImage(photo: _homeViewModel.selectedPhoto!),
           ),
         );
-        return;
-      } else {
-        if (event.logicalKey == LogicalKeyboardKey.keyF) {
-          viewModel.toggleFavorite(selectedPhoto!);
-          return;
-        }
-
-        // Handle key presses for ratings and tag shortcuts
-        final key = event.logicalKey.keyLabel;
-        if (key.length == 1) {
-          // Check for rating keys (1-5)
-          if (RegExp(r'[1-5]').hasMatch(key)) {
-            viewModel.setRating(selectedPhoto!, int.parse(key));
-            return;
-          } else {
-            // Check for tag shortcuts
-            final tags = viewModel.tags;
-            final matchingTag =
-                tags.where((tag) => tag.shortcut == key).toList();
-            if (matchingTag.isNotEmpty) {
-              viewModel.addTagToPhoto(selectedPhoto!, matchingTag.first.name);
-              setState(() {}); // Refresh UI to show the new tag
-              return;
-            }
-          }
-        }
-        return;
-      }
-
-      if (newIndex != currentIndex) {
-        setState(() {
-          selectedPhoto = viewModel.photos[newIndex];
-        });
       }
     }
   }
@@ -298,125 +247,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildPhotoGrid() {
-    return Expanded(
-      child: FocusScope(
-        child: Focus(
-          autofocus: true,
-          child: Consumer<PhotoViewModel>(
-            builder: (context, viewModel, child) {
-              if (viewModel.selectedFolder == null) {
-                return const Center(
-                  child: Text('Select a folder to view images'),
-                );
-              }
-
-              return GridView.builder(
-                padding: const EdgeInsets.all(8),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: viewModel.photosPerRow,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                ),
-                itemCount: viewModel.photos.length,
-                itemBuilder: (context, index) {
-                  final photo = viewModel.photos[index];
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        selectedPhoto = photo;
-                      });
-                    },
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            border: selectedPhoto == photo
-                                ? Border.all(color: Colors.blue, width: 2)
-                                : null,
-                          ),
-                          child: Image.file(
-                            File(photo.path),
-                            fit: BoxFit.cover,
-                            cacheHeight: viewModel.photosPerRow < 2
-                                ? null
-                                : viewModel.photosPerRow < 3
-                                    ? 2000
-                                    : viewModel.photosPerRow < 4
-                                        ? 1500
-                                        : viewModel.photosPerRow < 5
-                                            ? 900
-                                            : viewModel.photosPerRow < 6
-                                                ? 700
-                                                : viewModel.photosPerRow < 7
-                                                    ? 500
-                                                    : viewModel.photosPerRow < 8
-                                                        ? 400
-                                                        : viewModel.photosPerRow <
-                                                                10
-                                                            ? 300
-                                                            : 200,
-                          ),
-                        ),
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Row(
-                            children: [
-                              if (photo.rating > 0)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black54,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.star,
-                                          size: 16, color: Colors.yellow),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        photo.rating.toString(),
-                                        style: const TextStyle(
-                                            color: Colors.white),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              const SizedBox(width: 8),
-                              GestureDetector(
-                                onTap: () => viewModel.toggleFavorite(photo),
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black54,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(
-                                    photo.isFavorite
-                                        ? Icons.favorite
-                                        : Icons.favorite_border,
-                                    size: 16,
-                                    color: photo.isFavorite
-                                        ? Colors.red
-                                        : Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-      ),
-    );
+    return const PhotoGrid();
   }
 
   void _showSettingsDialog(BuildContext context) {
