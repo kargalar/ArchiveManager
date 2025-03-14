@@ -1,41 +1,38 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'photo.dart';
+part of 'tag.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class PhotoAdapter extends TypeAdapter<Photo> {
+class TagAdapter extends TypeAdapter<Tag> {
   @override
-  final int typeId = 0;
+  final int typeId = 2;
 
   @override
-  Photo read(BinaryReader reader) {
+  Tag read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Photo(
-      path: fields[0] as String,
-      isFavorite: fields[1] as bool,
-      rating: fields[2] as int,
-      tags: (fields[3] as List?)?.cast<String>(),
+    return Tag(
+      name: fields[0] as String,
+      color: fields[1] as int,
+      shortcut: fields[2] as String,
     );
   }
 
   @override
-  void write(BinaryWriter writer, Photo obj) {
+  void write(BinaryWriter writer, Tag obj) {
     writer
-      ..writeByte(4)
-      ..writeByte(0)
-      ..write(obj.path)
-      ..writeByte(1)
-      ..write(obj.isFavorite)
-      ..writeByte(2)
-      ..write(obj.rating)
       ..writeByte(3)
-      ..write(obj.tags);
+      ..writeByte(0)
+      ..write(obj.name)
+      ..writeByte(1)
+      ..write(obj.color)
+      ..writeByte(2)
+      ..write(obj.shortcut);
   }
 
   @override
@@ -44,7 +41,7 @@ class PhotoAdapter extends TypeAdapter<Photo> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is PhotoAdapter &&
+      other is TagAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

@@ -265,6 +265,130 @@ class _HomePageState extends State<HomePage> {
                             );
                           },
                         ),
+                        const SizedBox(height: 32),
+                        const Text('Tags', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 16),
+                        Consumer<PhotoViewModel>(
+                          builder: (context, viewModel, child) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.grey[300]!),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  height: 200,
+                                  child: ListView.builder(
+                                    itemCount: viewModel.tags.length,
+                                    itemBuilder: (context, index) {
+                                      final tag = viewModel.tags[index];
+                                      return ListTile(
+                                        leading: CircleAvatar(
+                                          backgroundColor: tag.tagColor,
+                                          radius: 12,
+                                        ),
+                                        title: Text(tag.name),
+                                        subtitle: Text('Shortcut: ${tag.shortcut}'),
+                                        trailing: IconButton(
+                                          icon: const Icon(Icons.delete),
+                                          onPressed: () => viewModel.removeTag(tag),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                const Text('Add New Tag', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 16),
+                                TextField(
+                                  controller: nameController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Tag Name',
+                                    hintText: 'Enter tag name',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  children: [
+                                    const Text('Color: ', style: TextStyle(fontSize: 16)),
+                                    GestureDetector(
+                                      onTap: () {
+                                        showDialog(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text('Pick a color'),
+                                            content: SingleChildScrollView(
+                                              child: ColorPicker(
+                                                pickerColor: selectedColor,
+                                                onColorChanged: (color) {
+                                                  selectedColor = color;
+                                                },
+                                                pickerAreaHeightPercent: 0.8,
+                                              ),
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(context),
+                                                child: const Text('OK'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                      child: Container(
+                                        width: 40,
+                                        height: 40,
+                                        margin: const EdgeInsets.symmetric(horizontal: 8),
+                                        decoration: BoxDecoration(
+                                          color: selectedColor,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: Colors.grey),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                TextField(
+                                  controller: shortcutController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Shortcut Key',
+                                    hintText: 'Enter a single character',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  maxLength: 1,
+                                ),
+                                const SizedBox(height: 24),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    if (nameController.text.isNotEmpty && shortcutController.text.isNotEmpty) {
+                                      viewModel.addTag(
+                                        nameController.text,
+                                        selectedColor,
+                                        shortcutController.text,
+                                      );
+                                      nameController.clear();
+                                      shortcutController.clear();
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  child: const Text('Add Tag'),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ),

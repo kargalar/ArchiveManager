@@ -13,11 +13,19 @@ class Photo extends HiveObject {
   @HiveField(2)
   int rating;
 
+  @HiveField(3)
+  List<String> tags;
+
+  @HiveField(4)
+  bool isRecycled;
+
   Photo({
     required this.path,
     this.isFavorite = false,
     this.rating = 0,
-  });
+    List<String>? tags,
+    this.isRecycled = false,
+  }) : tags = tags ?? [];
 
   void toggleFavorite() {
     isFavorite = !isFavorite;
@@ -29,5 +37,17 @@ class Photo extends HiveObject {
       rating = value;
       save();
     }
+  }
+
+  void addTag(String tag) {
+    if (!tags.contains(tag)) {
+      tags.add(tag);
+      save();
+    }
+  }
+
+  void removeTag(String tag) {
+    tags.remove(tag);
+    save();
   }
 }
