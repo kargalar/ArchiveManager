@@ -41,6 +41,7 @@ class _HomePageState extends State<HomePage> {
       final photoViewModel = context.read<PhotoViewModel>();
       _homeViewModel.handleKeyEvent(event, context, photoViewModel);
 
+      // ve zaten tam ekranda değilse
       if (event.logicalKey == LogicalKeyboardKey.enter && _homeViewModel.selectedPhoto != null) {
         Navigator.of(context).push(
           MaterialPageRoute(

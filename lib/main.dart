@@ -8,6 +8,8 @@ import 'viewmodels/photo_view_model.dart';
 import 'viewmodels/home_view_model.dart';
 import 'views/home_page.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(PhotoAdapter());
@@ -24,11 +26,7 @@ class MyApp extends StatelessWidget {
   final Box<Folder> folderBox;
   final Box<Tag> tagBox;
 
-  const MyApp(
-      {super.key,
-      required this.photoBox,
-      required this.folderBox,
-      required this.tagBox});
+  const MyApp({super.key, required this.photoBox, required this.folderBox, required this.tagBox});
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +40,7 @@ class MyApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
+        navigatorKey: navigatorKey,
         debugShowCheckedModeBanner: false,
         title: 'Photo Archive Manager',
         theme: ThemeData.dark().copyWith(

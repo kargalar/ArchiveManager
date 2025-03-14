@@ -1,7 +1,10 @@
 import 'dart:io';
+import 'package:archive_manager_v3/main.dart';
+import 'package:archive_manager_v3/viewmodels/home_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
+import 'package:provider/provider.dart';
 import '../models/photo.dart';
 import '../models/folder.dart';
 import '../models/tag.dart';
@@ -125,8 +128,15 @@ class PhotoViewModel extends ChangeNotifier {
     _selectedFolder = path;
     if (path != null) {
       _loadPhotosFromFolder(path);
+      // Set focus to the first photo if available
+      if (_photos.isNotEmpty) {
+        Provider.of<HomeViewModel>(navigatorKey.currentContext!, listen: false).setSelectedPhoto(_photos.first);
+      } else {
+        Provider.of<HomeViewModel>(navigatorKey.currentContext!, listen: false).setSelectedPhoto(null);
+      }
     } else {
       _photos.clear();
+      Provider.of<HomeViewModel>(navigatorKey.currentContext!, listen: false).setSelectedPhoto(null);
     }
     notifyListeners();
   }

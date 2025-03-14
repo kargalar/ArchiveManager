@@ -70,6 +70,7 @@ class PhotoGrid extends StatelessWidget {
           child: Listener(
             onPointerDown: (event) {
               if (event.buttons == kMiddleMouseButton) {
+                homeViewModel.handlePhotoTap(photo);
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => FullScreenImage(photo: photo),

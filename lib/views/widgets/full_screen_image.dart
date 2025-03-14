@@ -18,11 +18,15 @@ class FullScreenImage extends StatefulWidget {
 class _FullScreenImageState extends State<FullScreenImage> {
   late Photo _currentPhoto;
   bool _autoNext = false;
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
     _currentPhoto = widget.photo;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
+    });
   }
 
   void _handleKeyEvent(RawKeyEvent event, PhotoViewModel viewModel) {
@@ -47,8 +51,9 @@ class _FullScreenImageState extends State<FullScreenImage> {
       if (viewModel.photos.isEmpty) {
         Navigator.of(context).pop();
       } else {
+        final nextIndex = currentIndex < viewModel.photos.length ? currentIndex : viewModel.photos.length - 1;
         setState(() {
-          _currentPhoto = viewModel.photos[currentIndex < viewModel.photos.length ? currentIndex : viewModel.photos.length - 1];
+          _currentPhoto = viewModel.photos[nextIndex];
         });
       }
     } else if (event.logicalKey == LogicalKeyboardKey.escape) {
@@ -68,11 +73,17 @@ class _FullScreenImageState extends State<FullScreenImage> {
   }
 
   @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Consumer<PhotoViewModel>(
       builder: (context, viewModel, child) {
         return RawKeyboardListener(
-          focusNode: FocusNode(),
+          focusNode: _focusNode,
           autofocus: true,
           onKey: (event) => _handleKeyEvent(event, viewModel),
           child: Scaffold(
