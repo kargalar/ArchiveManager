@@ -20,7 +20,7 @@ class PhotoAdapter extends TypeAdapter<Photo> {
       path: fields[0] as String,
       isFavorite: fields[1] as bool,
       rating: fields[2] as int,
-      tags: (fields[3] as List?)?.cast<String>(),
+      isRecycled: fields[3] as bool,
     );
   }
 
@@ -35,7 +35,7 @@ class PhotoAdapter extends TypeAdapter<Photo> {
       ..writeByte(2)
       ..write(obj.rating)
       ..writeByte(3)
-      ..write(obj.tags);
+      ..write(obj.isRecycled);
   }
 
   @override
