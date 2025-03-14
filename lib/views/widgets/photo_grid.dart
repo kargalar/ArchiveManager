@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:archive_manager_v3/views/widgets/full_screen_image.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -24,15 +26,10 @@ class PhotoGrid extends StatelessWidget {
                   photoViewModel.toggleFavorite(homeViewModel.selectedPhoto!);
                   return KeyEventResult.handled;
                 }
-              } else if (event.logicalKey == LogicalKeyboardKey.digit1 ||
-                  event.logicalKey == LogicalKeyboardKey.digit2 ||
-                  event.logicalKey == LogicalKeyboardKey.digit3 ||
-                  event.logicalKey == LogicalKeyboardKey.digit4 ||
-                  event.logicalKey == LogicalKeyboardKey.digit5) {
+              } else if (event.logicalKey == LogicalKeyboardKey.digit1 || event.logicalKey == LogicalKeyboardKey.digit2 || event.logicalKey == LogicalKeyboardKey.digit3 || event.logicalKey == LogicalKeyboardKey.digit4 || event.logicalKey == LogicalKeyboardKey.digit5) {
                 if (homeViewModel.selectedPhoto != null) {
                   final rating = int.parse(event.logicalKey.keyLabel);
-                  photoViewModel.setRating(
-                      homeViewModel.selectedPhoto!, rating);
+                  photoViewModel.setRating(homeViewModel.selectedPhoto!, rating);
                   return KeyEventResult.handled;
                 }
               }
@@ -57,26 +54,39 @@ class PhotoGrid extends StatelessWidget {
     );
   }
 
-  Widget _buildGrid(BuildContext context, PhotoViewModel photoViewModel,
-      HomeViewModel homeViewModel) {
+  Widget _buildGrid(BuildContext context, PhotoViewModel photoViewModel, HomeViewModel homeViewModel) {
     return GridView.builder(
       padding: const EdgeInsets.all(8),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: photoViewModel.photosPerRow,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
+        crossAxisSpacing: 6,
+        mainAxisSpacing: 6,
       ),
       itemCount: photoViewModel.filteredPhotos.length,
       itemBuilder: (context, index) {
         final photo = photoViewModel.filteredPhotos[index];
-        return GestureDetector(
-          onTap: () => homeViewModel.handlePhotoTap(photo),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              _buildPhotoContainer(photo, homeViewModel),
-              _buildPhotoOverlay(photo, photoViewModel),
-            ],
+        return MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: Listener(
+            onPointerDown: (event) {
+              if (event.buttons == kMiddleMouseButton) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => FullScreenImage(photo: photo),
+                  ),
+                );
+              }
+            },
+            child: GestureDetector(
+              onTap: () => homeViewModel.handlePhotoTap(photo),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _buildPhotoContainer(photo, homeViewModel),
+                  _buildPhotoOverlay(photo, photoViewModel),
+                ],
+              ),
+            ),
           ),
         );
       },
@@ -86,9 +96,7 @@ class PhotoGrid extends StatelessWidget {
   Widget _buildPhotoContainer(Photo photo, HomeViewModel homeViewModel) {
     return Container(
       decoration: BoxDecoration(
-        border: homeViewModel.selectedPhoto == photo
-            ? Border.all(color: Colors.blue, width: 2)
-            : null,
+        border: homeViewModel.selectedPhoto == photo ? Border.all(color: Colors.blue, width: 2) : null,
       ),
       child: Image.file(
         File(photo.path),
@@ -107,8 +115,7 @@ class PhotoGrid extends StatelessWidget {
             children: [
               if (photo.rating > 0)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.black54,
                     borderRadius: BorderRadius.circular(12),

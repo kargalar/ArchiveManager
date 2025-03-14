@@ -16,6 +16,7 @@ class FullScreenImage extends StatefulWidget {
 
 class _FullScreenImageState extends State<FullScreenImage> {
   late Photo _currentPhoto;
+  bool _autoNext = false;
 
   @override
   void initState() {
@@ -32,14 +33,23 @@ class _FullScreenImageState extends State<FullScreenImage> {
       setState(() {
         _currentPhoto = viewModel.photos[currentIndex - 1];
       });
-    } else if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
-        currentIndex < viewModel.photos.length - 1) {
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowRight && currentIndex < viewModel.photos.length - 1) {
       setState(() {
         _currentPhoto = viewModel.photos[currentIndex + 1];
       });
     } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
       viewModel.toggleFavorite(_currentPhoto);
       setState(() {});
+    } else if (event.logicalKey == LogicalKeyboardKey.delete) {
+      viewModel.deletePhoto(_currentPhoto);
+      final currentIndex = viewModel.photos.indexOf(_currentPhoto);
+      if (viewModel.photos.isEmpty) {
+        Navigator.of(context).pop();
+      } else {
+        setState(() {
+          _currentPhoto = viewModel.photos[currentIndex < viewModel.photos.length ? currentIndex : viewModel.photos.length - 1];
+        });
+      }
     } else if (event.logicalKey == LogicalKeyboardKey.escape) {
       Navigator.of(context).pop();
     } else {
@@ -47,6 +57,11 @@ class _FullScreenImageState extends State<FullScreenImage> {
       if (key.length == 1 && RegExp(r'[1-5]').hasMatch(key)) {
         viewModel.setRating(_currentPhoto, int.parse(key));
         setState(() {});
+        if (_autoNext && currentIndex < viewModel.photos.length - 1) {
+          setState(() {
+            _currentPhoto = viewModel.photos[currentIndex + 1];
+          });
+        }
       }
     }
   }
@@ -74,18 +89,40 @@ class _FullScreenImageState extends State<FullScreenImage> {
                   right: 8,
                   child: Row(
                     children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _autoNext = !_autoNext;
+                                });
+                              },
+                              child: Icon(
+                                Icons.skip_next,
+                                size: 16,
+                                color: _autoNext ? Colors.blue : Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       if (_currentPhoto.rating > 0)
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: Colors.black54,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.star,
-                                  size: 16, color: Colors.yellow),
+                              const Icon(Icons.star, size: 16, color: Colors.yellow),
                               const SizedBox(width: 4),
                               Text(
                                 _currentPhoto.rating.toString(),
@@ -104,12 +141,9 @@ class _FullScreenImageState extends State<FullScreenImage> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
-                            _currentPhoto.isFavorite
-                                ? Icons.favorite
-                                : Icons.favorite_border,
+                            _currentPhoto.isFavorite ? Icons.favorite : Icons.favorite_border,
                             size: 16,
-                            color:
-                                _currentPhoto.isFavorite ? Colors.red : Colors.white,
+                            color: _currentPhoto.isFavorite ? Colors.red : Colors.white,
                           ),
                         ),
                       ),

@@ -13,7 +13,7 @@ class PhotoViewModel extends ChangeNotifier {
   final Box<Tag> _tagBox;
   final List<String> _folders = [];
   String? _selectedFolder;
-  List<Photo> _photos = [];
+  final List<Photo> _photos = [];
   int _photosPerRow = 4; // Default value
   final Map<String, List<String>> _folderHierarchy = {};
   final Map<String, bool> _expandedFolders = {};
@@ -38,8 +38,7 @@ class PhotoViewModel extends ChangeNotifier {
   }
 
   void _addToHierarchy(String path) {
-    final parentPath =
-        path.substring(0, path.lastIndexOf(Platform.pathSeparator));
+    final parentPath = path.substring(0, path.lastIndexOf(Platform.pathSeparator));
     if (_folders.contains(parentPath)) {
       _folderHierarchy.putIfAbsent(parentPath, () => []).add(path);
     }
@@ -109,8 +108,7 @@ class PhotoViewModel extends ChangeNotifier {
       _expandedFolders.remove(path);
 
       // Remove associated photos
-      final photosToRemove =
-          _photoBox.values.where((p) => p.path.startsWith(path));
+      final photosToRemove = _photoBox.values.where((p) => p.path.startsWith(path));
       for (var photo in photosToRemove) {
         photo.delete();
       }
@@ -139,7 +137,7 @@ class PhotoViewModel extends ChangeNotifier {
     final imageExtensions = ['.jpg', '.jpeg', '.png', '.gif'];
 
     try {
-      final files = directory.listSync();
+      final files = directory.listSync(recursive: true);
       for (var file in files) {
         if (file is File) {
           final extension = file.path.toLowerCase().split('.').last;
@@ -214,9 +212,7 @@ class PhotoViewModel extends ChangeNotifier {
   }
 
   void sortPhotosByRating({bool ascending = false}) {
-    _photos.sort((a, b) => ascending
-        ? a.rating.compareTo(b.rating)
-        : b.rating.compareTo(a.rating));
+    _photos.sort((a, b) => ascending ? a.rating.compareTo(b.rating) : b.rating.compareTo(a.rating));
     notifyListeners();
   }
 
@@ -316,11 +312,7 @@ class PhotoViewModel extends ChangeNotifier {
     } else if (_showUnratedOnly) {
       return photos.where((photo) => photo.rating == 0).toList();
     } else if (_minRatingFilter > 0 || _maxRatingFilter < 5) {
-      return photos
-          .where((photo) =>
-              photo.rating >= _minRatingFilter &&
-              photo.rating <= _maxRatingFilter)
-          .toList();
+      return photos.where((photo) => photo.rating >= _minRatingFilter && photo.rating <= _maxRatingFilter).toList();
     }
     return photos;
   }

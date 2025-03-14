@@ -1,5 +1,3 @@
-import 'dart:io';
-import 'package:archive_manager_v3/models/photo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
@@ -34,8 +32,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     RawKeyboard.instance.removeListener(_handleKeyEvent);
-    GestureBinding.instance.pointerRouter
-        .removeGlobalRoute(_handlePointerEvent);
+    GestureBinding.instance.pointerRouter.removeGlobalRoute(_handlePointerEvent);
     super.dispose();
   }
 
@@ -44,135 +41,18 @@ class _HomePageState extends State<HomePage> {
       final photoViewModel = context.read<PhotoViewModel>();
       _homeViewModel.handleKeyEvent(event, context, photoViewModel);
 
-      if (event.logicalKey == LogicalKeyboardKey.enter &&
-          _homeViewModel.selectedPhoto != null) {
+      if (event.logicalKey == LogicalKeyboardKey.enter && _homeViewModel.selectedPhoto != null) {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) =>
-                FullScreenImage(photo: _homeViewModel.selectedPhoto!),
+            builder: (context) => FullScreenImage(photo: _homeViewModel.selectedPhoto!),
           ),
         );
       }
     }
   }
 
-  Widget _buildFullScreenImage(Photo photo) {
-    return StatefulBuilder(
-      builder: (context, setState) {
-        return RawKeyboardListener(
-          focusNode: FocusNode(),
-          autofocus: true,
-          onKey: (RawKeyEvent event) {
-            if (event is RawKeyDownEvent) {
-              final viewModel = context.read<PhotoViewModel>();
-              final currentIndex = viewModel.photos.indexOf(photo);
-
-              if (event.logicalKey == LogicalKeyboardKey.arrowLeft &&
-                  currentIndex > 0) {
-                setState(() {
-                  photo = viewModel.photos[currentIndex - 1];
-                });
-              } else if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
-                  currentIndex < viewModel.photos.length - 1) {
-                setState(() {
-                  photo = viewModel.photos[currentIndex + 1];
-                });
-              } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
-                context.read<PhotoViewModel>().toggleFavorite(photo);
-                setState(() {});
-              } else if (event.logicalKey == LogicalKeyboardKey.escape) {
-                Navigator.of(context).pop();
-              } else {
-                final key = event.logicalKey.keyLabel;
-                if (key.length == 1 && RegExp(r'[1-5]').hasMatch(key)) {
-                  context
-                      .read<PhotoViewModel>()
-                      .setRating(photo, int.parse(key));
-                  setState(() {});
-                }
-              }
-              final key = event.logicalKey.keyLabel;
-              if (key.length == 1 && RegExp(r'[1-5]').hasMatch(key)) {
-                context.read<PhotoViewModel>().setRating(photo, int.parse(key));
-                setState(() {});
-              }
-            }
-          },
-          child: Scaffold(
-            backgroundColor: Colors.black,
-            body: Stack(
-              children: [
-                Center(
-                  child: Image.file(
-                    File(photo.path),
-                    fit: BoxFit.contain,
-                  ),
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Row(
-                    children: [
-                      if (photo.rating > 0)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.star,
-                                  size: 16, color: Colors.yellow),
-                              const SizedBox(width: 4),
-                              Text(
-                                photo.rating.toString(),
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                            ],
-                          ),
-                        ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () => context
-                            .read<PhotoViewModel>()
-                            .toggleFavorite(photo),
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            photo.isFavorite
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            size: 16,
-                            color: photo.isFavorite ? Colors.red : Colors.white,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   void _handlePointerEvent(PointerEvent event) {
-    if (event is PointerScrollEvent &&
-        RawKeyboard.instance.keysPressed
-            .contains(LogicalKeyboardKey.controlLeft)) {
+    if (event is PointerScrollEvent && RawKeyboard.instance.keysPressed.contains(LogicalKeyboardKey.controlLeft)) {
       final delta = event.scrollDelta.dy;
       final viewModel = context.read<PhotoViewModel>();
       if (delta < 0) {
@@ -189,9 +69,7 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: Consumer<PhotoViewModel>(
           builder: (context, viewModel, child) {
-            return Text(viewModel.selectedFolder != null
-                ? viewModel.getFolderName(viewModel.selectedFolder!)
-                : 'Photo Archive Manager');
+            return Text(viewModel.selectedFolder != null ? viewModel.getFolderName(viewModel.selectedFolder!) : 'Photo Archive Manager');
           },
         ),
         actions: [
@@ -213,9 +91,7 @@ class _HomePageState extends State<HomePage> {
                   IconButton(
                     icon: Icon(
                       Icons.favorite,
-                      color: viewModel.showFavoritesOnly
-                          ? Colors.red
-                          : Colors.white,
+                      color: viewModel.showFavoritesOnly ? Colors.red : Colors.white,
                     ),
                     onPressed: () => viewModel.toggleFavoritesFilter(),
                     tooltip: 'Show Favorites Only',
@@ -223,9 +99,7 @@ class _HomePageState extends State<HomePage> {
                   IconButton(
                     icon: Icon(
                       Icons.star_border_purple500_outlined,
-                      color: viewModel.showUnratedOnly
-                          ? Colors.yellow
-                          : Colors.white,
+                      color: viewModel.showUnratedOnly ? Colors.yellow : Colors.white,
                     ),
                     onPressed: () => viewModel.toggleUnratedFilter(),
                     tooltip: 'Show Unrated Only',
@@ -238,8 +112,7 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         Expanded(
                           child: RangeSlider(
-                            values: RangeValues(viewModel.minRatingFilter,
-                                viewModel.maxRatingFilter),
+                            values: RangeValues(viewModel.minRatingFilter, viewModel.maxRatingFilter),
                             min: 0,
                             max: 5,
                             divisions: 5,
@@ -248,8 +121,7 @@ class _HomePageState extends State<HomePage> {
                             //   viewModel.maxRatingFilter.toStringAsFixed(0),
                             // ),
                             onChanged: (RangeValues values) {
-                              viewModel.setRatingFilter(
-                                  values.start, values.end);
+                              viewModel.setRatingFilter(values.start, values.end);
                             },
                           ),
                         ),
@@ -316,11 +188,7 @@ class _HomePageState extends State<HomePage> {
               itemCount: context.watch<PhotoViewModel>().folders.length,
               itemBuilder: (context, index) {
                 final folder = context.watch<PhotoViewModel>().folders[index];
-                final isRoot = !context
-                    .watch<PhotoViewModel>()
-                    .folderHierarchy
-                    .values
-                    .any((list) => list.contains(folder));
+                final isRoot = !context.watch<PhotoViewModel>().folderHierarchy.values.any((list) => list.contains(folder));
                 if (!isRoot) return const SizedBox.shrink();
                 return FolderItem(folder: folder, level: 0);
               },
@@ -449,8 +317,7 @@ class _HomePageState extends State<HomePage> {
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: () {
-                          if (nameController.text.isNotEmpty &&
-                              shortcutController.text.isNotEmpty) {
+                          if (nameController.text.isNotEmpty && shortcutController.text.isNotEmpty) {
                             viewModel.addTag(
                               nameController.text,
                               selectedColor,
@@ -478,65 +345,4 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-}
-
-void _showRatingFilterDialog(BuildContext context) {
-  final viewModel = context.read<PhotoViewModel>();
-  double minRating = viewModel.minRatingFilter;
-  double maxRating = viewModel.maxRatingFilter;
-
-  showDialog(
-    context: context,
-    builder: (context) => StatefulBuilder(
-      builder: (context, setState) => AlertDialog(
-        title: const Text('Filter by Rating Range'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Minimum Rating'),
-            Slider(
-              value: minRating,
-              min: 0,
-              max: 5,
-              divisions: 5,
-              label: minRating.toStringAsFixed(0),
-              onChanged: (value) {
-                setState(() {
-                  minRating = value;
-                  if (maxRating < minRating) maxRating = minRating;
-                });
-              },
-            ),
-            const Text('Maximum Rating'),
-            Slider(
-              value: maxRating,
-              min: 0,
-              max: 5,
-              divisions: 5,
-              label: maxRating.toStringAsFixed(0),
-              onChanged: (value) {
-                setState(() {
-                  maxRating = value;
-                  if (minRating > maxRating) minRating = maxRating;
-                });
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              viewModel.setRatingFilter(minRating, maxRating);
-              Navigator.pop(context);
-            },
-            child: const Text('Apply'),
-          ),
-        ],
-      ),
-    ),
-  );
 }
