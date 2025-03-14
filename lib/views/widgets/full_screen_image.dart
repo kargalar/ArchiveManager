@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -41,8 +42,8 @@ class _FullScreenImageState extends State<FullScreenImage> {
       viewModel.toggleFavorite(_currentPhoto);
       setState(() {});
     } else if (event.logicalKey == LogicalKeyboardKey.delete) {
-      viewModel.deletePhoto(_currentPhoto);
       final currentIndex = viewModel.photos.indexOf(_currentPhoto);
+      viewModel.deletePhoto(_currentPhoto);
       if (viewModel.photos.isEmpty) {
         Navigator.of(context).pop();
       } else {
@@ -78,10 +79,20 @@ class _FullScreenImageState extends State<FullScreenImage> {
             backgroundColor: Colors.black,
             body: Stack(
               children: [
-                Center(
-                  child: Image.file(
-                    File(_currentPhoto.path),
-                    fit: BoxFit.contain,
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Listener(
+                    onPointerDown: (event) {
+                      if (event.buttons == kMiddleMouseButton) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                    child: Center(
+                      child: Image.file(
+                        File(_currentPhoto.path),
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
                 ),
                 Positioned(
