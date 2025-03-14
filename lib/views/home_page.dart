@@ -187,10 +187,12 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Photo Archive Manager'),
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () => _homeViewModel.toggleMenu(),
+        title: Consumer<PhotoViewModel>(
+          builder: (context, viewModel, child) {
+            return Text(viewModel.selectedFolder != null
+                ? viewModel.getFolderName(viewModel.selectedFolder!)
+                : 'Photo Archive Manager');
+          },
         ),
         actions: [
           Consumer<PhotoViewModel>(
@@ -279,13 +281,7 @@ class _HomePageState extends State<HomePage> {
       ),
       body: Row(
         children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            width: _homeViewModel.isMenuVisible ? 250 : 0,
-            child: _homeViewModel.isMenuVisible
-                ? _buildFolderList()
-                : const SizedBox(),
-          ),
+          _buildFolderList(),
           _buildPhotoGrid(),
         ],
       ),

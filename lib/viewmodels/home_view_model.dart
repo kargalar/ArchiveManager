@@ -52,12 +52,4 @@ class HomeViewModel extends ChangeNotifier {
   void handlePhotoTap(Photo photo) {
     setSelectedPhoto(photo);
   }
-
-  bool _isMenuVisible = true;
-  bool get isMenuVisible => _isMenuVisible;
-
-  void toggleMenu() {
-    _isMenuVisible = !_isMenuVisible;
-    notifyListeners();
-  }
 }
