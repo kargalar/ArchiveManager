@@ -296,11 +296,31 @@ class PhotoViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  double _minRatingFilter = 0; // New field for minimum rating
+  double _maxRatingFilter = 5; // New field for maximum rating
+
+  double get minRatingFilter => _minRatingFilter;
+  double get maxRatingFilter => _maxRatingFilter;
+
+  void setRatingFilter(double min, double max) {
+    _minRatingFilter = min;
+    _maxRatingFilter = max;
+    _showFavoritesOnly = false;
+    _showUnratedOnly = false;
+    notifyListeners();
+  }
+
   List<Photo> get filteredPhotos {
     if (_showFavoritesOnly) {
       return photos.where((photo) => photo.isFavorite).toList();
     } else if (_showUnratedOnly) {
       return photos.where((photo) => photo.rating == 0).toList();
+    } else if (_minRatingFilter > 0 || _maxRatingFilter < 5) {
+      return photos
+          .where((photo) =>
+              photo.rating >= _minRatingFilter &&
+              photo.rating <= _maxRatingFilter)
+          .toList();
     }
     return photos;
   }

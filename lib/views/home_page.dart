@@ -206,9 +206,9 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   IconButton(
                     icon: Icon(
-                      Icons.star,
+                      Icons.favorite,
                       color: viewModel.showFavoritesOnly
-                          ? Colors.yellow
+                          ? Colors.red
                           : Colors.white,
                     ),
                     onPressed: () => viewModel.toggleFavoritesFilter(),
@@ -216,13 +216,18 @@ class _HomePageState extends State<HomePage> {
                   ),
                   IconButton(
                     icon: Icon(
-                      Icons.star_border,
+                      Icons.star_border_purple500_outlined,
                       color: viewModel.showUnratedOnly
                           ? Colors.yellow
                           : Colors.white,
                     ),
                     onPressed: () => viewModel.toggleUnratedFilter(),
                     tooltip: 'Show Unrated Only',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.filter_list),
+                    onPressed: () => _showRatingFilterDialog(context),
+                    tooltip: 'Filter by Rating Range',
                   ),
                   const SizedBox(width: 8),
                   TextButton.icon(
@@ -442,4 +447,65 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+}
+
+void _showRatingFilterDialog(BuildContext context) {
+  final viewModel = context.read<PhotoViewModel>();
+  double minRating = viewModel.minRatingFilter;
+  double maxRating = viewModel.maxRatingFilter;
+
+  showDialog(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: const Text('Filter by Rating Range'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Minimum Rating'),
+            Slider(
+              value: minRating,
+              min: 0,
+              max: 5,
+              divisions: 5,
+              label: minRating.toStringAsFixed(0),
+              onChanged: (value) {
+                setState(() {
+                  minRating = value;
+                  if (maxRating < minRating) maxRating = minRating;
+                });
+              },
+            ),
+            const Text('Maximum Rating'),
+            Slider(
+              value: maxRating,
+              min: 0,
+              max: 5,
+              divisions: 5,
+              label: maxRating.toStringAsFixed(0),
+              onChanged: (value) {
+                setState(() {
+                  maxRating = value;
+                  if (minRating > maxRating) minRating = maxRating;
+                });
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              viewModel.setRatingFilter(minRating, maxRating);
+              Navigator.pop(context);
+            },
+            child: const Text('Apply'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
