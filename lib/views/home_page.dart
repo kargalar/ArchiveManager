@@ -6,6 +6,7 @@ import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import '../models/sort_state.dart';
 import '../viewmodels/photo_view_model.dart';
 import '../viewmodels/home_view_model.dart';
 import 'widgets/folder_item.dart';
@@ -188,6 +189,29 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text('Photo Archive Manager'),
         actions: [
+          Consumer<PhotoViewModel>(
+            builder: (context, viewModel, child) {
+              IconData arrowIcon;
+              switch (viewModel.sortState) {
+                case SortState.ascending:
+                  arrowIcon = Icons.arrow_upward;
+                  break;
+                case SortState.descending:
+                  arrowIcon = Icons.arrow_downward;
+                  break;
+                default:
+                  arrowIcon = Icons.remove;
+              }
+              return TextButton.icon(
+                onPressed: viewModel.toggleSortState,
+                icon: Icon(arrowIcon, size: 16),
+                label: const Text('Rating'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => _showSettingsDialog(context),

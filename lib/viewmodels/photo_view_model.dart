@@ -5,6 +5,7 @@ import 'package:hive/hive.dart';
 import '../models/photo.dart';
 import '../models/folder.dart';
 import '../models/tag.dart';
+import '../models/sort_state.dart';
 
 class PhotoViewModel extends ChangeNotifier {
   final Box<Photo> _photoBox;
@@ -213,7 +214,9 @@ class PhotoViewModel extends ChangeNotifier {
   }
 
   void sortPhotosByRating({bool ascending = false}) {
-    _photos.sort((a, b) => ascending ? a.rating.compareTo(b.rating) : b.rating.compareTo(a.rating));
+    _photos.sort((a, b) => ascending
+        ? a.rating.compareTo(b.rating)
+        : b.rating.compareTo(a.rating));
     notifyListeners();
   }
 
@@ -232,6 +235,39 @@ class PhotoViewModel extends ChangeNotifier {
           }
         }
       }
+    }
+  }
+
+  SortState _sortState = SortState.none;
+  SortState get sortState => _sortState;
+
+  void toggleSortState() {
+    switch (_sortState) {
+      case SortState.none:
+        _sortState = SortState.ascending;
+        break;
+      case SortState.ascending:
+        _sortState = SortState.descending;
+        break;
+      case SortState.descending:
+        _sortState = SortState.none;
+        break;
+    }
+    _sortPhotos();
+    notifyListeners();
+  }
+
+  void _sortPhotos() {
+    switch (_sortState) {
+      case SortState.ascending:
+        _photos.sort((a, b) => a.rating.compareTo(b.rating));
+        break;
+      case SortState.descending:
+        _photos.sort((a, b) => b.rating.compareTo(a.rating));
+        break;
+      case SortState.none:
+        _loadPhotosFromFolder(_selectedFolder!);
+        break;
     }
   }
 }

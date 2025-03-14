@@ -47,41 +47,12 @@ class PhotoGrid extends StatelessWidget {
                 );
               }
 
-              return Column(
-                children: [
-                  _buildSortingControls(photoViewModel),
-                  Expanded(
-                    child: _buildGrid(context, photoViewModel, homeViewModel),
-                  ),
-                ],
+              return Expanded(
+                child: _buildGrid(context, photoViewModel, homeViewModel),
               );
             },
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildSortingControls(PhotoViewModel viewModel) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: DropdownButton<String>(
-        value: null,
-        hint: const Text('Sort by Rating'),
-        items: const [
-          DropdownMenuItem(value: 'asc', child: Text('Rating (Low to High)')),
-          DropdownMenuItem(value: 'desc', child: Text('Rating (High to Low)')),
-          DropdownMenuItem(value: 'clear', child: Text('Clear Sort')),
-        ],
-        onChanged: (value) {
-          if (value == 'asc') {
-            viewModel.sortPhotosByRating(ascending: true);
-          } else if (value == 'desc') {
-            viewModel.sortPhotosByRating(ascending: false);
-          } else {
-            viewModel.selectFolder(viewModel.selectedFolder);
-          }
-        },
       ),
     );
   }
