@@ -212,9 +212,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _showSettingsDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    Color selectedColor = Colors.blue;
-
     showDialog(
       context: context,
       builder: (context) => Dialog(
