@@ -1,5 +1,6 @@
 import 'package:archive_manager_v3/models/folder.dart';
 import 'package:archive_manager_v3/models/keyboard_key_adapter.dart';
+import 'package:archive_manager_v3/models/settings.dart';
 import 'package:archive_manager_v3/models/tag.dart';
 import 'package:archive_manager_v3/models/color_adapter.dart';
 import 'package:flutter/material.dart';
@@ -19,6 +20,7 @@ void main() async {
   Hive.registerAdapter(FolderAdapter());
   Hive.registerAdapter(TagAdapter());
   Hive.registerAdapter(LogicalKeyboardKeyAdapter());
+  Hive.registerAdapter(SettingsAdapter());
   final photoBox = await Hive.openBox<Photo>('photos');
   final folderBox = await Hive.openBox<Folder>('folders');
   runApp(MyApp(photoBox: photoBox, folderBox: folderBox));

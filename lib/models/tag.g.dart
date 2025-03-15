@@ -18,8 +18,8 @@ class TagAdapter extends TypeAdapter<Tag> {
     };
     return Tag(
       name: fields[0] as String,
-      color: fields[1] as Color,
-      shortcutKey: fields[2] as LogicalKeyboardKey,
+      color: Color(fields[1] as int),
+      shortcutKey: LogicalKeyboardKey(fields[2] as int),
     );
   }
 
@@ -30,9 +30,9 @@ class TagAdapter extends TypeAdapter<Tag> {
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
-      ..write(obj.color)
+      ..write(obj.colorValue)
       ..writeByte(2)
-      ..write(obj.shortcutKey);
+      ..write(obj.shortcutKeyId);
   }
 
   @override

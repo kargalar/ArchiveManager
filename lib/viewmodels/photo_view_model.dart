@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:archive_manager_v3/main.dart';
+import 'package:archive_manager_v3/models/settings.dart';
 import 'package:archive_manager_v3/models/tag.dart';
 import 'package:archive_manager_v3/viewmodels/home_view_model.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ class PhotoViewModel extends ChangeNotifier {
   final Box<Photo> _photoBox;
   final Box<Folder> _folderBox;
   late final Box<Tag> _tagBox;
+  late final Box<Settings> _settingsBox;
   Box<Tag> get tagBox => _tagBox;
   final List<String> _folders = [];
   String? _selectedFolder;
@@ -24,6 +26,7 @@ class PhotoViewModel extends ChangeNotifier {
   PhotoViewModel(this._photoBox, this._folderBox) {
     _loadFolders();
     _initTagBox();
+    _initSettingsBox();
   }
 
   void _loadFolders() {
@@ -77,9 +80,20 @@ class PhotoViewModel extends ChangeNotifier {
 
   List<Tag> get tags => _tagBox.values.toList();
 
+  Future<void> _initSettingsBox() async {
+    _settingsBox = await Hive.openBox<Settings>('settings');
+    if (_settingsBox.isEmpty) {
+      await _settingsBox.add(Settings());
+    }
+    _photosPerRow = _settingsBox.getAt(0)?.photosPerRow ?? 4;
+    notifyListeners();
+  }
+
   void setPhotosPerRow(int value) {
     if (value > 0) {
       _photosPerRow = value;
+      _settingsBox.getAt(0)?.photosPerRow = value;
+      _settingsBox.getAt(0)?.save();
       notifyListeners();
     }
   }
