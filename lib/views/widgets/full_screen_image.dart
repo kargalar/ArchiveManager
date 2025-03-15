@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'package:archive_manager_v3/models/tag.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import '../../models/photo.dart';
 import '../../viewmodels/photo_view_model.dart';
@@ -19,11 +21,15 @@ class _FullScreenImageState extends State<FullScreenImage> {
   late Photo _currentPhoto;
   bool _autoNext = false;
   final FocusNode _focusNode = FocusNode();
+  late final Box<Tag> _tagBox;
+
+  List<Tag> get tags => _tagBox.values.toList();
 
   @override
   void initState() {
     super.initState();
     _currentPhoto = widget.photo;
+    _tagBox = Hive.box<Tag>('tags');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
     });
@@ -58,6 +64,21 @@ class _FullScreenImageState extends State<FullScreenImage> {
     } else if (event.logicalKey == LogicalKeyboardKey.escape) {
       Navigator.of(context).pop();
     } else {
+      for (var tag in tags) {
+        if (event.logicalKey == tag.shortcutKey) {
+          var currentTags = List<Tag>.from(_currentPhoto.tags);
+          if (currentTags.any((t) => t.name == tag.name)) {
+            currentTags.removeWhere((t) => t.name == tag.name);
+          } else {
+            currentTags.add(tag);
+          }
+          setState(() {
+            _currentPhoto.tags = currentTags;
+            _currentPhoto.save();
+          });
+          break;
+        }
+      }
       final key = event.logicalKey.keyLabel;
       if (key.length == 1 && RegExp(r'[1-5]').hasMatch(key)) {
         viewModel.setRating(_currentPhoto, int.parse(key));
@@ -176,6 +197,39 @@ class _FullScreenImageState extends State<FullScreenImage> {
                     ],
                   ),
                 ),
+                if (_currentPhoto.tags.isNotEmpty)
+                  Positioned(
+                    top: 48,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        alignment: WrapAlignment.end,
+                        children: _currentPhoto.tags
+                            .map((tag) => Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: tag.color.withOpacity(0.8),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    tag.name,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ))
+                            .toList(),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

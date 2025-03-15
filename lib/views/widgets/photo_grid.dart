@@ -45,6 +45,8 @@ class PhotoGrid extends StatelessWidget {
                   }
                   homeViewModel.selectedPhoto!.tags = currentTags;
                   homeViewModel.selectedPhoto!.save();
+                  photoViewModel.notifyListeners(); // Notify listeners to update UI
+
                   break;
                 }
               }
