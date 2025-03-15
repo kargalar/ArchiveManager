@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:window_manager/window_manager.dart';
 import '../models/sort_state.dart';
 import '../models/tag.dart';
 import '../viewmodels/photo_view_model.dart';
@@ -72,6 +73,9 @@ class _HomePageState extends State<HomePage> {
         leading: IconButton(
           icon: Icon(_isMenuExpanded ? Icons.menu_open : Icons.menu),
           onPressed: () => setState(() => _isMenuExpanded = !_isMenuExpanded),
+        ),
+        flexibleSpace: DragToMoveArea(
+          child: Container(),
         ),
         title: Consumer<PhotoViewModel>(
           builder: (context, viewModel, child) {

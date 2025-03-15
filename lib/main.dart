@@ -5,6 +5,7 @@ import 'package:archive_manager_v3/models/tag.dart';
 import 'package:archive_manager_v3/models/color_adapter.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:window_manager/window_manager.dart';
 import 'package:provider/provider.dart';
 import 'models/photo.dart';
 import 'viewmodels/photo_view_model.dart';
@@ -14,6 +15,22 @@ import 'views/home_page.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await windowManager.ensureInitialized();
+
+  WindowOptions windowOptions = const WindowOptions(
+    size: Size(1280, 720),
+    center: true,
+    backgroundColor: Colors.transparent,
+    skipTaskbar: false,
+    titleBarStyle: TitleBarStyle.hidden,
+  );
+
+  await windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.show();
+    await windowManager.focus();
+  });
+
   Hive.registerAdapter(ColorAdapter());
   await Hive.initFlutter();
   Hive.registerAdapter(PhotoAdapter());
