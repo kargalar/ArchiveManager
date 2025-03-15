@@ -36,7 +36,12 @@ class PhotoGrid extends StatelessWidget {
               final tags = photoViewModel.tags;
               for (var tag in tags) {
                 if (event.logicalKey == tag.shortcutKey && homeViewModel.selectedPhoto != null) {
-                  photoViewModel.toggleTag(homeViewModel.selectedPhoto!, tag);
+                  if (homeViewModel.selectedPhoto!.tags.contains(tag)) {
+                    homeViewModel.selectedPhoto!.tags.remove(tag);
+                  } else {
+                    homeViewModel.selectedPhoto!.tags.add(tag);
+                  }
+                  homeViewModel.selectedPhoto!.save();
                   break;
                 }
               }
@@ -143,21 +148,22 @@ class PhotoGrid extends StatelessWidget {
                       ),
                     ),
                   const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => viewModel.toggleFavorite(photo),
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        photo.isFavorite ? Icons.favorite : Icons.favorite_border,
-                        size: 16,
-                        color: photo.isFavorite ? Colors.red : Colors.white,
+                  if (photo.isFavorite)
+                    GestureDetector(
+                      onTap: () => viewModel.toggleFavorite(photo),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.favorite,
+                          size: 16,
+                          color: photo.isFavorite ? Colors.red : Colors.white,
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
               if (photo.tags.isNotEmpty) ...[

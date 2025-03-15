@@ -62,6 +62,19 @@ class PhotoViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> deleteTag(Tag tag) async {
+    // Remove tag from all photos that have it
+    for (var photo in _photoBox.values) {
+      if (photo.tags.contains(tag)) {
+        photo.tags.remove(tag);
+        photo.save();
+      }
+    }
+    // Delete the tag itself
+    await tag.delete();
+    notifyListeners();
+  }
+
   List<Tag> get tags => _tagBox.values.toList();
 
   void setPhotosPerRow(int value) {

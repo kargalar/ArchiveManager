@@ -301,7 +301,7 @@ class _HomePageState extends State<HomePage> {
                                                 trailing: IconButton(
                                                   icon: const Icon(Icons.delete),
                                                   onPressed: () {
-                                                    viewModel.tagBox.delete(tag.key);
+                                                    viewModel.deleteTag(tag);
                                                   },
                                                 ),
                                               ),
@@ -382,38 +382,37 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 12),
                 const Text('Select Color:', style: TextStyle(fontSize: 14)),
                 const SizedBox(height: 8),
-                SizedBox(
-                  height: 100,
-                  child: GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 10,
-                      crossAxisSpacing: 4,
-                      mainAxisSpacing: 4,
-                    ),
-                    itemCount: predefinedColors.length,
-                    itemBuilder: (context, index) {
-                      final color = predefinedColors[index];
-                      return StatefulBuilder(
-                        builder: (context, setDialogState) {
-                          return InkWell(
-                            onTap: () {
+                StatefulBuilder(
+                  builder: (context, setColorState) => SizedBox(
+                    height: 150,
+                    child: GridView.builder(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 10,
+                        crossAxisSpacing: 4,
+                        mainAxisSpacing: 4,
+                      ),
+                      itemCount: predefinedColors.length,
+                      itemBuilder: (context, index) {
+                        final color = predefinedColors[index];
+                        return InkWell(
+                          onTap: () {
+                            setColorState(() {
                               selectedColor = color;
-                              setDialogState(() {});
-                            },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: color,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: selectedColor == color ? Colors.white : Colors.grey,
-                                  width: selectedColor == color ? 2 : 1,
-                                ),
+                            });
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: selectedColor == color ? Colors.white : Colors.grey,
+                                width: selectedColor == color ? 2 : 1,
                               ),
                             ),
-                          );
-                        },
-                      );
-                    },
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -421,37 +420,44 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     const Text('Shortcut Key: '),
                     const SizedBox(width: 8),
-                    Text(selectedShortcutKey?.keyLabel ?? 'None'),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('Press a key'),
-                            content: RawKeyboardListener(
-                              focusNode: FocusNode()..requestFocus(),
-                              onKey: (event) {
-                                if (event is RawKeyDownEvent) {
-                                  selectedShortcutKey = event.logicalKey;
-                                  Navigator.pop(context);
-                                }
-                              },
-                              child: const SizedBox(
-                                height: 100,
-                                child: Center(
-                                  child: Text('Press any key to set as shortcut'),
+                    StatefulBuilder(
+                      builder: (context, setShortcutState) => Row(
+                        children: [
+                          Text(selectedShortcutKey?.keyLabel ?? 'None'),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Press a key'),
+                                  content: RawKeyboardListener(
+                                    focusNode: FocusNode()..requestFocus(),
+                                    onKey: (event) {
+                                      if (event is RawKeyDownEvent) {
+                                        selectedShortcutKey = event.logicalKey;
+                                        setShortcutState(() {});
+                                        Navigator.pop(context);
+                                      }
+                                    },
+                                    child: const SizedBox(
+                                      height: 100,
+                                      child: Center(
+                                        child: Text('Press any key to set as shortcut'),
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
+                              );
+                            },
+                            child: const Text('Set Shortcut'),
                           ),
-                        );
-                      },
-                      child: const Text('Set Shortcut'),
+                        ],
+                      ),
                     ),
+                    SizedBox(height: 24),
                   ],
                 ),
-                const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
