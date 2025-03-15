@@ -278,15 +278,23 @@ class _FullScreenImageState extends State<FullScreenImage> {
                           return '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
                         }
 
+                        final file = File(_currentPhoto.path);
+                        final stat = file.statSync();
+                        final creationDate = stat.changed.toLocal();
+                        final formattedDate = '${creationDate.day}/${creationDate.month}/${creationDate.year} ${creationDate.hour}:${creationDate.minute.toString().padLeft(2, '0')}';
+
                         return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: Colors.black54,
                             borderRadius: BorderRadius.circular(12),
                           ),
+                          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.3),
                           child: Text(
-                            '${_currentPhoto.path.split('\\').last}\n${width}x$height - ${formatFileSize(fileSize)}',
+                            '${_currentPhoto.path.split('\\').last}\n${width}x$height - ${formatFileSize(fileSize)}\n$formattedDate',
                             style: const TextStyle(color: Colors.white, fontSize: 12),
+                            softWrap: true,
+                            overflow: TextOverflow.visible,
                           ),
                         );
                       },
