@@ -1,4 +1,3 @@
-```markdown:c:\KARGALAR\Projeler\Flutter\archive_manager_v3\README.md
 # Archive Manager v3 🗃️
 
 > An experimental photo archive management application, developed almost entirely through Trae AI prompts as a personal project.
@@ -31,24 +30,24 @@ Despite these limitations, it serves its purpose for personal use.
 ### Installation
 
 1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/archive_manager_v3.git
-   ```
+```bash
+git clone https://github.com/yourusername/archive_manager_v3.git
+```
 
 2. Navigate to the project directory:
-   ```bash
-   cd archive_manager_v3
-   ```
+```bash
+cd archive_manager_v3
+```
 
 3. Install dependencies:
-   ```bash
-   flutter pub get
-   ```
+```bash
+flutter pub get
+```
 
 4. Run the application:
-   ```bash
-   flutter run
-   ```
+```bash
+flutter run
+```
 
 ## 🛠️ Built With
 
@@ -67,4 +66,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ---
 
 <p align="center">Developed with ❤️ and Trae AI</p>
-```
