@@ -365,15 +365,39 @@ class PhotoViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<Photo> get filteredPhotos {
-    if (_showFavoritesOnly) {
-      return photos.where((photo) => photo.isFavorite).toList();
-    } else if (_showUnratedOnly) {
-      return photos.where((photo) => photo.rating == 0).toList();
-    } else if (_minRatingFilter > 0 || _maxRatingFilter < 5) {
-      return photos.where((photo) => photo.rating >= _minRatingFilter && photo.rating <= _maxRatingFilter).toList();
+  final List<Tag> _selectedTags = [];
+  List<Tag> get selectedTags => _selectedTags;
+
+  void toggleTagFilter(Tag tag) {
+    if (_selectedTags.contains(tag)) {
+      _selectedTags.remove(tag);
+    } else {
+      _selectedTags.add(tag);
     }
-    return photos;
+    notifyListeners();
+  }
+
+  void clearTagFilters() {
+    _selectedTags.clear();
+    notifyListeners();
+  }
+
+  List<Photo> get filteredPhotos {
+    var filtered = photos;
+
+    if (_showFavoritesOnly) {
+      filtered = filtered.where((photo) => photo.isFavorite).toList();
+    } else if (_showUnratedOnly) {
+      filtered = filtered.where((photo) => photo.rating == 0).toList();
+    } else if (_minRatingFilter > 0 || _maxRatingFilter < 5) {
+      filtered = filtered.where((photo) => photo.rating >= _minRatingFilter && photo.rating <= _maxRatingFilter).toList();
+    }
+
+    if (_selectedTags.isNotEmpty) {
+      filtered = filtered.where((photo) => _selectedTags.every((tag) => photo.tags.contains(tag))).toList();
+    }
+
+    return filtered;
   }
 
   void setFilterType(String type) {
