@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:archive_manager_v3/models/tag.dart';
 import 'package:archive_manager_v3/views/widgets/full_screen_image.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -36,11 +37,13 @@ class PhotoGrid extends StatelessWidget {
               final tags = photoViewModel.tags;
               for (var tag in tags) {
                 if (event.logicalKey == tag.shortcutKey && homeViewModel.selectedPhoto != null) {
-                  if (homeViewModel.selectedPhoto!.tags.contains(tag)) {
-                    homeViewModel.selectedPhoto!.tags.remove(tag);
+                  var currentTags = List<Tag>.from(homeViewModel.selectedPhoto!.tags);
+                  if (currentTags.any((t) => t.name == tag.name)) {
+                    currentTags.removeWhere((t) => t.name == tag.name);
                   } else {
-                    homeViewModel.selectedPhoto!.tags.add(tag);
+                    currentTags.add(tag);
                   }
+                  homeViewModel.selectedPhoto!.tags = currentTags;
                   homeViewModel.selectedPhoto!.save();
                   break;
                 }
