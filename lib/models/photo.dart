@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import 'tag.dart';
 
 part 'photo.g.dart';
 
@@ -16,11 +17,15 @@ class Photo extends HiveObject {
   @HiveField(3)
   bool isRecycled;
 
+  @HiveField(4)
+  List<Tag> tags;
+
   Photo({
     required this.path,
     this.isFavorite = false,
     this.rating = 0,
     this.isRecycled = false,
+    this.tags = const [],
   });
 
   void toggleFavorite() {

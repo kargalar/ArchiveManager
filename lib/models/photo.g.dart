@@ -21,13 +21,14 @@ class PhotoAdapter extends TypeAdapter<Photo> {
       isFavorite: fields[1] as bool,
       rating: fields[2] as int,
       isRecycled: fields[3] as bool,
+      tags: (fields[4] as List).cast<Tag>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Photo obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.path)
       ..writeByte(1)
@@ -35,7 +36,9 @@ class PhotoAdapter extends TypeAdapter<Photo> {
       ..writeByte(2)
       ..write(obj.rating)
       ..writeByte(3)
-      ..write(obj.isRecycled);
+      ..write(obj.isRecycled)
+      ..writeByte(4)
+      ..write(obj.tags);
   }
 
   @override

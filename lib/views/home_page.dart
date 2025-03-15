@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import '../models/sort_state.dart';
+import '../models/tag.dart';
 import '../viewmodels/photo_view_model.dart';
 import '../viewmodels/home_view_model.dart';
 import 'widgets/folder_item.dart';
@@ -264,12 +265,162 @@ class _HomePageState extends State<HomePage> {
                             );
                           },
                         ),
+                        const SizedBox(height: 24),
+                        const Text('Tag Management', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add Tag'),
+                          onPressed: () => _showAddTagDialog(context),
+                        ),
                       ],
                     ),
                   ),
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAddTagDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    Color selectedColor = Colors.blue;
+    LogicalKeyboardKey? selectedShortcutKey;
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Add New Tag', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Tag Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Text('Color: '),
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: selectedColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.grey),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Pick a color'),
+                          content: SingleChildScrollView(
+                            child: ColorPicker(
+                              pickerColor: selectedColor,
+                              onColorChanged: (color) {
+                                selectedColor = color;
+                              },
+                              pickerAreaHeightPercent: 0.8,
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('OK'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    child: const Text('Pick Color'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Text('Shortcut Key: '),
+                  const SizedBox(width: 8),
+                  Text(selectedShortcutKey?.keyLabel ?? 'None'),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Press a key'),
+                          content: RawKeyboardListener(
+                            focusNode: FocusNode()..requestFocus(),
+                            onKey: (event) {
+                              if (event is RawKeyDownEvent) {
+                                selectedShortcutKey = event.logicalKey;
+                                Navigator.pop(context);
+                              }
+                            },
+                            child: const SizedBox(
+                              height: 100,
+                              child: Center(
+                                child: Text('Press any key to set as shortcut'),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Text('Set Shortcut'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (nameController.text.isNotEmpty && selectedShortcutKey != null) {
+                        final tag = Tag(
+                          name: nameController.text,
+                          color: selectedColor,
+                          shortcutKey: selectedShortcutKey!,
+                        );
+                        // TODO: Save the tag
+                        Navigator.pop(context);
+                      }
+                    },
+                    child: const Text('Create'),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
