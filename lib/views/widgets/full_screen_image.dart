@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:archive_manager_v3/models/tag.dart';
 import 'package:flutter/gestures.dart';
@@ -120,9 +121,11 @@ class _FullScreenImageState extends State<FullScreenImage> {
                       }
                     },
                     child: Center(
-                      child: Image.file(
-                        File(_currentPhoto.path),
-                        fit: BoxFit.contain,
+                      child: SizedBox.expand(
+                        child: Image.file(
+                          File(_currentPhoto.path),
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                   ),
@@ -231,6 +234,55 @@ class _FullScreenImageState extends State<FullScreenImage> {
                       ),
                     ),
                   ),
+                Positioned(
+                  bottom: 8,
+                  right: 8,
+                  child: FutureBuilder<List<Object>>(
+                    future: Future.wait([
+                      File(_currentPhoto.path).length(),
+                      () async {
+                        final completer = Completer<ImageInfo>();
+                        final stream = Image.file(File(_currentPhoto.path)).image.resolve(const ImageConfiguration());
+                        final listener = ImageStreamListener(
+                          (info, _) => completer.complete(info),
+                          onError: (exception, stackTrace) => completer.completeError(exception),
+                        );
+                        stream.addListener(listener);
+                        try {
+                          return await completer.future;
+                        } finally {
+                          stream.removeListener(listener);
+                        }
+                      }(),
+                    ]),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) return const SizedBox();
+
+                      final fileSize = snapshot.data![0] as int;
+                      final image = snapshot.data![1] as ImageInfo;
+                      final width = image.image.width;
+                      final height = image.image.height;
+
+                      String formatFileSize(int size) {
+                        if (size < 1024) return '$size B';
+                        if (size < 1024 * 1024) return '${(size / 1024).toStringAsFixed(1)} KB';
+                        return '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
+                      }
+
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${width}x$height - ${formatFileSize(fileSize)}',
+                          style: const TextStyle(color: Colors.white, fontSize: 12),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ],
             ),
           ),
