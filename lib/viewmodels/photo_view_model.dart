@@ -194,6 +194,16 @@ class PhotoViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void toggleTag(Photo photo, Tag tag) {
+    if (photo.tags.contains(tag)) {
+      photo.tags.remove(tag);
+    } else {
+      photo.tags.add(tag);
+    }
+    photo.save();
+    notifyListeners();
+  }
+
   void sortPhotosByRating({bool ascending = false}) {
     _photos.sort((a, b) => ascending ? a.rating.compareTo(b.rating) : b.rating.compareTo(a.rating));
     notifyListeners();
