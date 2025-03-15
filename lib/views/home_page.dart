@@ -87,6 +87,33 @@ class _HomePageState extends State<HomePage> {
             builder: (context, viewModel, child) {
               return Row(
                 children: [
+                  if (viewModel.tags.isNotEmpty)
+                    Container(
+                      constraints: const BoxConstraints(maxWidth: 400),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: viewModel.tags
+                              .map((tag) => Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                                    child: FilterChip(
+                                      selected: viewModel.selectedTags.contains(tag),
+                                      label: Text(tag.name, style: const TextStyle(fontSize: 12)),
+                                      backgroundColor: tag.color.withOpacity(0.2),
+                                      selectedColor: tag.color.withOpacity(0.8),
+                                      labelStyle: TextStyle(
+                                        color: viewModel.selectedTags.contains(tag) ? Colors.white : Colors.white70,
+                                      ),
+                                      onSelected: (selected) => viewModel.toggleTagFilter(tag),
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                  ))
+                              .toList(),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 8),
                   IconButton(
                     icon: Icon(
                       Icons.favorite,

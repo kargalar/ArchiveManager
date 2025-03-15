@@ -70,30 +70,6 @@ class PhotoGrid extends StatelessWidget {
   Widget _buildGrid(BuildContext context, PhotoViewModel photoViewModel, HomeViewModel homeViewModel) {
     return Column(
       children: [
-        if (photoViewModel.tags.isNotEmpty)
-          Container(
-            padding: const EdgeInsets.all(8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Filter by Tags:', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: photoViewModel.tags
-                      .map((tag) => FilterChip(
-                            selected: photoViewModel.selectedTags.contains(tag),
-                            label: Text(tag.name),
-                            backgroundColor: tag.color.withOpacity(0.3),
-                            selectedColor: tag.color,
-                            onSelected: (selected) => photoViewModel.toggleTagFilter(tag),
-                          ))
-                      .toList(),
-                ),
-              ],
-            ),
-          ),
         Expanded(
           child: GridView.builder(
             padding: const EdgeInsets.all(8),
