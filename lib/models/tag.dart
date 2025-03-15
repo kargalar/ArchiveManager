@@ -10,10 +10,15 @@ class Tag extends HiveObject {
   final String name;
 
   @HiveField(1)
-  final Color color;
+  int get colorValue => color.value;
+  set colorValue(int value) => color = Color(value);
 
   @HiveField(2)
-  final LogicalKeyboardKey shortcutKey;
+  int get shortcutKeyId => shortcutKey.keyId;
+  set shortcutKeyId(int value) => shortcutKey = LogicalKeyboardKey(value);
+
+  Color color;
+  LogicalKeyboardKey shortcutKey;
 
   Tag({
     required this.name,

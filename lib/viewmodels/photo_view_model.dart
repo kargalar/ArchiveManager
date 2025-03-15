@@ -3,7 +3,6 @@ import 'package:archive_manager_v3/main.dart';
 import 'package:archive_manager_v3/models/tag.dart';
 import 'package:archive_manager_v3/viewmodels/home_view_model.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import '../models/photo.dart';
@@ -14,6 +13,7 @@ class PhotoViewModel extends ChangeNotifier {
   final Box<Photo> _photoBox;
   final Box<Folder> _folderBox;
   late final Box<Tag> _tagBox;
+  Box<Tag> get tagBox => _tagBox;
   final List<String> _folders = [];
   String? _selectedFolder;
   final List<Photo> _photos = [];
@@ -197,18 +197,6 @@ class PhotoViewModel extends ChangeNotifier {
   void sortPhotosByRating({bool ascending = false}) {
     _photos.sort((a, b) => ascending ? a.rating.compareTo(b.rating) : b.rating.compareTo(a.rating));
     notifyListeners();
-  }
-
-  void handleKeyEvent(RawKeyEvent event, Photo? selectedPhoto) {
-    if (event is RawKeyDownEvent && selectedPhoto != null) {
-      final key = event.logicalKey.keyLabel;
-      if (key.length == 1) {
-        // Check for rating keys (1-5)
-        if (RegExp(r'[1-5]').hasMatch(key)) {
-          setRating(selectedPhoto, int.parse(key));
-        }
-      }
-    }
   }
 
   SortState _sortState = SortState.none;

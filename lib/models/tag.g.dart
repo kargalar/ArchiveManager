@@ -19,7 +19,7 @@ class TagAdapter extends TypeAdapter<Tag> {
     return Tag(
       name: fields[0] as String,
       color: fields[1] as Color,
-      shortcutKey: LogicalKeyboardKey(fields[2] as int),
+      shortcutKey: fields[2] as LogicalKeyboardKey,
     );
   }
 
