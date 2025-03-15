@@ -1,16 +1,24 @@
+```markdown:c:\KARGALAR\Projeler\Flutter\archive_manager_v3\README.md
 # Archive Manager v3 🗃️
 
-> A powerful and intuitive photo archive management application, developed with the assistance of Trae AI.
+> An experimental photo archive management application, developed almost entirely through Trae AI prompts as a personal project.
 
-## 🌟 Overview
+## ⚠️ Important Note
 
-Archive Manager v3 is a modern Flutter application designed to help you organize, tag, and manage your photo collections efficiently. Built with the power of AI assistance through Trae, this application offers a seamless experience for managing your digital archives.
+This project is primarily an AI-assisted development experiment and is not intended for production use. The codebase:
+- May not fully comply with Clean Architecture principles
+- Contains imperfect MVVM pattern implementation
+- May include unoptimized or redundant code blocks
+- Might have structures contrary to best practices
+- Lacks proper error handling and performance optimization
 
-## ✨ Key Features
+Despite these limitations, it serves its purpose for personal use.
 
-- 🏷️ **Advanced Tagging System**: Create, manage, and organize photos with customizable tags
-- ⭐ **Rating System**: Rate and filter your photos to find your favorites quickly
-- 🎨 **Customizable Interface**: Personalize your experience with customizable color themes
+## ✨ Features
+
+- ⭐ **Rating System**: Rate and filter your photos
+- 🔍 **Quick Access**: Easy access to your favorite photos
+- 🎨 **Customizable Interface**: Dark theme support
 
 ## 🚀 Getting Started
 
@@ -45,16 +53,12 @@ Archive Manager v3 is a modern Flutter application designed to help you organize
 ## 🛠️ Built With
 
 - **Flutter** - UI framework
-- **Trae AI** - Development assistance and code optimization
+- **Trae AI** - Development assistant
 - **Hive** - Local data storage
 
 ## 📝 Development Notes
 
-This project was developed with the assistance of Trae AI, showcasing the potential of AI-assisted development in creating robust and feature-rich applications. The combination of human creativity and AI capabilities has resulted in an efficient and user-friendly photo management solution.
-
-## 🤝 Contributing
-
-Contributions, issues, and feature requests are welcome! Feel free to check the issues page.
+This project was created to test the potential of AI-assisted development. Approximately 95% of the code was written using Trae AI prompts, with only minor manual adjustments. Clean code principles and architectural structure were secondary priorities, as the main focus was on testing rapid development with AI assistance.
 
 ## 📄 License
 
@@ -63,3 +67,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ---
 
 <p align="center">Developed with ❤️ and Trae AI</p>
+```
