@@ -139,7 +139,7 @@ class _HomePageState extends State<HomePage> {
                         size: 16),
                     label: const Text('Rating'),
                     style: TextButton.styleFrom(
-                      foregroundColor: Colors.white,
+                      foregroundColor: viewModel.ratingSortState != SortState.none ? Colors.blue : Colors.white,
                     ),
                   ),
                   TextButton.icon(
@@ -153,7 +153,7 @@ class _HomePageState extends State<HomePage> {
                         size: 16),
                     label: const Text('Date'),
                     style: TextButton.styleFrom(
-                      foregroundColor: Colors.white,
+                      foregroundColor: viewModel.dateSortState != SortState.none ? Colors.blue : Colors.white,
                     ),
                   ),
                 ],

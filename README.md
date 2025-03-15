@@ -8,11 +8,9 @@ Archive Manager v3 is a modern Flutter application designed to help you organize
 
 ## ✨ Key Features
 
-- 📸 **Smart Photo Organization**: Efficiently organize your photos with an intuitive folder structure
 - 🏷️ **Advanced Tagging System**: Create, manage, and organize photos with customizable tags
 - ⭐ **Rating System**: Rate and filter your photos to find your favorites quickly
 - 🎨 **Customizable Interface**: Personalize your experience with customizable color themes
-- 🔍 **Smart Search**: Quickly find photos using tags, ratings, and other metadata
 
 ## 🚀 Getting Started
 

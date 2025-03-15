@@ -254,9 +254,11 @@ class PhotoViewModel extends ChangeNotifier {
     switch (_dateSortState) {
       case SortState.none:
         _dateSortState = SortState.ascending;
+        _ratingSortState = SortState.none;
         break;
       case SortState.ascending:
         _dateSortState = SortState.descending;
+        _ratingSortState = SortState.none;
         break;
       case SortState.descending:
         _dateSortState = SortState.none;
@@ -270,9 +272,11 @@ class PhotoViewModel extends ChangeNotifier {
     switch (_ratingSortState) {
       case SortState.none:
         _ratingSortState = SortState.ascending;
+        _dateSortState = SortState.none;
         break;
       case SortState.ascending:
         _ratingSortState = SortState.descending;
+        _dateSortState = SortState.none;
         break;
       case SortState.descending:
         _ratingSortState = SortState.none;
