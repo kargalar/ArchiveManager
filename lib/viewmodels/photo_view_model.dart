@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:archive_manager_v3/main.dart';
+import 'package:archive_manager_v3/models/tag.dart';
 import 'package:archive_manager_v3/viewmodels/home_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,6 +13,7 @@ import '../models/sort_state.dart';
 class PhotoViewModel extends ChangeNotifier {
   final Box<Photo> _photoBox;
   final Box<Folder> _folderBox;
+  late final Box<Tag> _tagBox;
   final List<String> _folders = [];
   String? _selectedFolder;
   final List<Photo> _photos = [];
@@ -21,6 +23,7 @@ class PhotoViewModel extends ChangeNotifier {
 
   PhotoViewModel(this._photoBox, this._folderBox) {
     _loadFolders();
+    _initTagBox();
   }
 
   void _loadFolders() {
@@ -49,6 +52,17 @@ class PhotoViewModel extends ChangeNotifier {
   int get photosPerRow => _photosPerRow;
   Map<String, List<String>> get folderHierarchy => _folderHierarchy;
   Map<String, bool> get expandedFolders => _expandedFolders;
+
+  Future<void> _initTagBox() async {
+    _tagBox = await Hive.openBox<Tag>('tags');
+  }
+
+  Future<void> addTag(Tag tag) async {
+    await _tagBox.add(tag);
+    notifyListeners();
+  }
+
+  List<Tag> get tags => _tagBox.values.toList();
 
   void setPhotosPerRow(int value) {
     if (value > 0) {

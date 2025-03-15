@@ -412,7 +412,7 @@ class _HomePageState extends State<HomePage> {
                           color: selectedColor,
                           shortcutKey: selectedShortcutKey!,
                         );
-                        // TODO: Save the tag
+                        context.read<PhotoViewModel>().addTag(tag);
                         Navigator.pop(context);
                       }
                     },
