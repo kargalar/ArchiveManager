@@ -85,17 +85,6 @@ class _HomePageState extends State<HomePage> {
         actions: [
           Consumer<PhotoViewModel>(
             builder: (context, viewModel, child) {
-              IconData arrowIcon;
-              switch (viewModel.sortState) {
-                case SortState.ascending:
-                  arrowIcon = Icons.arrow_upward;
-                  break;
-                case SortState.descending:
-                  arrowIcon = Icons.arrow_downward;
-                  break;
-                default:
-                  arrowIcon = Icons.remove;
-              }
               return Row(
                 children: [
                   IconButton(
@@ -126,10 +115,6 @@ class _HomePageState extends State<HomePage> {
                             min: 0,
                             max: 5,
                             divisions: 5,
-                            // labels: RangeLabels(
-                            //   viewModel.minRatingFilter.toStringAsFixed(0),
-                            //   viewModel.maxRatingFilter.toStringAsFixed(0),
-                            // ),
                             onChanged: (RangeValues values) {
                               viewModel.setRatingFilter(values.start, values.end);
                             },
@@ -144,9 +129,29 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(width: 8),
                   TextButton.icon(
-                    onPressed: viewModel.toggleSortState,
-                    icon: Icon(arrowIcon, size: 16),
+                    onPressed: viewModel.toggleRatingSort,
+                    icon: Icon(
+                        viewModel.ratingSortState == SortState.ascending
+                            ? Icons.arrow_upward
+                            : viewModel.ratingSortState == SortState.descending
+                                ? Icons.arrow_downward
+                                : Icons.remove,
+                        size: 16),
                     label: const Text('Rating'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: viewModel.toggleDateSort,
+                    icon: Icon(
+                        viewModel.dateSortState == SortState.ascending
+                            ? Icons.arrow_upward
+                            : viewModel.dateSortState == SortState.descending
+                                ? Icons.arrow_downward
+                                : Icons.remove,
+                        size: 16),
+                    label: const Text('Date'),
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.white,
                     ),

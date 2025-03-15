@@ -244,19 +244,38 @@ class PhotoViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  SortState _sortState = SortState.none;
-  SortState get sortState => _sortState;
+  SortState _dateSortState = SortState.none;
+  SortState get dateSortState => _dateSortState;
 
-  void toggleSortState() {
-    switch (_sortState) {
+  SortState _ratingSortState = SortState.none;
+  SortState get ratingSortState => _ratingSortState;
+
+  void toggleDateSort() {
+    switch (_dateSortState) {
       case SortState.none:
-        _sortState = SortState.ascending;
+        _dateSortState = SortState.ascending;
         break;
       case SortState.ascending:
-        _sortState = SortState.descending;
+        _dateSortState = SortState.descending;
         break;
       case SortState.descending:
-        _sortState = SortState.none;
+        _dateSortState = SortState.none;
+        break;
+    }
+    _sortPhotos();
+    notifyListeners();
+  }
+
+  void toggleRatingSort() {
+    switch (_ratingSortState) {
+      case SortState.none:
+        _ratingSortState = SortState.ascending;
+        break;
+      case SortState.ascending:
+        _ratingSortState = SortState.descending;
+        break;
+      case SortState.descending:
+        _ratingSortState = SortState.none;
         break;
     }
     _sortPhotos();
@@ -264,16 +283,30 @@ class PhotoViewModel extends ChangeNotifier {
   }
 
   void _sortPhotos() {
-    switch (_sortState) {
-      case SortState.ascending:
-        _photos.sort((a, b) => a.rating.compareTo(b.rating));
-        break;
-      case SortState.descending:
-        _photos.sort((a, b) => b.rating.compareTo(a.rating));
-        break;
-      case SortState.none:
-        _loadPhotosFromFolder(_selectedFolder!);
-        break;
+    if (_dateSortState != SortState.none) {
+      switch (_dateSortState) {
+        case SortState.ascending:
+          _photos.sort((a, b) => File(a.path).statSync().modified.compareTo(File(b.path).statSync().modified));
+          break;
+        case SortState.descending:
+          _photos.sort((a, b) => File(b.path).statSync().modified.compareTo(File(a.path).statSync().modified));
+          break;
+        case SortState.none:
+          break;
+      }
+    } else if (_ratingSortState != SortState.none) {
+      switch (_ratingSortState) {
+        case SortState.ascending:
+          _photos.sort((a, b) => a.rating.compareTo(b.rating));
+          break;
+        case SortState.descending:
+          _photos.sort((a, b) => b.rating.compareTo(a.rating));
+          break;
+        case SortState.none:
+          break;
+      }
+    } else {
+      _loadPhotosFromFolder(_selectedFolder!);
     }
   }
 
