@@ -14,100 +14,102 @@ class PhotoGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: FocusScope(
-        child: Focus(
-          autofocus: true,
-          onKey: (node, event) {
-            if (event is RawKeyDownEvent) {
-              final homeViewModel = context.read<HomeViewModel>();
-              final photoViewModel = context.read<PhotoViewModel>();
-              if (event.logicalKey == LogicalKeyboardKey.keyF) {
-                if (homeViewModel.selectedPhoto != null) {
-                  photoViewModel.toggleFavorite(homeViewModel.selectedPhoto!);
-                  return KeyEventResult.handled;
-                }
-              } else if (event.logicalKey == LogicalKeyboardKey.digit1 || event.logicalKey == LogicalKeyboardKey.digit2 || event.logicalKey == LogicalKeyboardKey.digit3 || event.logicalKey == LogicalKeyboardKey.digit4 || event.logicalKey == LogicalKeyboardKey.digit5) {
-                if (homeViewModel.selectedPhoto != null) {
-                  final rating = int.parse(event.logicalKey.keyLabel);
-                  photoViewModel.setRating(homeViewModel.selectedPhoto!, rating);
-                  return KeyEventResult.handled;
-                }
+    return FocusScope(
+      child: Focus(
+        autofocus: true,
+        onKey: (node, event) {
+          if (event is RawKeyDownEvent) {
+            final homeViewModel = context.read<HomeViewModel>();
+            final photoViewModel = context.read<PhotoViewModel>();
+            if (event.logicalKey == LogicalKeyboardKey.keyF) {
+              if (homeViewModel.selectedPhoto != null) {
+                photoViewModel.toggleFavorite(homeViewModel.selectedPhoto!);
+                return KeyEventResult.handled;
               }
-              final tags = photoViewModel.tags;
-              for (var tag in tags) {
-                if (event.logicalKey == tag.shortcutKey && homeViewModel.selectedPhoto != null) {
-                  var currentTags = List<Tag>.from(homeViewModel.selectedPhoto!.tags);
-                  if (currentTags.any((t) => t.name == tag.name)) {
-                    currentTags.removeWhere((t) => t.name == tag.name);
-                  } else {
-                    currentTags.add(tag);
-                  }
-                  homeViewModel.selectedPhoto!.tags = currentTags;
-                  homeViewModel.selectedPhoto!.save();
-                  photoViewModel.notifyListeners(); // Notify listeners to update UI
-
-                  break;
-                }
+            } else if (event.logicalKey == LogicalKeyboardKey.digit1 || event.logicalKey == LogicalKeyboardKey.digit2 || event.logicalKey == LogicalKeyboardKey.digit3 || event.logicalKey == LogicalKeyboardKey.digit4 || event.logicalKey == LogicalKeyboardKey.digit5) {
+              if (homeViewModel.selectedPhoto != null) {
+                final rating = int.parse(event.logicalKey.keyLabel);
+                photoViewModel.setRating(homeViewModel.selectedPhoto!, rating);
+                return KeyEventResult.handled;
               }
             }
-            return KeyEventResult.ignored;
-          },
-          child: Consumer2<PhotoViewModel, HomeViewModel>(
-            builder: (context, photoViewModel, homeViewModel, child) {
-              if (photoViewModel.selectedFolder == null) {
-                return const Center(
-                  child: Text('Select a folder to view images'),
-                );
-              }
+            final tags = photoViewModel.tags;
+            for (var tag in tags) {
+              if (event.logicalKey == tag.shortcutKey && homeViewModel.selectedPhoto != null) {
+                var currentTags = List<Tag>.from(homeViewModel.selectedPhoto!.tags);
+                if (currentTags.any((t) => t.name == tag.name)) {
+                  currentTags.removeWhere((t) => t.name == tag.name);
+                } else {
+                  currentTags.add(tag);
+                }
+                homeViewModel.selectedPhoto!.tags = currentTags;
+                homeViewModel.selectedPhoto!.save();
+                photoViewModel.notifyListeners(); // Notify listeners to update UI
 
-              return Expanded(
-                child: _buildGrid(context, photoViewModel, homeViewModel),
+                break;
+              }
+            }
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Consumer2<PhotoViewModel, HomeViewModel>(
+          builder: (context, photoViewModel, homeViewModel, child) {
+            if (photoViewModel.selectedFolder == null) {
+              return const Center(
+                child: Text('Select a folder to view images'),
               );
-            },
-          ),
+            }
+
+            return _buildGrid(context, photoViewModel, homeViewModel);
+          },
         ),
       ),
     );
   }
 
   Widget _buildGrid(BuildContext context, PhotoViewModel photoViewModel, HomeViewModel homeViewModel) {
-    return GridView.builder(
-      padding: const EdgeInsets.all(8),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: photoViewModel.photosPerRow,
-        crossAxisSpacing: 6,
-        mainAxisSpacing: 6,
-      ),
-      itemCount: photoViewModel.filteredPhotos.length,
-      itemBuilder: (context, index) {
-        final photo = photoViewModel.filteredPhotos[index];
-        return MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: Listener(
-            onPointerDown: (event) {
-              if (event.buttons == kMiddleMouseButton) {
-                homeViewModel.handlePhotoTap(photo);
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => FullScreenImage(photo: photo),
-                  ),
-                );
-              }
-            },
-            child: GestureDetector(
-              onTap: () => homeViewModel.handlePhotoTap(photo),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  _buildPhotoContainer(photo, homeViewModel),
-                  _buildPhotoOverlay(photo, photoViewModel),
-                ],
-              ),
+    return Column(
+      children: [
+        Expanded(
+          child: GridView.builder(
+            padding: const EdgeInsets.all(8),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: photoViewModel.photosPerRow,
+              crossAxisSpacing: 6,
+              mainAxisSpacing: 6,
             ),
+            itemCount: photoViewModel.filteredPhotos.length,
+            itemBuilder: (context, index) {
+              final photo = photoViewModel.filteredPhotos[index];
+              return MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: Listener(
+                  onPointerDown: (event) {
+                    if (event.buttons == kMiddleMouseButton) {
+                      homeViewModel.handlePhotoTap(photo);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => FullScreenImage(photo: photo),
+                        ),
+                      );
+                    }
+                  },
+                  child: GestureDetector(
+                    onTap: () => homeViewModel.handlePhotoTap(photo),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        _buildPhotoContainer(photo, homeViewModel),
+                        _buildPhotoOverlay(photo, photoViewModel),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 

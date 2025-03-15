@@ -160,7 +160,9 @@ class _HomePageState extends State<HomePage> {
       body: Row(
         children: [
           _buildFolderList(),
-          _buildPhotoGrid(),
+          Expanded(
+            child: _buildPhotoGrid(),
+          ),
         ],
       ),
     );
