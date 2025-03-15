@@ -89,6 +89,14 @@ class PhotoViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool get showImageInfo => _settingsBox.getAt(0)?.showImageInfo ?? true;
+
+  void setShowImageInfo(bool value) {
+    _settingsBox.getAt(0)?.showImageInfo = value;
+    _settingsBox.getAt(0)?.save();
+    notifyListeners();
+  }
+
   void setPhotosPerRow(int value) {
     if (value > 0) {
       _photosPerRow = value;

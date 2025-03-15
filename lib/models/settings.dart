@@ -7,5 +7,8 @@ class Settings extends HiveObject {
   @HiveField(0)
   int photosPerRow;
 
-  Settings({this.photosPerRow = 4});
+  @HiveField(1)
+  bool showImageInfo;
+
+  Settings({this.photosPerRow = 4, this.showImageInfo = true});
 }
