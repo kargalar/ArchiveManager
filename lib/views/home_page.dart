@@ -128,32 +128,43 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  TextButton.icon(
-                    onPressed: viewModel.toggleRatingSort,
-                    icon: Icon(
-                        viewModel.ratingSortState == SortState.ascending
-                            ? Icons.arrow_upward
-                            : viewModel.ratingSortState == SortState.descending
-                                ? Icons.arrow_downward
-                                : Icons.remove,
-                        size: 16),
-                    label: const Text('Rating'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: viewModel.ratingSortState != SortState.none ? Colors.blue : Colors.white,
+                  GestureDetector(
+                    onSecondaryTap: () {
+                      viewModel.setRatingFilter(0, 5);
+                      viewModel.resetRatingSort();
+                    },
+                    child: TextButton.icon(
+                      onPressed: viewModel.toggleRatingSort,
+                      icon: Icon(
+                          viewModel.ratingSortState == SortState.ascending
+                              ? Icons.arrow_upward
+                              : viewModel.ratingSortState == SortState.descending
+                                  ? Icons.arrow_downward
+                                  : Icons.remove,
+                          size: 16),
+                      label: const Text('Rating'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: viewModel.ratingSortState != SortState.none ? Colors.blue : Colors.white,
+                      ),
                     ),
                   ),
-                  TextButton.icon(
-                    onPressed: viewModel.toggleDateSort,
-                    icon: Icon(
-                        viewModel.dateSortState == SortState.ascending
-                            ? Icons.arrow_upward
-                            : viewModel.dateSortState == SortState.descending
-                                ? Icons.arrow_downward
-                                : Icons.remove,
-                        size: 16),
-                    label: const Text('Date'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: viewModel.dateSortState != SortState.none ? Colors.blue : Colors.white,
+                  GestureDetector(
+                    onSecondaryTap: () {
+                      viewModel.resetDateSort();
+                    },
+                    child: TextButton.icon(
+                      onPressed: viewModel.toggleDateSort,
+                      icon: Icon(
+                          viewModel.dateSortState == SortState.ascending
+                              ? Icons.arrow_upward
+                              : viewModel.dateSortState == SortState.descending
+                                  ? Icons.arrow_downward
+                                  : Icons.remove,
+                          size: 16),
+                      label: const Text('Date'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: viewModel.dateSortState != SortState.none ? Colors.blue : Colors.white,
+                      ),
                     ),
                   ),
                 ],

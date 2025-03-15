@@ -250,6 +250,12 @@ class PhotoViewModel extends ChangeNotifier {
   SortState _ratingSortState = SortState.none;
   SortState get ratingSortState => _ratingSortState;
 
+  void resetDateSort() {
+    _dateSortState = SortState.none;
+    _sortPhotos();
+    notifyListeners();
+  }
+
   void toggleDateSort() {
     switch (_dateSortState) {
       case SortState.none:
@@ -264,6 +270,12 @@ class PhotoViewModel extends ChangeNotifier {
         _dateSortState = SortState.none;
         break;
     }
+    _sortPhotos();
+    notifyListeners();
+  }
+
+  void resetRatingSort() {
+    _ratingSortState = SortState.none;
     _sortPhotos();
     notifyListeners();
   }
