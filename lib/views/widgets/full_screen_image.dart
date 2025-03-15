@@ -76,6 +76,7 @@ class _FullScreenImageState extends State<FullScreenImage> {
             _currentPhoto.tags = currentTags;
             _currentPhoto.save();
           });
+          viewModel.notifyListeners();
           break;
         }
       }
