@@ -360,6 +360,9 @@ class PhotoViewModel extends ChangeNotifier {
   bool _showUnratedOnly = false;
   bool get showUnratedOnly => _showUnratedOnly;
 
+  bool _showUntaggedOnly = false;
+  bool get showUntaggedOnly => _showUntaggedOnly;
+
   void toggleFavoritesFilter() {
     _showFavoritesOnly = !_showFavoritesOnly;
     if (_showFavoritesOnly) {
@@ -372,6 +375,16 @@ class PhotoViewModel extends ChangeNotifier {
     _showUnratedOnly = !_showUnratedOnly;
     if (_showUnratedOnly) {
       _showFavoritesOnly = false;
+      _showUntaggedOnly = false;
+    }
+    notifyListeners();
+  }
+
+  void toggleUntaggedFilter() {
+    _showUntaggedOnly = !_showUntaggedOnly;
+    if (_showUntaggedOnly) {
+      _showFavoritesOnly = false;
+      _showUnratedOnly = false;
     }
     notifyListeners();
   }
@@ -414,6 +427,8 @@ class PhotoViewModel extends ChangeNotifier {
       filtered = filtered.where((photo) => photo.isFavorite).toList();
     } else if (_showUnratedOnly) {
       filtered = filtered.where((photo) => photo.rating == 0).toList();
+    } else if (_showUntaggedOnly) {
+      filtered = filtered.where((photo) => photo.tags.isEmpty).toList();
     } else if (_minRatingFilter > 0 || _maxRatingFilter < 7) {
       filtered = filtered.where((photo) => photo.rating >= _minRatingFilter && photo.rating <= _maxRatingFilter).toList();
     }

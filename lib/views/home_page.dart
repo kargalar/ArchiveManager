@@ -130,6 +130,14 @@ class _HomePageState extends State<HomePage> {
                     onPressed: () => viewModel.toggleUnratedFilter(),
                     tooltip: 'Show Unrated Only',
                   ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.label_off_outlined,
+                      color: viewModel.showUntaggedOnly ? Colors.green : Colors.white,
+                    ),
+                    onPressed: () => viewModel.toggleUntaggedFilter(),
+                    tooltip: 'Show Untagged Only',
+                  ),
                   Container(
                     width: 150,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
