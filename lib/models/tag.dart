@@ -6,7 +6,7 @@ part 'tag.g.dart';
 @HiveType(typeId: 2)
 class Tag extends HiveObject {
   @HiveField(0)
-  final String name;
+  String name;
 
   @HiveField(1)
   int get colorValue => color.value;

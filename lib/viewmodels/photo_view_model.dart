@@ -65,6 +65,14 @@ class PhotoViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateTagName(Tag tag, String newName) async {
+    if (tag.name != newName) {
+      tag.name = newName;
+      await tag.save();
+      notifyListeners();
+    }
+  }
+
   Future<void> deleteTag(Tag tag) async {
     // Remove tag from all photos that have it
     for (var photo in _photoBox.values) {
@@ -436,7 +444,21 @@ class PhotoViewModel extends ChangeNotifier {
       // Mark as recycled and save before removing from list
       photo.isRecycled = true;
       photo.save();
-      _photos.remove(photo);
+
+      // Remove from photos list if it exists
+      if (_photos.contains(photo)) {
+        _photos.remove(photo);
+      }
+
+      // Also remove from box to ensure persistence
+      final box = Hive.box<Photo>('photos');
+      final boxPhoto = box.values.firstWhere(
+        (p) => p.path == photo.path,
+        orElse: () => photo,
+      );
+      boxPhoto.isRecycled = true;
+      boxPhoto.save();
+
       notifyListeners();
     } catch (e) {
       debugPrint('Error moving photo to recycle bin: $e');

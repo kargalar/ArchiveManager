@@ -260,6 +260,40 @@ class _HomePageState extends State<HomePage> {
     return const PhotoGrid();
   }
 
+  void _showEditTagDialog(BuildContext context, Tag tag) {
+    final TextEditingController controller = TextEditingController(text: tag.name);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Tag'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Tag Name',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                tag.name = controller.text.trim();
+                tag.save();
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showSettingsDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -331,9 +365,10 @@ class _HomePageState extends State<HomePage> {
                                 ? const Text('No tags created yet')
                                 : Column(
                                     children: tags
-                                        .map((tag) => Card(
-                                              margin: const EdgeInsets.only(bottom: 8),
-                                              child: ListTile(
+                                        .map(
+                                          (tag) => Card(
+                                            margin: const EdgeInsets.only(bottom: 8),
+                                            child: ListTile(
                                                 leading: Container(
                                                   width: 24,
                                                   height: 24,
@@ -344,14 +379,26 @@ class _HomePageState extends State<HomePage> {
                                                 ),
                                                 title: Text(tag.name),
                                                 subtitle: Text('Shortcut: ${tag.shortcutKey.keyLabel}'),
-                                                trailing: IconButton(
-                                                  icon: const Icon(Icons.delete),
-                                                  onPressed: () {
-                                                    viewModel.deleteTag(tag);
-                                                  },
-                                                ),
-                                              ),
-                                            ))
+                                                trailing: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    IconButton(
+                                                      icon: const Icon(Icons.edit),
+                                                      onPressed: () => _showEditTagDialog(
+                                                        context,
+                                                        tag,
+                                                      ),
+                                                    ),
+                                                    IconButton(
+                                                      icon: const Icon(Icons.delete),
+                                                      onPressed: () {
+                                                        viewModel.deleteTag(tag);
+                                                      },
+                                                    ),
+                                                  ],
+                                                )),
+                                          ),
+                                        )
                                         .toList(),
                                   );
                           },
