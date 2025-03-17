@@ -427,8 +427,12 @@ class PhotoViewModel extends ChangeNotifier {
   void toggleTagFilter(Tag tag) {
     if (_selectedTags.contains(tag)) {
       _selectedTags.remove(tag);
+      if (_selectedTags.isEmpty) {
+        _tagFilterMode = 'none';
+      }
     } else {
       _selectedTags.add(tag);
+      _tagFilterMode = 'filtered';
     }
     notifyListeners();
   }

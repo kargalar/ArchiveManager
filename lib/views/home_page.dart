@@ -105,7 +105,7 @@ class _HomePageState extends State<HomePage> {
                                         color: viewModel.selectedTags.contains(tag) ? Colors.white : Colors.white70,
                                       ),
                                       onSelected: (selected) => viewModel.toggleTagFilter(tag),
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
                                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                     ),
                                   ))
