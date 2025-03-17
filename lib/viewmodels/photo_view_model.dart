@@ -357,9 +357,6 @@ class PhotoViewModel extends ChangeNotifier {
   String _favoriteFilterMode = 'none'; // none, favorites, non-favorites
   String get favoriteFilterMode => _favoriteFilterMode;
 
-  bool _showUnratedOnly = false;
-  bool get showUnratedOnly => _showUnratedOnly;
-
   bool _showUntaggedOnly = false;
   bool get showUntaggedOnly => _showUntaggedOnly;
 
@@ -404,16 +401,10 @@ class PhotoViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void toggleUnratedFilter() {
-    _showUnratedOnly = !_showUnratedOnly;
-    notifyListeners();
-  }
-
   void toggleUntaggedFilter() {
     _showUntaggedOnly = !_showUntaggedOnly;
     if (_showUntaggedOnly) {
       _favoriteFilterMode = 'none';
-      _showUnratedOnly = false;
     }
     notifyListeners();
   }
@@ -458,8 +449,6 @@ class PhotoViewModel extends ChangeNotifier {
           if (photo.isFavorite) return false;
           break;
       }
-
-      if (_showUnratedOnly && photo.rating > 0) return false;
 
       // Handle different tag filter modes
       switch (_tagFilterMode) {

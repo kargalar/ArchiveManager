@@ -124,14 +124,6 @@ class _HomePageState extends State<HomePage> {
                   ),
                   IconButton(
                     icon: Icon(
-                      Icons.star_border_purple500_outlined,
-                      color: viewModel.showUnratedOnly ? Colors.yellow : Colors.white,
-                    ),
-                    onPressed: () => viewModel.toggleUnratedFilter(),
-                    tooltip: 'Show Unrated Only',
-                  ),
-                  IconButton(
-                    icon: Icon(
                       viewModel.tagFilterMode == 'none'
                           ? Icons.label_outline
                           : viewModel.tagFilterMode == 'untagged'
