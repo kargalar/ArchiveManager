@@ -116,11 +116,11 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(width: 8),
                   IconButton(
                     icon: Icon(
-                      Icons.favorite,
-                      color: viewModel.showFavoritesOnly ? Colors.red : Colors.white,
+                      _getFavoriteIcon(viewModel.favoriteFilterMode),
+                      color: _getFavoriteColor(viewModel.favoriteFilterMode),
                     ),
                     onPressed: () => viewModel.toggleFavoritesFilter(),
-                    tooltip: 'Show Favorites Only',
+                    tooltip: _getFavoriteTooltip(viewModel.favoriteFilterMode),
                   ),
                   IconButton(
                     icon: Icon(
@@ -284,6 +284,39 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildPhotoGrid() {
     return const PhotoGrid();
+  }
+
+  IconData _getFavoriteIcon(String mode) {
+    switch (mode) {
+      case 'favorites':
+        return Icons.favorite;
+      case 'non-favorites':
+        return Icons.heart_broken;
+      default:
+        return Icons.favorite_border;
+    }
+  }
+
+  Color _getFavoriteColor(String mode) {
+    switch (mode) {
+      case 'favorites':
+        return Colors.red;
+      case 'non-favorites':
+        return Colors.orange;
+      default:
+        return Colors.white70;
+    }
+  }
+
+  String _getFavoriteTooltip(String mode) {
+    switch (mode) {
+      case 'favorites':
+        return 'Show Non-Favorites';
+      case 'non-favorites':
+        return 'Clear Favorite Filter';
+      default:
+        return 'Show Favorites';
+    }
   }
 
   void _showEditTagDialog(BuildContext context, Tag tag) {

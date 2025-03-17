@@ -354,8 +354,8 @@ class PhotoViewModel extends ChangeNotifier {
   String _filterType = 'all';
   String get filterType => _filterType;
 
-  bool _showFavoritesOnly = false;
-  bool get showFavoritesOnly => _showFavoritesOnly;
+  String _favoriteFilterMode = 'none'; // none, favorites, non-favorites
+  String get favoriteFilterMode => _favoriteFilterMode;
 
   bool _showUnratedOnly = false;
   bool get showUnratedOnly => _showUnratedOnly;
@@ -390,8 +390,18 @@ class PhotoViewModel extends ChangeNotifier {
   }
 
   void toggleFavoritesFilter() {
-    _showFavoritesOnly = !_showFavoritesOnly;
-    if (_showFavoritesOnly) {
+    switch (_favoriteFilterMode) {
+      case 'none':
+        _favoriteFilterMode = 'favorites';
+        break;
+      case 'favorites':
+        _favoriteFilterMode = 'non-favorites';
+        break;
+      case 'non-favorites':
+        _favoriteFilterMode = 'none';
+        break;
+    }
+    if (_favoriteFilterMode != 'none') {
       _showUnratedOnly = false;
     }
     notifyListeners();
@@ -400,7 +410,7 @@ class PhotoViewModel extends ChangeNotifier {
   void toggleUnratedFilter() {
     _showUnratedOnly = !_showUnratedOnly;
     if (_showUnratedOnly) {
-      _showFavoritesOnly = false;
+      _favoriteFilterMode = 'none';
       _showUntaggedOnly = false;
     }
     notifyListeners();
@@ -409,7 +419,7 @@ class PhotoViewModel extends ChangeNotifier {
   void toggleUntaggedFilter() {
     _showUntaggedOnly = !_showUntaggedOnly;
     if (_showUntaggedOnly) {
-      _showFavoritesOnly = false;
+      _favoriteFilterMode = 'none';
       _showUnratedOnly = false;
     }
     notifyListeners();
@@ -424,7 +434,7 @@ class PhotoViewModel extends ChangeNotifier {
   void setRatingFilter(double min, double max) {
     _minRatingFilter = min;
     _maxRatingFilter = max;
-    _showFavoritesOnly = false;
+    _favoriteFilterMode = 'none';
     _showUnratedOnly = false;
     notifyListeners();
   }
@@ -448,7 +458,16 @@ class PhotoViewModel extends ChangeNotifier {
 
   List<Photo> get filteredPhotos {
     var filtered = _photos.where((photo) {
-      if (_showFavoritesOnly && !photo.isFavorite) return false;
+      // Handle favorite filter modes
+      switch (_favoriteFilterMode) {
+        case 'favorites':
+          if (!photo.isFavorite) return false;
+          break;
+        case 'non-favorites':
+          if (photo.isFavorite) return false;
+          break;
+      }
+
       if (_showUnratedOnly && photo.rating > 0) return false;
 
       // Handle different tag filter modes
