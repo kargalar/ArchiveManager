@@ -163,12 +163,12 @@ class PhotoGrid extends StatelessWidget {
                           .map((tag) => Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: tag.color.withOpacity(0.8),
+                                  color: tag.color,
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(color: Colors.white24, width: 1),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
+                                      color: Colors.black,
                                       blurRadius: 2,
                                       offset: const Offset(0, 1),
                                     ),

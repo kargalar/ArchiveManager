@@ -70,6 +70,8 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color.fromARGB(255, 20, 20, 20),
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
           icon: Icon(_isMenuExpanded ? Icons.menu_open : Icons.menu),
           onPressed: () => setState(() => _isMenuExpanded = !_isMenuExpanded),
