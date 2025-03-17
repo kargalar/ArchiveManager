@@ -132,114 +132,134 @@ class _FullScreenImageState extends State<FullScreenImage> {
                       }
                     },
                     child: Center(
-                      child: SizedBox.expand(
-                        child: Image.file(
-                          File(_currentPhoto.path),
-                          fit: BoxFit.contain,
+                      child: Hero(
+                        tag: _currentPhoto.path,
+                        child: SizedBox.expand(
+                          child: Image.file(
+                            File(_currentPhoto.path),
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOut,
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
                           children: [
-                            GestureDetector(
-                              onTap: () {
+                            IconButton(
+                              icon: Icon(
+                                _autoNext ? Icons.skip_next : Icons.skip_next_outlined,
+                                color: _autoNext ? Colors.blue : Colors.white70,
+                              ),
+                              onPressed: () {
                                 final photoViewModel = context.read<PhotoViewModel>();
                                 setState(() {
                                   _autoNext = !_autoNext;
                                   photoViewModel.setFullscreenAutoNext(_autoNext);
                                 });
                               },
-                              child: Icon(
-                                Icons.skip_next,
-                                size: 16,
-                                color: _autoNext ? Colors.blue : Colors.white,
+                              tooltip: 'Auto Next',
+                            ),
+                            if (_currentPhoto.rating > 0)
+                              Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.star, size: 18, color: Colors.amber),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      _currentPhoto.rating.toString(),
+                                      style: const TextStyle(color: Colors.amber),
+                                    ),
+                                  ],
+                                ),
                               ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                _currentPhoto.isFavorite ? Icons.favorite : Icons.favorite_border,
+                                color: _currentPhoto.isFavorite ? Colors.red : Colors.white70,
+                              ),
+                              onPressed: () => viewModel.toggleFavorite(_currentPhoto),
+                              tooltip: 'Toggle Favorite',
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.info_outline, color: Colors.white70),
+                              onPressed: () {
+                                final photoViewModel = context.read<PhotoViewModel>();
+                                setState(() {
+                                  _showInfo = !_showInfo;
+                                  photoViewModel.setShowImageInfo(_showInfo);
+                                });
+                              },
+                              tooltip: 'Show Info',
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, color: Colors.white70),
+                              onPressed: () => Navigator.of(context).pop(),
+                              tooltip: 'Close',
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      if (_currentPhoto.rating > 0)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.star, size: 16, color: Colors.yellow),
-                              const SizedBox(width: 4),
-                              Text(
-                                _currentPhoto.rating.toString(),
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                            ],
-                          ),
-                        ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () => viewModel.toggleFavorite(_currentPhoto),
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            _currentPhoto.isFavorite ? Icons.favorite : Icons.favorite_border,
-                            size: 16,
-                            color: _currentPhoto.isFavorite ? Colors.red : Colors.white,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 if (_currentPhoto.tags.isNotEmpty)
                   Positioned(
-                    top: 48,
-                    right: 8,
+                    top: 80,
+                    right: 16,
                     child: Container(
-                      padding: const EdgeInsets.all(8),
+                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.3),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 10,
+                            spreadRadius: 2,
+                          ),
+                        ],
                       ),
                       child: Wrap(
-                        spacing: 4,
-                        runSpacing: 4,
+                        spacing: 6,
+                        runSpacing: 6,
                         alignment: WrapAlignment.end,
                         children: _currentPhoto.tags
                             .map((tag) => Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: tag.color.withOpacity(0.8),
-                                    borderRadius: BorderRadius.circular(8),
+                                    color: tag.color.withOpacity(0.3),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: tag.color.withOpacity(0.6)),
                                   ),
                                   child: Text(
                                     tag.name,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
+                                    style: TextStyle(
+                                      color: tag.color,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                 ))
@@ -248,9 +268,11 @@ class _FullScreenImageState extends State<FullScreenImage> {
                     ),
                   ),
                 if (_showInfo)
-                  Positioned(
-                    bottom: 8,
-                    right: 8,
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
+                    bottom: 16,
+                    right: 16,
                     child: FutureBuilder<List<Object>>(
                       future: Future.wait([
                         File(_currentPhoto.path).length(),
@@ -289,17 +311,67 @@ class _FullScreenImageState extends State<FullScreenImage> {
                         final formattedDate = '${creationDate.day}/${creationDate.month}/${creationDate.year} ${creationDate.hour}:${creationDate.minute.toString().padLeft(2, '0')}';
 
                         return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.black.withOpacity(0.7),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.1),
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              ),
+                            ],
                           ),
                           constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.3),
-                          child: Text(
-                            '${_currentPhoto.path.split('\\').last}\n${width}x$height - ${formatFileSize(fileSize)}\n$formattedDate',
-                            style: const TextStyle(color: Colors.white, fontSize: 12),
-                            softWrap: true,
-                            overflow: TextOverflow.visible,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _currentPhoto.path.split('\\').last,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                softWrap: true,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  const Icon(Icons.photo_size_select_actual_outlined, size: 14, color: Colors.white70),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${width}x$height',
+                                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Icon(Icons.sd_storage_outlined, size: 14, color: Colors.white70),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    formatFileSize(fileSize),
+                                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(Icons.calendar_today_outlined, size: 14, color: Colors.white70),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    formattedDate,
+                                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         );
                       },
