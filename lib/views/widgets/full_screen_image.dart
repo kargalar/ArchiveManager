@@ -42,27 +42,29 @@ class _FullScreenImageState extends State<FullScreenImage> {
   void _handleKeyEvent(RawKeyEvent event, PhotoViewModel viewModel) {
     if (event is! RawKeyDownEvent) return;
 
-    final currentIndex = viewModel.photos.indexOf(_currentPhoto);
+    final filteredPhotos = viewModel.filteredPhotos;
+    final currentIndex = filteredPhotos.indexOf(_currentPhoto);
 
     if (event.logicalKey == LogicalKeyboardKey.arrowLeft && currentIndex > 0) {
       setState(() {
-        _currentPhoto = viewModel.photos[currentIndex - 1];
+        _currentPhoto = filteredPhotos[currentIndex - 1];
       });
-    } else if (event.logicalKey == LogicalKeyboardKey.arrowRight && currentIndex < viewModel.photos.length - 1) {
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowRight && currentIndex < filteredPhotos.length - 1) {
       setState(() {
-        _currentPhoto = viewModel.photos[currentIndex + 1];
+        _currentPhoto = filteredPhotos[currentIndex + 1];
       });
     } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
       viewModel.toggleFavorite(_currentPhoto);
       setState(() {});
     } else if (event.logicalKey == LogicalKeyboardKey.delete) {
-      final currentIndex = viewModel.photos.indexOf(_currentPhoto);
+      final filteredPhotos = viewModel.filteredPhotos;
+      final currentIndex = filteredPhotos.indexOf(_currentPhoto);
       viewModel.deletePhoto(_currentPhoto);
-      if (viewModel.photos.isEmpty) {
+      if (filteredPhotos.isEmpty) {
         Navigator.of(context).pop();
       } else {
         setState(() {
-          _currentPhoto = viewModel.photos[currentIndex < viewModel.photos.length ? currentIndex : viewModel.photos.length - 1];
+          _currentPhoto = filteredPhotos[currentIndex < filteredPhotos.length ? currentIndex : filteredPhotos.length - 1];
         });
       }
     } else if (event.logicalKey == LogicalKeyboardKey.escape) {
@@ -94,9 +96,9 @@ class _FullScreenImageState extends State<FullScreenImage> {
       if (key.length == 1 && RegExp(r'[1-7]').hasMatch(key)) {
         viewModel.setRating(_currentPhoto, int.parse(key));
         setState(() {});
-        if (_autoNext && currentIndex < viewModel.photos.length - 1) {
+        if (_autoNext && currentIndex < filteredPhotos.length - 1) {
           setState(() {
-            _currentPhoto = viewModel.photos[currentIndex + 1];
+            _currentPhoto = filteredPhotos[currentIndex + 1];
           });
         }
       }
