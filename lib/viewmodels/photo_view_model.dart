@@ -84,9 +84,10 @@ class PhotoViewModel extends ChangeNotifier {
 
   Future<void> deleteTag(Tag tag) async {
     // Remove tag from all photos that have it
-    for (var photo in _photoBox.values) {
-      if (photo.tags.contains(tag)) {
-        photo.tags.remove(tag);
+    var photoBox = Hive.box<Photo>('photos');
+    for (var photo in photoBox.values) {
+      if (photo.tags.any((t) => t.name == tag.name)) {
+        photo.tags.removeWhere((t) => t.name == tag.name);
         photo.save();
       }
     }
