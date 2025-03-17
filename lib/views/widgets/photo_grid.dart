@@ -81,8 +81,6 @@ class PhotoGrid extends StatelessWidget {
             padding: const EdgeInsets.all(8),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: photoViewModel.photosPerRow,
-              crossAxisSpacing: 6,
-              mainAxisSpacing: 6,
             ),
             itemCount: photoViewModel.filteredPhotos.length,
             itemBuilder: (context, index) {
@@ -120,13 +118,25 @@ class PhotoGrid extends StatelessWidget {
   }
 
   Widget _buildPhotoContainer(Photo photo, HomeViewModel homeViewModel) {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
-        border: homeViewModel.selectedPhoto == photo ? Border.all(color: Colors.blue, width: 2) : null,
+        border: homeViewModel.selectedPhoto == photo ? Border.all(color: const Color.fromARGB(255, 179, 179, 179), width: 2) : Border.all(color: Colors.transparent, width: 4),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: Image.file(
-        File(photo.path),
-        fit: BoxFit.cover,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: Image.file(
+          File(photo.path),
+          fit: BoxFit.cover,
+        ),
       ),
     );
   }
@@ -134,9 +144,55 @@ class PhotoGrid extends StatelessWidget {
   Widget _buildPhotoOverlay(Photo photo, PhotoViewModel viewModel) {
     return Stack(
       children: [
+        if (photo.tags.isNotEmpty)
+          Positioned(
+            bottom: 6,
+            left: 8,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      alignment: WrapAlignment.end,
+                      children: photo.tags
+                          .map((tag) => Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: tag.color.withOpacity(0.8),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.white24, width: 1),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 2,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
+                                ),
+                                child: Text(
+                                  tag.name,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ))
+                          .toList(),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         Positioned(
-          top: 4,
-          right: 4,
+          top: 6,
+          right: 8,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -146,64 +202,38 @@ class PhotoGrid extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.black38,
-                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white24, width: 1),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
-                          const SizedBox(width: 2),
+                          const Icon(Icons.star_rounded, size: 13, color: Colors.amber),
+                          const SizedBox(width: 4),
                           Text(
                             photo.rating.toString(),
-                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
                           ),
                         ],
                       ),
                     ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 6),
                   if (photo.isFavorite)
-                    GestureDetector(
-                      onTap: () => viewModel.toggleFavorite(photo),
-                      child: Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          color: Colors.black38,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.favorite_rounded,
-                          size: 14,
-                          color: photo.isFavorite ? Colors.pink : Colors.white,
-                        ),
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white24, width: 1),
+                      ),
+                      child: Icon(
+                        Icons.favorite_rounded,
+                        size: 13,
+                        color: photo.isFavorite ? Colors.pink.shade300 : Colors.white,
                       ),
                     ),
                 ],
               ),
-              if (photo.tags.isNotEmpty) ...[
-                const SizedBox(height: 2),
-                Wrap(
-                  spacing: 2,
-                  runSpacing: 2,
-                  alignment: WrapAlignment.end,
-                  children: photo.tags
-                      .map((tag) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: tag.color.withOpacity(0.6),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: Colors.white24, width: 0.5),
-                            ),
-                            child: Text(
-                              tag.name,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ))
-                      .toList(),
-                ),
-              ],
             ],
           ),
         ),
