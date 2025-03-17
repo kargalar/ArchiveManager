@@ -135,8 +135,8 @@ class PhotoGrid extends StatelessWidget {
     return Stack(
       children: [
         Positioned(
-          top: 8,
-          right: 8,
+          top: 4,
+          right: 4,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -144,59 +144,60 @@ class PhotoGrid extends StatelessWidget {
                 children: [
                   if (photo.rating > 0)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.black38,
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.star, size: 16, color: Colors.yellow),
-                          const SizedBox(width: 4),
+                          const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
+                          const SizedBox(width: 2),
                           Text(
                             photo.rating.toString(),
-                            style: const TextStyle(color: Colors.white),
+                            style: const TextStyle(color: Colors.white, fontSize: 12),
                           ),
                         ],
                       ),
                     ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
                   if (photo.isFavorite)
                     GestureDetector(
                       onTap: () => viewModel.toggleFavorite(photo),
                       child: Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: const EdgeInsets.all(3),
                         decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.black38,
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
-                          Icons.favorite,
-                          size: 16,
-                          color: photo.isFavorite ? Colors.red : Colors.white,
+                          Icons.favorite_rounded,
+                          size: 14,
+                          color: photo.isFavorite ? Colors.pink : Colors.white,
                         ),
                       ),
                     ),
                 ],
               ),
               if (photo.tags.isNotEmpty) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
+                  spacing: 2,
+                  runSpacing: 2,
                   alignment: WrapAlignment.end,
                   children: photo.tags
                       .map((tag) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                             decoration: BoxDecoration(
-                              color: tag.color.withOpacity(0.8),
-                              borderRadius: BorderRadius.circular(8),
+                              color: tag.color.withOpacity(0.6),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.white24, width: 0.5),
                             ),
                             child: Text(
                               tag.name,
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 12,
+                                fontSize: 10,
                               ),
                             ),
                           ))

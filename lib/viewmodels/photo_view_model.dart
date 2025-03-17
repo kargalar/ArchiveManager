@@ -69,6 +69,15 @@ class PhotoViewModel extends ChangeNotifier {
     if (tag.name != newName) {
       tag.name = newName;
       await tag.save();
+
+      // Update all photos that contain this tag to trigger UI refresh
+      for (var photo in _photoBox.values) {
+        if (photo.tags.contains(tag)) {
+          photo.save(); // Save to trigger updates
+        }
+      }
+
+      // Notify listeners to update the UI
       notifyListeners();
     }
   }
