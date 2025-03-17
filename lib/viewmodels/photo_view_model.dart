@@ -401,18 +401,11 @@ class PhotoViewModel extends ChangeNotifier {
         _favoriteFilterMode = 'none';
         break;
     }
-    if (_favoriteFilterMode != 'none') {
-      _showUnratedOnly = false;
-    }
     notifyListeners();
   }
 
   void toggleUnratedFilter() {
     _showUnratedOnly = !_showUnratedOnly;
-    if (_showUnratedOnly) {
-      _favoriteFilterMode = 'none';
-      _showUntaggedOnly = false;
-    }
     notifyListeners();
   }
 
@@ -434,8 +427,6 @@ class PhotoViewModel extends ChangeNotifier {
   void setRatingFilter(double min, double max) {
     _minRatingFilter = min;
     _maxRatingFilter = max;
-    _favoriteFilterMode = 'none';
-    _showUnratedOnly = false;
     notifyListeners();
   }
 
