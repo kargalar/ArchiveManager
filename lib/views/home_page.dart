@@ -132,11 +132,29 @@ class _HomePageState extends State<HomePage> {
                   ),
                   IconButton(
                     icon: Icon(
-                      Icons.label_off_outlined,
-                      color: viewModel.showUntaggedOnly ? Colors.green : Colors.white,
+                      viewModel.tagFilterMode == 'none'
+                          ? Icons.label_outline
+                          : viewModel.tagFilterMode == 'untagged'
+                              ? Icons.label_off
+                              : viewModel.tagFilterMode == 'tagged'
+                                  ? Icons.label
+                                  : Icons.label, // filtered mode
+                      color: viewModel.tagFilterMode == 'none'
+                          ? Colors.white70
+                          : viewModel.tagFilterMode == 'untagged'
+                              ? Colors.green
+                              : viewModel.tagFilterMode == 'tagged'
+                                  ? Colors.blue
+                                  : Colors.orange, // filtered mode
                     ),
-                    onPressed: () => viewModel.toggleUntaggedFilter(),
-                    tooltip: 'Show Untagged Only',
+                    onPressed: () => viewModel.toggleTagFilterMode(),
+                    tooltip: viewModel.tagFilterMode == 'none'
+                        ? 'Filter by Tags'
+                        : viewModel.tagFilterMode == 'untagged'
+                            ? 'Show Untagged Only'
+                            : viewModel.tagFilterMode == 'tagged'
+                                ? 'Show Tagged Only'
+                                : 'Clear Tag Filters',
                   ),
                   Container(
                     width: 150,

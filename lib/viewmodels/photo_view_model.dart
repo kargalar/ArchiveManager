@@ -363,6 +363,32 @@ class PhotoViewModel extends ChangeNotifier {
   bool _showUntaggedOnly = false;
   bool get showUntaggedOnly => _showUntaggedOnly;
 
+  String _tagFilterMode = 'none'; // none, untagged, tagged, filtered
+  String get tagFilterMode => _tagFilterMode;
+
+  void toggleTagFilterMode() {
+    switch (_tagFilterMode) {
+      case 'none':
+        if (_selectedTags.isNotEmpty) {
+          _tagFilterMode = 'filtered';
+        } else {
+          _tagFilterMode = 'untagged';
+        }
+        break;
+      case 'untagged':
+        _tagFilterMode = 'tagged';
+        break;
+      case 'tagged':
+        _tagFilterMode = 'none';
+        break;
+      case 'filtered':
+        _tagFilterMode = 'none';
+        _selectedTags.clear();
+        break;
+    }
+    notifyListeners();
+  }
+
   void toggleFavoritesFilter() {
     _showFavoritesOnly = !_showFavoritesOnly;
     if (_showFavoritesOnly) {
@@ -421,22 +447,26 @@ class PhotoViewModel extends ChangeNotifier {
   }
 
   List<Photo> get filteredPhotos {
-    var filtered = photos;
+    var filtered = _photos.where((photo) {
+      if (_showFavoritesOnly && !photo.isFavorite) return false;
+      if (_showUnratedOnly && photo.rating > 0) return false;
 
-    if (_showFavoritesOnly) {
-      filtered = filtered.where((photo) => photo.isFavorite).toList();
-    } else if (_showUnratedOnly) {
-      filtered = filtered.where((photo) => photo.rating == 0).toList();
-    } else if (_showUntaggedOnly) {
-      filtered = filtered.where((photo) => photo.tags.isEmpty).toList();
-    } else if (_minRatingFilter > 0 || _maxRatingFilter < 7) {
-      filtered = filtered.where((photo) => photo.rating >= _minRatingFilter && photo.rating <= _maxRatingFilter).toList();
-    }
+      // Handle different tag filter modes
+      switch (_tagFilterMode) {
+        case 'untagged':
+          if (photo.tags.isNotEmpty) return false;
+          break;
+        case 'tagged':
+          if (photo.tags.isEmpty) return false;
+          break;
+        case 'filtered':
+          if (_selectedTags.isNotEmpty && !_selectedTags.every((tag) => photo.tags.contains(tag))) return false;
+          break;
+      }
 
-    if (_selectedTags.isNotEmpty) {
-      filtered = filtered.where((photo) => _selectedTags.every((tag) => photo.tags.contains(tag))).toList();
-    }
-
+      if (photo.rating < _minRatingFilter || photo.rating > _maxRatingFilter) return false;
+      return true;
+    }).toList();
     return filtered;
   }
 
