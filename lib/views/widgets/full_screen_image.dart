@@ -20,7 +20,7 @@ class FullScreenImage extends StatefulWidget {
 
 class _FullScreenImageState extends State<FullScreenImage> {
   late Photo _currentPhoto;
-  bool _autoNext = false;
+  late bool _autoNext;
   late bool _showInfo;
   final FocusNode _focusNode = FocusNode();
   late final Box<Tag> _tagBox;
@@ -33,6 +33,7 @@ class _FullScreenImageState extends State<FullScreenImage> {
     _currentPhoto = widget.photo;
     _tagBox = Hive.box<Tag>('tags');
     _showInfo = context.read<PhotoViewModel>().showImageInfo;
+    _autoNext = context.read<PhotoViewModel>().fullscreenAutoNext;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
     });
@@ -90,7 +91,7 @@ class _FullScreenImageState extends State<FullScreenImage> {
         }
       }
       final key = event.logicalKey.keyLabel;
-      if (key.length == 1 && RegExp(r'[1-5]').hasMatch(key)) {
+      if (key.length == 1 && RegExp(r'[1-7]').hasMatch(key)) {
         viewModel.setRating(_currentPhoto, int.parse(key));
         setState(() {});
         if (_autoNext && currentIndex < viewModel.photos.length - 1) {
@@ -153,8 +154,10 @@ class _FullScreenImageState extends State<FullScreenImage> {
                           children: [
                             GestureDetector(
                               onTap: () {
+                                final photoViewModel = context.read<PhotoViewModel>();
                                 setState(() {
                                   _autoNext = !_autoNext;
+                                  photoViewModel.setFullscreenAutoNext(_autoNext);
                                 });
                               },
                               child: Icon(

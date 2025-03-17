@@ -10,5 +10,8 @@ class Settings extends HiveObject {
   @HiveField(1)
   bool showImageInfo;
 
-  Settings({this.photosPerRow = 4, this.showImageInfo = true});
+  @HiveField(2)
+  bool fullscreenAutoNext;
+
+  Settings({this.photosPerRow = 4, this.showImageInfo = true, this.fullscreenAutoNext = false});
 }

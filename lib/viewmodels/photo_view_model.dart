@@ -91,8 +91,16 @@ class PhotoViewModel extends ChangeNotifier {
 
   bool get showImageInfo => _settingsBox.getAt(0)?.showImageInfo ?? true;
 
+  bool get fullscreenAutoNext => _settingsBox.getAt(0)?.fullscreenAutoNext ?? false;
+
   void setShowImageInfo(bool value) {
     _settingsBox.getAt(0)?.showImageInfo = value;
+    _settingsBox.getAt(0)?.save();
+    notifyListeners();
+  }
+
+  void setFullscreenAutoNext(bool value) {
+    _settingsBox.getAt(0)?.fullscreenAutoNext = value;
     _settingsBox.getAt(0)?.save();
     notifyListeners();
   }
@@ -352,7 +360,7 @@ class PhotoViewModel extends ChangeNotifier {
   }
 
   double _minRatingFilter = 0; // New field for minimum rating
-  double _maxRatingFilter = 5; // New field for maximum rating
+  double _maxRatingFilter = 7; // New field for maximum rating
 
   double get minRatingFilter => _minRatingFilter;
   double get maxRatingFilter => _maxRatingFilter;
@@ -389,7 +397,7 @@ class PhotoViewModel extends ChangeNotifier {
       filtered = filtered.where((photo) => photo.isFavorite).toList();
     } else if (_showUnratedOnly) {
       filtered = filtered.where((photo) => photo.rating == 0).toList();
-    } else if (_minRatingFilter > 0 || _maxRatingFilter < 5) {
+    } else if (_minRatingFilter > 0 || _maxRatingFilter < 7) {
       filtered = filtered.where((photo) => photo.rating >= _minRatingFilter && photo.rating <= _maxRatingFilter).toList();
     }
 
@@ -425,8 +433,9 @@ class PhotoViewModel extends ChangeNotifier {
         }
       }
 
-      // Remove from database and current photos list
-      photo.delete();
+      // Mark as recycled and save before removing from list
+      photo.isRecycled = true;
+      photo.save();
       _photos.remove(photo);
       notifyListeners();
     } catch (e) {

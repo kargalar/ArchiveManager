@@ -26,7 +26,13 @@ class PhotoGrid extends StatelessWidget {
                 photoViewModel.toggleFavorite(homeViewModel.selectedPhoto!);
                 return KeyEventResult.handled;
               }
-            } else if (event.logicalKey == LogicalKeyboardKey.digit1 || event.logicalKey == LogicalKeyboardKey.digit2 || event.logicalKey == LogicalKeyboardKey.digit3 || event.logicalKey == LogicalKeyboardKey.digit4 || event.logicalKey == LogicalKeyboardKey.digit5) {
+            } else if (event.logicalKey == LogicalKeyboardKey.digit1 ||
+                event.logicalKey == LogicalKeyboardKey.digit2 ||
+                event.logicalKey == LogicalKeyboardKey.digit3 ||
+                event.logicalKey == LogicalKeyboardKey.digit4 ||
+                event.logicalKey == LogicalKeyboardKey.digit5 ||
+                event.logicalKey == LogicalKeyboardKey.digit6 ||
+                event.logicalKey == LogicalKeyboardKey.digit7) {
               if (homeViewModel.selectedPhoto != null) {
                 final rating = int.parse(event.logicalKey.keyLabel);
                 photoViewModel.setRating(homeViewModel.selectedPhoto!, rating);

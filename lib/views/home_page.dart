@@ -140,7 +140,7 @@ class _HomePageState extends State<HomePage> {
                           child: RangeSlider(
                             values: RangeValues(viewModel.minRatingFilter, viewModel.maxRatingFilter),
                             min: 0,
-                            max: 5,
+                            max: 7,
                             divisions: 5,
                             onChanged: (RangeValues values) {
                               viewModel.setRatingFilter(values.start, values.end);
@@ -157,7 +157,7 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(width: 8),
                   GestureDetector(
                     onSecondaryTap: () {
-                      viewModel.setRatingFilter(0, 5);
+                      viewModel.setRatingFilter(0, 7);
                       viewModel.resetRatingSort();
                     },
                     child: TextButton.icon(

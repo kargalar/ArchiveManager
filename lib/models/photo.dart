@@ -34,7 +34,7 @@ class Photo extends HiveObject {
   }
 
   void setRating(int value) {
-    if (value >= 0 && value <= 5) {
+    if (value >= 0 && value <= 7) {
       rating = value;
       save();
     }
