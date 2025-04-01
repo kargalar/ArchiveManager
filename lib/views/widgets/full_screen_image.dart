@@ -22,6 +22,7 @@ class _FullScreenImageState extends State<FullScreenImage> {
   late Photo _currentPhoto;
   late bool _autoNext;
   late bool _showInfo;
+  late bool _zenMode;
   final FocusNode _focusNode = FocusNode();
   late final Box<Tag> _tagBox;
 
@@ -34,6 +35,7 @@ class _FullScreenImageState extends State<FullScreenImage> {
     _tagBox = Hive.box<Tag>('tags');
     _showInfo = context.read<PhotoViewModel>().showImageInfo;
     _autoNext = context.read<PhotoViewModel>().fullscreenAutoNext;
+    _zenMode = false;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
     });
@@ -74,6 +76,10 @@ class _FullScreenImageState extends State<FullScreenImage> {
       setState(() {
         _showInfo = !_showInfo;
         photoViewModel.setShowImageInfo(_showInfo);
+      });
+    } else if (event.logicalKey == LogicalKeyboardKey.tab) {
+      setState(() {
+        _zenMode = !_zenMode;
       });
     } else if (event.logicalKey == LogicalKeyboardKey.shiftLeft) {
       final photoViewModel = context.read<PhotoViewModel>();
@@ -141,42 +147,69 @@ class _FullScreenImageState extends State<FullScreenImage> {
                     ),
                   ),
                 ),
-                AnimatedPositioned(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeInOut,
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: Icon(
-                                _autoNext ? Icons.skip_next : Icons.skip_next_outlined,
-                                color: _autoNext ? Colors.blue : Colors.white70,
-                              ),
-                              onPressed: () {
-                                final photoViewModel = context.read<PhotoViewModel>();
-                                setState(() {
-                                  _autoNext = !_autoNext;
-                                  photoViewModel.setFullscreenAutoNext(_autoNext);
-                                });
-                              },
-                              tooltip: 'Auto Next',
-                            ),
-                            if (_currentPhoto.rating > 0)
-                              Container(
-                                margin: const EdgeInsets.symmetric(horizontal: 8),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.amber.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(12),
+                if (!_zenMode)
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: Icon(
+                                  _autoNext ? Icons.skip_next : Icons.skip_next_outlined,
+                                  color: _autoNext ? Colors.blue : Colors.white70,
                                 ),
-                                child: Row(
+                                onPressed: () {
+                                  final photoViewModel = context.read<PhotoViewModel>();
+                                  setState(() {
+                                    _autoNext = !_autoNext;
+                                    photoViewModel.setFullscreenAutoNext(_autoNext);
+                                  });
+                                },
+                                tooltip: 'Auto Next',
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              if (_currentPhoto.tags.isNotEmpty)
+                                Wrap(
+                                  spacing: 4,
+                                  runSpacing: 4,
+                                  alignment: WrapAlignment.end,
+                                  children: _currentPhoto.tags
+                                      .map((tag) => Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: tag.color,
+                                              borderRadius: BorderRadius.circular(6),
+                                              border: Border.all(color: Colors.white24, width: 1),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black,
+                                                  blurRadius: 2,
+                                                  offset: const Offset(0, 1),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Text(
+                                              tag.name,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ))
+                                      .toList(),
+                                ),
+                              if (_currentPhoto.rating > 0)
+                                Row(
                                   children: [
                                     const Icon(Icons.star, size: 18, color: Colors.amber),
                                     const SizedBox(width: 4),
@@ -186,79 +219,37 @@ class _FullScreenImageState extends State<FullScreenImage> {
                                     ),
                                   ],
                                 ),
+                              IconButton(
+                                icon: Icon(
+                                  _currentPhoto.isFavorite ? Icons.favorite : Icons.favorite_border,
+                                  color: _currentPhoto.isFavorite ? Colors.red : Colors.white70,
+                                ),
+                                onPressed: () => viewModel.toggleFavorite(_currentPhoto),
+                                tooltip: 'Toggle Favorite',
                               ),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: Icon(
-                                _currentPhoto.isFavorite ? Icons.favorite : Icons.favorite_border,
-                                color: _currentPhoto.isFavorite ? Colors.red : Colors.white70,
+                              IconButton(
+                                icon: Icon(Icons.info_outline, color: _showInfo ? Colors.blue : Colors.white70),
+                                onPressed: () {
+                                  final photoViewModel = context.read<PhotoViewModel>();
+                                  setState(() {
+                                    _showInfo = !_showInfo;
+                                    photoViewModel.setShowImageInfo(_showInfo);
+                                  });
+                                },
+                                tooltip: _showInfo ? 'Hide Info' : 'Show Info',
                               ),
-                              onPressed: () => viewModel.toggleFavorite(_currentPhoto),
-                              tooltip: 'Toggle Favorite',
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.info_outline, color: _showInfo ? Colors.blue : Colors.white70),
-                              onPressed: () {
-                                final photoViewModel = context.read<PhotoViewModel>();
-                                setState(() {
-                                  _showInfo = !_showInfo;
-                                  photoViewModel.setShowImageInfo(_showInfo);
-                                });
-                              },
-                              tooltip: _showInfo ? 'Hide Info' : 'Show Info',
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.close, color: Colors.white70),
-                              onPressed: () => Navigator.of(context).pop(),
-                              tooltip: 'Close',
-                            ),
-                          ],
-                        ),
-                      ],
+                              IconButton(
+                                icon: const Icon(Icons.close, color: Colors.white70),
+                                onPressed: () => Navigator.of(context).pop(),
+                                tooltip: 'Close',
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                if (_currentPhoto.tags.isNotEmpty)
-                  AnimatedPositioned(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOutQuart,
-                    top: 50,
-                    right: 16,
-                    child: Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      alignment: WrapAlignment.end,
-                      children: _currentPhoto.tags
-                          .map((tag) => Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: tag.color,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: Colors.white24, width: 1),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black,
-                                      blurRadius: 2,
-                                      offset: const Offset(0, 1),
-                                    ),
-                                  ],
-                                ),
-                                child: Text(
-                                  tag.name,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ))
-                          .toList(),
-                    ),
-                  ),
-                if (_showInfo)
+                if (_showInfo && !_zenMode)
                   AnimatedPositioned(
                     duration: const Duration(milliseconds: 200),
                     curve: Curves.easeInOut,
