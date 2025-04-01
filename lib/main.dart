@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+
 import 'package:archive_manager_v3/models/folder.dart';
 import 'package:archive_manager_v3/models/keyboard_key_adapter.dart';
 import 'package:archive_manager_v3/models/settings.dart';
@@ -32,7 +35,10 @@ void main() async {
   });
 
   Hive.registerAdapter(ColorAdapter());
-  await Hive.initFlutter();
+  final appDocDir = await getApplicationDocumentsDirectory();
+  final hivePath = '${appDocDir.path}/Archive Manager';
+  await Directory(hivePath).create(recursive: true);
+  await Hive.initFlutter(hivePath);
   Hive.registerAdapter(PhotoAdapter());
   Hive.registerAdapter(FolderAdapter());
   Hive.registerAdapter(TagAdapter());

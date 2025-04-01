@@ -107,7 +107,7 @@ class PhotoViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool get showImageInfo => _settingsBox.getAt(0)?.showImageInfo ?? true;
+  bool get showImageInfo => _settingsBox.getAt(0)?.showImageInfo ?? false;
 
   bool get fullscreenAutoNext => _settingsBox.getAt(0)?.fullscreenAutoNext ?? false;
 

@@ -18,15 +18,21 @@ class SettingsAdapter extends TypeAdapter<Settings> {
     };
     return Settings(
       photosPerRow: fields[0] as int,
+      showImageInfo: fields[1] as bool,
+      fullscreenAutoNext: fields[2] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, Settings obj) {
     writer
-      ..writeByte(1)
+      ..writeByte(3)
       ..writeByte(0)
-      ..write(obj.photosPerRow);
+      ..write(obj.photosPerRow)
+      ..writeByte(1)
+      ..write(obj.showImageInfo)
+      ..writeByte(2)
+      ..write(obj.fullscreenAutoNext);
   }
 
   @override
