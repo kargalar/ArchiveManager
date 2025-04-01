@@ -108,7 +108,7 @@ class _HomePageState extends State<HomePage> {
                                         color: viewModel.selectedTags.contains(tag) ? Colors.white : Colors.white70,
                                       ),
                                       onSelected: (selected) => viewModel.toggleTagFilter(tag),
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                                      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 0),
                                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                     ),
                                   ))
@@ -117,39 +117,45 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   const SizedBox(width: 8),
-                  IconButton(
-                    icon: Icon(
-                      _getFavoriteIcon(viewModel.favoriteFilterMode),
-                      color: _getFavoriteColor(viewModel.favoriteFilterMode),
+                  GestureDetector(
+                    onSecondaryTap: () => viewModel.resetFavoriteFilter(),
+                    child: IconButton(
+                      icon: Icon(
+                        _getFavoriteIcon(viewModel.favoriteFilterMode),
+                        color: _getFavoriteColor(viewModel.favoriteFilterMode),
+                      ),
+                      onPressed: () => viewModel.toggleFavoritesFilter(),
+                      tooltip: _getFavoriteTooltip(viewModel.favoriteFilterMode),
                     ),
-                    onPressed: () => viewModel.toggleFavoritesFilter(),
-                    tooltip: _getFavoriteTooltip(viewModel.favoriteFilterMode),
                   ),
-                  IconButton(
-                    icon: Icon(
-                      viewModel.tagFilterMode == 'none'
-                          ? Icons.label_outline
+                  GestureDetector(
+                    onSecondaryTap: () => viewModel.resetTagFilter(),
+                    child: IconButton(
+                      icon: Icon(
+                        viewModel.tagFilterMode == 'none'
+                            ? Icons.label_outline
+                            : viewModel.tagFilterMode == 'untagged'
+                                ? Icons.label_off
+                                : viewModel.tagFilterMode == 'tagged'
+                                    ? Icons.label
+                                    : Icons.label, // filtered mode
+                        color: viewModel.tagFilterMode == 'none'
+                            ? Colors.white70
+                            : viewModel.tagFilterMode == 'untagged'
+                                ? Colors.green
+                                : viewModel.tagFilterMode == 'tagged'
+                                    ? Colors.blue
+                                    : Colors.orange, // filtered mode
+                      ),
+                      onPressed: () => viewModel.toggleTagFilterMode(),
+                      tooltip: viewModel.tagFilterMode == 'none'
+                          ? 'Filter by Tags'
                           : viewModel.tagFilterMode == 'untagged'
-                              ? Icons.label_off
+                              ? 'Show Untagged Only'
                               : viewModel.tagFilterMode == 'tagged'
-                                  ? Icons.label
-                                  : Icons.label, // filtered mode
-                      color: viewModel.tagFilterMode == 'none'
-                          ? Colors.white70
-                          : viewModel.tagFilterMode == 'untagged'
-                              ? Colors.green
-                              : viewModel.tagFilterMode == 'tagged'
-                                  ? Colors.blue
-                                  : Colors.orange, // filtered mode
+                                  ? 'Show Tagged Only'
+                                  : 'Clear Tag Filters',
                     ),
-                    onPressed: () => viewModel.toggleTagFilterMode(),
-                    tooltip: viewModel.tagFilterMode == 'none'
-                        ? 'Filter by Tags'
-                        : viewModel.tagFilterMode == 'untagged'
-                            ? 'Show Untagged Only'
-                            : viewModel.tagFilterMode == 'tagged'
-                                ? 'Show Tagged Only'
-                                : 'Clear Tag Filters',
                   ),
                   Container(
                     width: 150,

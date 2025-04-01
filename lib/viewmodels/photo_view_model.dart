@@ -402,6 +402,17 @@ class PhotoViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void resetFavoriteFilter() {
+    _favoriteFilterMode = 'none';
+    notifyListeners();
+  }
+
+  void resetTagFilter() {
+    _tagFilterMode = 'none';
+    _selectedTags.clear();
+    notifyListeners();
+  }
+
   void toggleUntaggedFilter() {
     _showUntaggedOnly = !_showUntaggedOnly;
     if (_showUntaggedOnly) {
