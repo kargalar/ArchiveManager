@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:archive_manager_v3/views/widgets/full_screen_image.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../models/photo.dart';
@@ -90,6 +91,10 @@ class PhotoGrid extends StatelessWidget {
                   },
                   child: GestureDetector(
                     onTap: () => homeViewModel.handlePhotoTap(photo),
+                    onSecondaryTap: () {
+                      homeViewModel.handlePhotoTap(photo);
+                      _showPhotoContextMenu(context, photo, photoViewModel);
+                    },
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
@@ -128,6 +133,40 @@ class PhotoGrid extends StatelessWidget {
           fit: BoxFit.cover,
         ),
       ),
+    );
+  }
+
+  void _showPhotoContextMenu(BuildContext context, Photo photo, PhotoViewModel viewModel) {
+    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final renderObject = context.findRenderObject();
+
+    Offset tapPosition = Offset.zero;
+    if (renderObject is RenderBox) {
+      tapPosition = renderObject.localToGlobal(renderObject.size.center(Offset.zero));
+    } else if (renderObject is RenderSliver) {
+      final parentData = renderObject.parentData as SliverPhysicalParentData;
+      tapPosition = parentData.paintOffset;
+    }
+
+    showMenu(
+      context: context,
+      position: RelativeRect.fromRect(
+        Rect.fromPoints(
+          tapPosition,
+          tapPosition,
+        ),
+        Offset.zero & overlay.size,
+      ),
+      items: [
+        PopupMenuItem(
+          child: const Text('Favorilere Ekle/Çıkar'),
+          onTap: () => viewModel.toggleFavorite(photo),
+        ),
+        PopupMenuItem(
+          child: const Text('Sil'),
+          onTap: () => viewModel.deletePhoto(photo),
+        ),
+      ],
     );
   }
 

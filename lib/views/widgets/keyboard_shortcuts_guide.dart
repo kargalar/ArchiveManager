@@ -53,6 +53,7 @@ class KeyboardShortcutsGuide extends StatelessWidget {
             _ShortcutInfo(LogicalKeyboardKey.controlLeft, 'Bilgi panelini göster/gizle'),
             _ShortcutInfo(LogicalKeyboardKey.shiftLeft, 'Otomatik ilerlemeyi aç/kapat'),
             _ShortcutInfo(null, 'Ctrl + Fare Tekerleği: Görüntü boyutunu değiştir'),
+            _ShortcutInfo(LogicalKeyboardKey.tab, 'Zen modunu aç/kapat'),
           ],
         ),
         SizedBox(height: 15),
