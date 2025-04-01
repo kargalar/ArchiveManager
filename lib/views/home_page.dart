@@ -342,8 +342,8 @@ class _HomePageState extends State<HomePage> {
           TextButton(
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
-                tag.name = controller.text.trim();
-                tag.save();
+                final photoViewModel = Provider.of<PhotoViewModel>(context, listen: false);
+                photoViewModel.updateTagName(tag, controller.text.trim());
                 Navigator.pop(context);
               }
             },

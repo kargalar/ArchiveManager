@@ -73,7 +73,13 @@ class PhotoViewModel extends ChangeNotifier {
       // Update all photos that contain this tag to trigger UI refresh
       for (var photo in _photoBox.values) {
         if (photo.tags.any((t) => t.id == tag.id)) {
-          photo.save(); // Save to trigger updates
+          // Force refresh the tag reference in the photo's tags list
+          var tagIndex = photo.tags.indexWhere((t) => t.id == tag.id);
+          if (tagIndex != -1) {
+            // Replace with the updated tag to ensure UI updates
+            photo.tags[tagIndex] = tag;
+          }
+          await photo.save(); // Save to persist updates
         }
       }
 

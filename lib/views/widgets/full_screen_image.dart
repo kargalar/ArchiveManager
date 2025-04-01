@@ -223,7 +223,7 @@ class _FullScreenImageState extends State<FullScreenImage> {
                 ),
                 if (_currentPhoto.tags.isNotEmpty)
                   Positioned(
-                    top: 80,
+                    top: 50,
                     right: 16,
                     child: Container(
                       constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.3),
