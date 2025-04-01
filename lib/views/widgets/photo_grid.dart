@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:archive_manager_v3/models/tag.dart';
 import 'package:archive_manager_v3/views/widgets/full_screen_image.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';

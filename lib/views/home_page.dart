@@ -99,8 +99,9 @@ class _HomePageState extends State<HomePage> {
                           children: viewModel.tags
                               .map((tag) => Padding(
                                     padding: const EdgeInsets.symmetric(horizontal: 2),
-                                    child: GestureDetector(
+                                    child: InkWell(
                                       onTap: () => viewModel.toggleTagFilter(tag),
+                                      onSecondaryTap: () => viewModel.removeTagFilter(tag),
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                         decoration: BoxDecoration(

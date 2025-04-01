@@ -460,6 +460,14 @@ class PhotoViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void removeTagFilter(Tag tag) {
+    _selectedTags.remove(tag);
+    if (_selectedTags.isEmpty) {
+      _tagFilterMode = 'none';
+    }
+    notifyListeners();
+  }
+
   List<Photo> get filteredPhotos {
     var filtered = _photos.where((photo) {
       // Handle favorite filter modes
