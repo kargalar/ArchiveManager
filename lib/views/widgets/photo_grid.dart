@@ -155,7 +155,7 @@ class PhotoGrid extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: tag.color,
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(6),
                                   border: Border.all(color: Colors.white24, width: 1),
                                   boxShadow: [
                                     BoxShadow(

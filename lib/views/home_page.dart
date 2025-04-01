@@ -99,17 +99,27 @@ class _HomePageState extends State<HomePage> {
                           children: viewModel.tags
                               .map((tag) => Padding(
                                     padding: const EdgeInsets.symmetric(horizontal: 2),
-                                    child: FilterChip(
-                                      selected: viewModel.selectedTags.contains(tag),
-                                      label: Text(tag.name, style: const TextStyle(fontSize: 12)),
-                                      backgroundColor: tag.color.withOpacity(0.2),
-                                      selectedColor: tag.color.withOpacity(0.8),
-                                      labelStyle: TextStyle(
-                                        color: viewModel.selectedTags.contains(tag) ? Colors.white : Colors.white70,
+                                    child: GestureDetector(
+                                      onTap: () => viewModel.toggleTagFilter(tag),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: viewModel.selectedTags.contains(tag) ? tag.color.withOpacity(0.8) : tag.color.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(
+                                            color: viewModel.selectedTags.contains(tag) ? tag.color : tag.color.withOpacity(0.5),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          tag.name,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: viewModel.selectedTags.contains(tag) ? Colors.white : Colors.white70,
+                                            fontWeight: viewModel.selectedTags.contains(tag) ? FontWeight.bold : FontWeight.normal,
+                                          ),
+                                        ),
                                       ),
-                                      onSelected: (selected) => viewModel.toggleTagFilter(tag),
-                                      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 0),
-                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                     ),
                                   ))
                               .toList(),

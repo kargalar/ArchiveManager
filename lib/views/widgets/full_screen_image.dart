@@ -222,46 +222,40 @@ class _FullScreenImageState extends State<FullScreenImage> {
                   ),
                 ),
                 if (_currentPhoto.tags.isNotEmpty)
-                  Positioned(
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutQuart,
                     top: 50,
                     right: 16,
-                    child: Container(
-                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.3),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.black87,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 10,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        alignment: WrapAlignment.end,
-                        children: _currentPhoto.tags
-                            .map((tag) => Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: tag.color.withOpacity(0.3),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: tag.color.withOpacity(0.6)),
-                                  ),
-                                  child: Text(
-                                    tag.name,
-                                    style: TextStyle(
-                                      color: tag.color,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
+                    child: Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      alignment: WrapAlignment.end,
+                      children: _currentPhoto.tags
+                          .map((tag) => Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: tag.color,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: Colors.white24, width: 1),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black,
+                                      blurRadius: 2,
+                                      offset: const Offset(0, 1),
                                     ),
+                                  ],
+                                ),
+                                child: Text(
+                                  tag.name,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                ))
-                            .toList(),
-                      ),
+                                ),
+                              ))
+                          .toList(),
                     ),
                   ),
                 if (_showInfo)
