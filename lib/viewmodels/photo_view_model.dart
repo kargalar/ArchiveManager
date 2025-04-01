@@ -72,7 +72,7 @@ class PhotoViewModel extends ChangeNotifier {
 
       // Update all photos that contain this tag to trigger UI refresh
       for (var photo in _photoBox.values) {
-        if (photo.tags.contains(tag)) {
+        if (photo.tags.any((t) => t.id == tag.id)) {
           photo.save(); // Save to trigger updates
         }
       }
@@ -86,8 +86,8 @@ class PhotoViewModel extends ChangeNotifier {
     // Remove tag from all photos that have it
     var photoBox = Hive.box<Photo>('photos');
     for (var photo in photoBox.values) {
-      if (photo.tags.any((t) => t.name == tag.name)) {
-        photo.tags.removeWhere((t) => t.name == tag.name);
+      if (photo.tags.any((t) => t.id == tag.id)) {
+        photo.tags.removeWhere((t) => t.id == tag.id);
         photo.save();
       }
     }
@@ -256,8 +256,8 @@ class PhotoViewModel extends ChangeNotifier {
   }
 
   void toggleTag(Photo photo, Tag tag) {
-    if (photo.tags.contains(tag)) {
-      photo.tags.remove(tag);
+    if (photo.tags.any((t) => t.id == tag.id)) {
+      photo.tags.removeWhere((t) => t.id == tag.id);
     } else {
       photo.tags.add(tag);
     }
@@ -475,7 +475,7 @@ class PhotoViewModel extends ChangeNotifier {
           if (photo.tags.isEmpty) return false;
           break;
         case 'filtered':
-          if (_selectedTags.isNotEmpty && !_selectedTags.every((tag) => photo.tags.contains(tag))) return false;
+          if (_selectedTags.isNotEmpty && !_selectedTags.every((tag) => photo.tags.any((photoTag) => photoTag.id == tag.id))) return false;
           break;
       }
 

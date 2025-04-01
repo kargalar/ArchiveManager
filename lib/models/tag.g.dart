@@ -20,15 +20,18 @@ class TagAdapter extends TypeAdapter<Tag> {
       name: fields[0] as String,
       color: Color(fields[1] as int),
       shortcutKey: LogicalKeyboardKey(fields[2] as int),
+      id: fields[3] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Tag obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(4)
       ..writeByte(0)
       ..write(obj.name)
+      ..writeByte(3)
+      ..write(obj.id)
       ..writeByte(1)
       ..write(obj.colorValue)
       ..writeByte(2)

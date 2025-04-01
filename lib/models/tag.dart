@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
+import 'package:uuid/uuid.dart';
 
 part 'tag.g.dart';
 
@@ -16,6 +17,9 @@ class Tag extends HiveObject {
   int get shortcutKeyId => shortcutKey.keyId;
   set shortcutKeyId(int value) => shortcutKey = LogicalKeyboardKey(value);
 
+  @HiveField(3)
+  final String id;
+
   Color color;
   LogicalKeyboardKey shortcutKey;
 
@@ -23,5 +27,6 @@ class Tag extends HiveObject {
     required this.name,
     required this.color,
     required this.shortcutKey,
-  });
+    String? id,
+  }) : id = id ?? const Uuid().v4();
 }
