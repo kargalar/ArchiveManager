@@ -11,6 +11,7 @@ import '../viewmodels/home_view_model.dart';
 import 'widgets/folder_item.dart';
 import 'widgets/photo_grid.dart';
 import 'widgets/full_screen_image.dart';
+import 'widgets/keyboard_shortcuts_guide.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -351,6 +352,8 @@ class _HomePageState extends State<HomePage> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 8,
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.4, maxHeight: MediaQuery.of(context).size.height * 0.9),
           child: Padding(
@@ -376,6 +379,8 @@ class _HomePageState extends State<HomePage> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Klavye kısayolları rehberi
+                        const KeyboardShortcutsGuide(),
                         const Text('Photos per Row', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 12),
                         Consumer<PhotoViewModel>(
@@ -397,12 +402,10 @@ class _HomePageState extends State<HomePage> {
                             );
                           },
                         ),
-                        const SizedBox(height: 24),
-                        const Text('Tag Management', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 12),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
+                            const Text('Tag Management', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 10),
                             ElevatedButton.icon(
                               icon: const Icon(Icons.add),
                               label: const Text('Add Tag'),

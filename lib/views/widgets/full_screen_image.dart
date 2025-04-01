@@ -69,11 +69,17 @@ class _FullScreenImageState extends State<FullScreenImage> {
       }
     } else if (event.logicalKey == LogicalKeyboardKey.escape) {
       Navigator.of(context).pop();
-    } else if (event.logicalKey == LogicalKeyboardKey.backspace) {
+    } else if (event.logicalKey == LogicalKeyboardKey.controlLeft) {
       final photoViewModel = context.read<PhotoViewModel>();
       setState(() {
         _showInfo = !_showInfo;
         photoViewModel.setShowImageInfo(_showInfo);
+      });
+    } else if (event.logicalKey == LogicalKeyboardKey.shiftLeft) {
+      final photoViewModel = context.read<PhotoViewModel>();
+      setState(() {
+        _autoNext = !_autoNext;
+        photoViewModel.setFullscreenAutoNext(_autoNext);
       });
     } else {
       for (var tag in tags) {
@@ -203,7 +209,7 @@ class _FullScreenImageState extends State<FullScreenImage> {
                               tooltip: 'Toggle Favorite',
                             ),
                             IconButton(
-                              icon: const Icon(Icons.info_outline, color: Colors.white70),
+                              icon: Icon(Icons.info_outline, color: _showInfo ? Colors.blue : Colors.white70),
                               onPressed: () {
                                 final photoViewModel = context.read<PhotoViewModel>();
                                 setState(() {
@@ -211,7 +217,7 @@ class _FullScreenImageState extends State<FullScreenImage> {
                                   photoViewModel.setShowImageInfo(_showInfo);
                                 });
                               },
-                              tooltip: 'Show Info',
+                              tooltip: _showInfo ? 'Hide Info' : 'Show Info',
                             ),
                             IconButton(
                               icon: const Icon(Icons.close, color: Colors.white70),

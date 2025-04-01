@@ -12,8 +12,7 @@ class HomeViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void handleKeyEvent(
-      RawKeyEvent event, BuildContext context, PhotoViewModel photoViewModel) {
+  void handleKeyEvent(RawKeyEvent event, BuildContext context, PhotoViewModel photoViewModel) {
     if (event is! RawKeyDownEvent) return;
     if (photoViewModel.photos.isEmpty) return;
 
@@ -28,25 +27,19 @@ class HomeViewModel extends ChangeNotifier {
 
     if (event.logicalKey == LogicalKeyboardKey.arrowLeft && currentIndex > 0) {
       newIndex = currentIndex - 1;
-    } else if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
-        currentIndex < photoViewModel.photos.length - 1) {
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowRight && currentIndex < photoViewModel.photos.length - 1) {
       newIndex = currentIndex + 1;
-    } else if (event.logicalKey == LogicalKeyboardKey.arrowUp &&
-        currentIndex >= photosPerRow) {
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowUp && currentIndex >= photosPerRow) {
       newIndex = currentIndex - photosPerRow;
-    } else if (event.logicalKey == LogicalKeyboardKey.arrowDown &&
-        currentIndex + photosPerRow < photoViewModel.photos.length) {
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowDown && currentIndex + photosPerRow < photoViewModel.photos.length) {
       newIndex = currentIndex + photosPerRow;
-    } else if (event.logicalKey == LogicalKeyboardKey.delete &&
-        _selectedPhoto != null) {
+    } else if (event.logicalKey == LogicalKeyboardKey.delete && _selectedPhoto != null) {
       final currentIndex = photoViewModel.photos.indexOf(_selectedPhoto!);
       photoViewModel.deletePhoto(_selectedPhoto!);
 
       // Select next photo after deletion
       if (photoViewModel.photos.isNotEmpty) {
-        final nextIndex = currentIndex < photoViewModel.photos.length
-            ? currentIndex
-            : photoViewModel.photos.length - 1;
+        final nextIndex = currentIndex < photoViewModel.photos.length ? currentIndex : photoViewModel.photos.length - 1;
         setSelectedPhoto(photoViewModel.photos[nextIndex]);
       } else {
         setSelectedPhoto(null);
