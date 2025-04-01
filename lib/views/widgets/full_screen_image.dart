@@ -84,17 +84,8 @@ class _FullScreenImageState extends State<FullScreenImage> {
     } else {
       for (var tag in tags) {
         if (event.logicalKey == tag.shortcutKey) {
-          var currentTags = List<Tag>.from(_currentPhoto.tags);
-          if (currentTags.any((t) => t.name == tag.name)) {
-            currentTags.removeWhere((t) => t.name == tag.name);
-          } else {
-            currentTags.add(tag);
-          }
-          setState(() {
-            _currentPhoto.tags = currentTags;
-            _currentPhoto.save();
-          });
-          viewModel.notifyListeners();
+          viewModel.toggleTag(_currentPhoto, tag);
+          setState(() {});
           break;
         }
       }

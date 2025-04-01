@@ -42,16 +42,7 @@ class PhotoGrid extends StatelessWidget {
             final tags = photoViewModel.tags;
             for (var tag in tags) {
               if (event.logicalKey == tag.shortcutKey && homeViewModel.selectedPhoto != null) {
-                var currentTags = List<Tag>.from(homeViewModel.selectedPhoto!.tags);
-                if (currentTags.any((t) => t.name == tag.name)) {
-                  currentTags.removeWhere((t) => t.name == tag.name);
-                } else {
-                  currentTags.add(tag);
-                }
-                homeViewModel.selectedPhoto!.tags = currentTags;
-                homeViewModel.selectedPhoto!.save();
-                photoViewModel.notifyListeners(); // Notify listeners to update UI
-
+                photoViewModel.toggleTag(homeViewModel.selectedPhoto!, tag);
                 break;
               }
             }
