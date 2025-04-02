@@ -23,6 +23,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late HomeViewModel _homeViewModel;
   bool _isMenuExpanded = true;
+  double _dividerPosition = 0.3;
 
   @override
   void initState() {
@@ -73,17 +74,42 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 20, 20, 20),
         surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: Icon(_isMenuExpanded ? Icons.menu_open : Icons.menu),
-          onPressed: () => setState(() => _isMenuExpanded = !_isMenuExpanded),
+        leadingWidth: 400,
+        leading: Row(
+          children: [
+            SizedBox(width: 5),
+            IconButton(
+              icon: Icon(_isMenuExpanded ? Icons.menu_open : Icons.menu),
+              onPressed: () => setState(() => _isMenuExpanded = !_isMenuExpanded),
+            ),
+            SizedBox(width: 5),
+            IconButton(
+              icon: Icon(Icons.create_new_folder),
+              onPressed: () async {
+                final result = await FilePicker.platform.getDirectoryPath();
+                if (result != null) {
+                  // ignore: use_build_context_synchronously
+                  context.read<PhotoViewModel>().addFolder(result);
+                }
+              },
+            ),
+            SizedBox(width: 10),
+            Consumer<PhotoViewModel>(
+              builder: (context, viewModel, child) {
+                return Text(
+                  viewModel.selectedFolder != null ? viewModel.getFolderName(viewModel.selectedFolder!) : 'Photo Archive Manager',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                );
+              },
+            ),
+          ],
         ),
         flexibleSpace: DragToMoveArea(
           child: Container(),
-        ),
-        title: Consumer<PhotoViewModel>(
-          builder: (context, viewModel, child) {
-            return Text(viewModel.selectedFolder != null ? viewModel.getFolderName(viewModel.selectedFolder!) : 'Photo Archive Manager');
-          },
         ),
         actions: [
           Consumer<PhotoViewModel>(
@@ -244,50 +270,42 @@ class _HomePageState extends State<HomePage> {
       ),
       body: Row(
         children: [
-          _buildFolderList(),
-          Expanded(
-            child: _buildPhotoGrid(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFolderList() {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      width: _isMenuExpanded ? 250 : 0,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        border: Border(
-          right: BorderSide(
-            color: Colors.grey[800]!,
-            width: 1,
-          ),
-        ),
-      ),
-      child: Column(
-        children: [
-          ListTile(
-            leading: const Icon(Icons.create_new_folder),
-            title: const Text('Add Folder'),
-            onTap: () async {
-              final result = await FilePicker.platform.getDirectoryPath();
-              if (result != null) {
-                context.read<PhotoViewModel>().addFolder(result);
-              }
-            },
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: context.watch<PhotoViewModel>().folders.length,
-              itemBuilder: (context, index) {
-                final folder = context.watch<PhotoViewModel>().folders[index];
-                final isRoot = !context.watch<PhotoViewModel>().folderHierarchy.values.any((list) => list.contains(folder));
-                if (!isRoot) return const SizedBox.shrink();
-                return FolderItem(folder: folder, level: 0);
-              },
+          // _buildFolderList(),
+          if (_isMenuExpanded) ...[
+            Expanded(
+              flex: (_dividerPosition * 100).toInt(),
+              child: ListView.builder(
+                itemCount: context.watch<PhotoViewModel>().folders.length,
+                itemBuilder: (context, index) {
+                  final folder = context.watch<PhotoViewModel>().folders[index];
+                  final isRoot = !context.watch<PhotoViewModel>().folderHierarchy.values.any((list) => list.contains(folder));
+                  if (!isRoot) return const SizedBox.shrink();
+                  return FolderItem(folder: folder, level: 0);
+                },
+              ),
             ),
+            GestureDetector(
+              onPanUpdate: (details) {
+                setState(() {
+                  _dividerPosition += details.delta.dx / MediaQuery.of(context).size.width;
+                  _dividerPosition = _dividerPosition.clamp(0.1, 0.3);
+                });
+              },
+              child: MouseRegion(
+                cursor: SystemMouseCursors.resizeLeftRight,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: Container(
+                    width: 1,
+                    color: Colors.grey[300],
+                  ),
+                ),
+              ),
+            ),
+          ],
+          Expanded(
+            flex: ((1 - _dividerPosition) * 100).toInt(),
+            child: _buildPhotoGrid(),
           ),
         ],
       ),

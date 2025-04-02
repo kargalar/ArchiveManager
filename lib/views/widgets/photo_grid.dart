@@ -84,11 +84,8 @@ class PhotoGrid extends StatelessWidget {
                       homeViewModel.handlePhotoTap(photo);
                       Navigator.push(
                         context,
-                        PageRouteBuilder(
-                          pageBuilder: (context, animation, secondaryAnimation) => FullScreenImage(photo: photo),
-                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                            return child;
-                          },
+                        MaterialPageRoute(
+                          builder: (context) => FullScreenImage(photo: photo),
                         ),
                       );
                     }
