@@ -126,23 +126,17 @@ class _FullScreenImageState extends State<FullScreenImage> {
             backgroundColor: Colors.black,
             body: Stack(
               children: [
-                MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: Listener(
-                    onPointerDown: (event) {
-                      if (event.buttons == kMiddleMouseButton) {
-                        Navigator.of(context).pop();
-                      }
-                    },
-                    child: Center(
-                      child: Hero(
-                        tag: _currentPhoto.path,
-                        child: SizedBox.expand(
-                          child: Image.file(
-                            File(_currentPhoto.path),
-                            fit: BoxFit.contain,
-                          ),
-                        ),
+                Listener(
+                  onPointerDown: (event) {
+                    if (event.buttons == kMiddleMouseButton) {
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: Center(
+                    child: SizedBox.expand(
+                      child: Image.file(
+                        File(_currentPhoto.path),
+                        fit: BoxFit.contain,
                       ),
                     ),
                   ),

@@ -82,9 +82,13 @@ class PhotoGrid extends StatelessWidget {
                   onPointerDown: (event) {
                     if (event.buttons == kMiddleMouseButton) {
                       homeViewModel.handlePhotoTap(photo);
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => FullScreenImage(photo: photo),
+                      Navigator.push(
+                        context,
+                        PageRouteBuilder(
+                          pageBuilder: (context, animation, secondaryAnimation) => FullScreenImage(photo: photo),
+                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            return child;
+                          },
                         ),
                       );
                     }
@@ -98,7 +102,7 @@ class PhotoGrid extends StatelessWidget {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        _buildPhotoContainer(photo, homeViewModel),
+                        _buildPhotoContainer(photo, homeViewModel, context),
                         _buildPhotoOverlay(photo, photoViewModel),
                       ],
                     ),
@@ -112,7 +116,8 @@ class PhotoGrid extends StatelessWidget {
     );
   }
 
-  Widget _buildPhotoContainer(Photo photo, HomeViewModel homeViewModel) {
+  Widget _buildPhotoContainer(Photo photo, HomeViewModel homeViewModel, BuildContext context) {
+    final photoViewModel = context.read<PhotoViewModel>();
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
@@ -131,6 +136,21 @@ class PhotoGrid extends StatelessWidget {
         child: Image.file(
           File(photo.path),
           fit: BoxFit.cover,
+          cacheHeight: photoViewModel.photosPerRow == 1
+              ? 4000
+              : photoViewModel.photosPerRow == 2
+                  ? 2000
+                  : photoViewModel.photosPerRow == 3
+                      ? 1000
+                      : photoViewModel.photosPerRow == 4
+                          ? 700
+                          : photoViewModel.photosPerRow == 5
+                              ? 600
+                              : photoViewModel.photosPerRow == 6
+                                  ? 500
+                                  : photoViewModel.photosPerRow == 7
+                                      ? 400
+                                      : 300,
         ),
       ),
     );
