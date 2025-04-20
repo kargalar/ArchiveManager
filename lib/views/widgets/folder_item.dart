@@ -20,6 +20,7 @@ class FolderItem extends StatelessWidget {
     final isExpanded = viewModel.isFolderExpanded(folder);
     final isSelected = viewModel.selectedFolder == folder;
     final folderName = viewModel.getFolderName(folder);
+    final isMissing = viewModel.missingFolders.contains(folder); // Check if folder is missing
 
     Future<void> showDeleteConfirmation() async {
       return showDialog(
@@ -97,11 +98,16 @@ class FolderItem extends StatelessWidget {
                   Expanded(
                     child: Row(
                       children: [
+                        if (isMissing) // Conditionally display warning icon
+                          const Padding(
+                            padding: EdgeInsets.only(right: 4.0),
+                            child: Icon(Icons.warning, color: Colors.orange, size: 16),
+                          ),
                         Expanded(
                           child: Text(
                             folderName,
                             style: TextStyle(
-                              color: isSelected ? Colors.blue : Colors.white,
+                              color: isSelected ? Colors.blue : (isMissing ? Colors.orange : Colors.white), // Change color if missing
                               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                             ),
                             overflow: TextOverflow.ellipsis,
