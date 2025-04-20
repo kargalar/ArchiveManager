@@ -22,11 +22,27 @@ class PhotoViewModel extends ChangeNotifier {
   int _photosPerRow = 4; // Default value
   final Map<String, List<String>> _folderHierarchy = {};
   final Map<String, bool> _expandedFolders = {};
+  List<String> _missingFolders = [];
+
+  List<String> get missingFolders => _missingFolders;
 
   PhotoViewModel(this._photoBox, this._folderBox) {
     _loadFolders();
+    _checkFoldersExistence();
     _initTagBox();
     _initSettingsBox();
+  }
+
+  Future<void> _checkFoldersExistence() async {
+    _missingFolders = [];
+    for (var folderPath in _folders) {
+      if (!await Directory(folderPath).exists()) {
+        _missingFolders.add(folderPath);
+      }
+    }
+    if (_missingFolders.isNotEmpty) {
+      notifyListeners();
+    }
   }
 
   void _loadFolders() {

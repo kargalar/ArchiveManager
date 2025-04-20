@@ -95,13 +95,19 @@ class FolderItem extends StatelessWidget {
                   const Icon(Icons.folder, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      folderName,
-                      style: TextStyle(
-                        color: isSelected ? Colors.blue : Colors.white,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            folderName,
+                            style: TextStyle(
+                              color: isSelected ? Colors.blue : Colors.white,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

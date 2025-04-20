@@ -31,6 +31,12 @@ class _HomePageState extends State<HomePage> {
     _homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
     RawKeyboard.instance.addListener(_handleKeyEvent);
     GestureBinding.instance.pointerRouter.addGlobalRoute(_handlePointerEvent);
+    final missingFolders = Provider.of<PhotoViewModel>(context, listen: false).missingFolders;
+    if (missingFolders.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showMissingFoldersDialog(context, missingFolders);
+      });
+    }
   }
 
   @override
@@ -116,6 +122,14 @@ class _HomePageState extends State<HomePage> {
             builder: (context, viewModel, child) {
               return Row(
                 children: [
+                  if (viewModel.missingFolders.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.warning, color: Colors.orange, size: 24),
+                      tooltip: "Eksik klasörler",
+                      onPressed: () {
+                        _showMissingFoldersDialog(context, viewModel.missingFolders);
+                      },
+                    ),
                   if (viewModel.tags.isNotEmpty)
                     Container(
                       constraints: const BoxConstraints(maxWidth: 400),
@@ -380,6 +394,70 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showMissingFoldersDialog(BuildContext context, List<String> missingFolders) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final viewModel = Provider.of<PhotoViewModel>(context, listen: false);
+        return AlertDialog(
+          title: const Text('Eksik Klasörler'),
+          content: SizedBox(
+            width: 400,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Aşağıdaki klasörler bulunamadı. Lütfen yeni bir yol seçin veya kaldırın:'),
+                  const SizedBox(height: 16),
+                  ...missingFolders.map((folderPath) => Row(
+                        children: [
+                          const Icon(Icons.warning, color: Colors.orange, size: 20),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              viewModel.getFolderName(folderPath),
+                              style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              final result = await FilePicker.platform.getDirectoryPath();
+                              if (result != null) {
+                                viewModel.removeFolder(folderPath);
+                                viewModel.addFolder(result);
+                                Navigator.of(context).pop();
+                              }
+                            },
+                            style: TextButton.styleFrom(foregroundColor: Colors.blue),
+                            child: const Text("Yeni Path Seç"),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              viewModel.removeFolder(folderPath);
+                              Navigator.of(context).pop();
+                            },
+                            style: TextButton.styleFrom(foregroundColor: Colors.red),
+                            child: const Text("Sil"),
+                          ),
+                        ],
+                      )),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Kapat'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -674,3 +752,5 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
+
+// Burada eski eksik klasörlerin metinsel listesi ve yönetimi kaldırıldı
