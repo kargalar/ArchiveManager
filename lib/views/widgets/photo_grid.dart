@@ -92,9 +92,9 @@ class PhotoGrid extends StatelessWidget {
                   },
                   child: GestureDetector(
                     onTap: () => homeViewModel.handlePhotoTap(photo),
-                    onSecondaryTap: () {
+                    onSecondaryTapDown: (details) {
                       homeViewModel.handlePhotoTap(photo);
-                      _showPhotoContextMenu(context, photo, photoViewModel);
+                      _showPhotoContextMenu(context, photo, photoViewModel, details.globalPosition);
                     },
                     child: Stack(
                       fit: StackFit.expand,
@@ -153,18 +153,8 @@ class PhotoGrid extends StatelessWidget {
     );
   }
 
-  void _showPhotoContextMenu(BuildContext context, Photo photo, PhotoViewModel viewModel) {
+  void _showPhotoContextMenu(BuildContext context, Photo photo, PhotoViewModel viewModel, Offset tapPosition) {
     final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-    final renderObject = context.findRenderObject();
-
-    Offset tapPosition = Offset.zero;
-    if (renderObject is RenderBox) {
-      tapPosition = renderObject.localToGlobal(renderObject.size.center(Offset.zero));
-    } else if (renderObject is RenderSliver) {
-      final parentData = renderObject.parentData as SliverPhysicalParentData;
-      tapPosition = parentData.paintOffset;
-    }
-
     showMenu(
       context: context,
       position: RelativeRect.fromRect(
