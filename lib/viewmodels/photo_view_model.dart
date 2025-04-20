@@ -4,6 +4,7 @@ import 'package:archive_manager_v3/models/settings.dart';
 import 'package:archive_manager_v3/models/tag.dart';
 import 'package:archive_manager_v3/viewmodels/home_view_model.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import '../models/photo.dart';
@@ -81,25 +82,38 @@ class PhotoViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateTagName(Tag tag, String newName) async {
+  Future<void> updateTag(Tag tag, String newName, Color newColor, LogicalKeyboardKey newShortcutKey) async {
+    bool hasChanges = false;
+
     if (tag.name != newName) {
       tag.name = newName;
+      hasChanges = true;
+    }
+
+    if (tag.color != newColor) {
+      tag.color = newColor;
+      hasChanges = true;
+    }
+
+    if (tag.shortcutKey != newShortcutKey) {
+      tag.shortcutKey = newShortcutKey;
+      hasChanges = true;
+    }
+
+    if (hasChanges) {
       await tag.save();
 
       // Update all photos that contain this tag to trigger UI refresh
       for (var photo in _photoBox.values) {
         if (photo.tags.any((t) => t.id == tag.id)) {
-          // Force refresh the tag reference in the photo's tags list
           var tagIndex = photo.tags.indexWhere((t) => t.id == tag.id);
           if (tagIndex != -1) {
-            // Replace with the updated tag to ensure UI updates
             photo.tags[tagIndex] = tag;
           }
-          await photo.save(); // Save to persist updates
+          await photo.save();
         }
       }
 
-      // Notify listeners to update the UI
       notifyListeners();
     }
   }
