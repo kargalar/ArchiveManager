@@ -43,7 +43,7 @@ class PhotoViewModel extends ChangeNotifier {
 
   PhotoViewModel(this._photoBox, this._folderBox) {
     _loadFolders();
-    _checkFoldersExistence();
+    checkFoldersExistence();
     _initTagBox();
     _initSettingsBox();
     _setupFolderWatchers();
@@ -121,7 +121,7 @@ class PhotoViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> _checkFoldersExistence() async {
+  Future<void> checkFoldersExistence() async {
     _missingFolders = [];
     for (var folderPath in _folders) {
       if (!await Directory(folderPath).exists()) {
@@ -359,7 +359,8 @@ class PhotoViewModel extends ChangeNotifier {
   }
 
   // Replace an old folder path with a new one
-  void replaceFolder(String oldPath, String newPath) {
+  Future<void> replaceFolder(String oldPath, String newPath) async {
+    await Future.delayed(Duration(milliseconds: 10)); // UI thread için kısa gecikme
     if (_folders.contains(oldPath) && !_folders.contains(newPath)) {
       // 1. Bütün alt klasörlerin path'lerini güncelle
       final subFoldersToUpdate = _folders.where((f) => f == oldPath || f.startsWith(oldPath + Platform.pathSeparator)).toList();
@@ -428,14 +429,14 @@ class PhotoViewModel extends ChangeNotifier {
       for (var nonExistentSubfolder in nonExistentSubfolders) {
         final folderInBox = _folderBox.values.where((f) => f.path == nonExistentSubfolder).toList();
         if (folderInBox.isNotEmpty) {
-          folderInBox.first.delete();
+          await folderInBox.first.delete();
           debugPrint('Deleted non-existent folder from Hive: $nonExistentSubfolder');
         }
 
         // Remove associated photos
         final photosToRemove = _photoBox.values.where((p) => p.path.startsWith(nonExistentSubfolder)).toList();
         for (var photo in photosToRemove) {
-          photo.delete();
+          await photo.delete();
         }
         debugPrint('Removed ${photosToRemove.length} photos associated with non-existent folder');
       }
@@ -455,8 +456,8 @@ class PhotoViewModel extends ChangeNotifier {
               .where((sf) => !nonExistentSubfolders.contains(sf)) // Filter out non-existent ones
               .map((sf) => oldToNewMap[sf] ?? sf));
 
-          folderObj.delete();
-          _folderBox.add(updatedFolder);
+          await folderObj.delete();
+          await _folderBox.add(updatedFolder);
         }
       }
 
@@ -466,7 +467,7 @@ class PhotoViewModel extends ChangeNotifier {
       for (var photo in photosToUpdate) {
         final newPhotoPath = photo.path.replaceFirst(oldPath, newPath);
         photo.path = newPhotoPath;
-        photo.save();
+        await photo.save();
       }
 
       // Yeni path'i seçili yap
@@ -596,14 +597,14 @@ class PhotoViewModel extends ChangeNotifier {
   void toggleDateSort() {
     switch (_dateSortState) {
       case SortState.none:
-        _dateSortState = SortState.ascending;
-        _ratingSortState = SortState.none;
-        break;
-      case SortState.ascending:
         _dateSortState = SortState.descending;
         _ratingSortState = SortState.none;
         break;
       case SortState.descending:
+        _dateSortState = SortState.ascending;
+        _ratingSortState = SortState.none;
+        break;
+      case SortState.ascending:
         _dateSortState = SortState.none;
         break;
     }
@@ -620,14 +621,14 @@ class PhotoViewModel extends ChangeNotifier {
   void toggleRatingSort() {
     switch (_ratingSortState) {
       case SortState.none:
-        _ratingSortState = SortState.ascending;
-        _dateSortState = SortState.none;
-        break;
-      case SortState.ascending:
         _ratingSortState = SortState.descending;
         _dateSortState = SortState.none;
         break;
       case SortState.descending:
+        _ratingSortState = SortState.ascending;
+        _dateSortState = SortState.none;
+        break;
+      case SortState.ascending:
         _ratingSortState = SortState.none;
         break;
     }

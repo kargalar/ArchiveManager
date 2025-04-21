@@ -579,9 +579,10 @@ class _HomePageState extends State<HomePage> {
                                     ),
                                   ),
                                   TextButton(
-                                    onPressed: () {
+                                    onPressed: () async {
                                       // Open file picker
-                                      FilePicker.platform.getDirectoryPath().then((result) {
+                                      try {
+                                        final result = await FilePicker.platform.getDirectoryPath();
                                         if (result != null && context.mounted) {
                                           // Show a loading indicator
                                           final loadingDialogKey = GlobalKey<State>();
@@ -607,43 +608,20 @@ class _HomePageState extends State<HomePage> {
                                           );
 
                                           // Replace the folder
-                                          Future(() => viewModel.replaceFolder(folderPath, result)).then((_) {
-                                            // Close the loading dialog if it's still open
-                                            if (loadingDialogKey.currentContext != null) {
-                                              Navigator.of(loadingDialogKey.currentContext!).pop();
-                                            }
+                                          await viewModel.replaceFolder(folderPath, result);
+                                          // Close the loading dialog if it's still open
+                                          if (loadingDialogKey.currentContext != null) {
+                                            Navigator.of(loadingDialogKey.currentContext!).pop();
+                                          }
 
-                                            // Update the local list
-                                            setState(() {
-                                              currentMissingFolders.remove(folderPath);
-                                            });
-                                          }).catchError((error) {
-                                            // Close the loading dialog if it's still open
-                                            if (loadingDialogKey.currentContext != null) {
-                                              Navigator.of(loadingDialogKey.currentContext!).pop();
-                                            }
-
-                                            // Show error dialog if the widget is still mounted
-                                            if (context.mounted) {
-                                              showDialog(
-                                                context: context,
-                                                builder: (BuildContext errorContext) {
-                                                  return AlertDialog(
-                                                    title: const Text('Error'),
-                                                    content: Text('Failed to replace folder: $error'),
-                                                    actions: [
-                                                      TextButton(
-                                                        onPressed: () => Navigator.of(errorContext).pop(),
-                                                        child: const Text('OK'),
-                                                      ),
-                                                    ],
-                                                  );
-                                                },
-                                              );
-                                            }
+                                          // Update the local list
+                                          setState(() {
+                                            currentMissingFolders.remove(folderPath);
                                           });
+                                          // Eksik klasörleri tekrar kontrol et ve arayüzü güncelle
+                                          await viewModel.checkFoldersExistence();
                                         }
-                                      }).catchError((error) {
+                                      } catch (error) {
                                         // Show error dialog if the widget is still mounted
                                         if (context.mounted) {
                                           showDialog(
@@ -662,7 +640,7 @@ class _HomePageState extends State<HomePage> {
                                             },
                                           );
                                         }
-                                      });
+                                      }
                                     },
                                     style: TextButton.styleFrom(foregroundColor: Colors.blue),
                                     child: const Text("Yeni Path Seç"),

@@ -165,7 +165,7 @@ class _FullScreenImageState extends State<FullScreenImage> {
                                     photoViewModel.setFullscreenAutoNext(_autoNext);
                                   });
                                 },
-                                tooltip: 'Auto Next',
+                                tooltip: 'Auto Next (Shift)',
                               ),
                             ],
                           ),
@@ -219,7 +219,7 @@ class _FullScreenImageState extends State<FullScreenImage> {
                                   color: _currentPhoto.isFavorite ? Colors.red : Colors.white70,
                                 ),
                                 onPressed: () => viewModel.toggleFavorite(_currentPhoto),
-                                tooltip: 'Toggle Favorite',
+                                tooltip: 'Toggle Favorite (F)',
                               ),
                               IconButton(
                                 icon: Icon(Icons.info_outline, color: _showInfo ? Colors.blue : Colors.white70),
@@ -230,12 +230,12 @@ class _FullScreenImageState extends State<FullScreenImage> {
                                     photoViewModel.setShowImageInfo(_showInfo);
                                   });
                                 },
-                                tooltip: _showInfo ? 'Hide Info' : 'Show Info',
+                                tooltip: _showInfo ? 'Hide Info (Ctrl)' : 'Show Info (Ctrl)',
                               ),
                               IconButton(
                                 icon: const Icon(Icons.close, color: Colors.white70),
                                 onPressed: () => Navigator.of(context).pop(),
-                                tooltip: 'Close',
+                                tooltip: 'Close (ESC)',
                               ),
                             ],
                           ),
