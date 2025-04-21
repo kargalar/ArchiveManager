@@ -294,7 +294,14 @@ class _HomePageState extends State<HomePage> {
                   final folder = context.watch<PhotoViewModel>().folders[index];
                   final isRoot = !context.watch<PhotoViewModel>().folderHierarchy.values.any((list) => list.contains(folder));
                   if (!isRoot) return const SizedBox.shrink();
-                  return FolderItem(folder: folder, level: 0);
+                  return FolderItem(
+                    folder: folder,
+                    level: 0,
+                    onMissingFolder: (ctx, missingFolder) {
+                      final missingFolders = [missingFolder];
+                      _showMissingFoldersDialog(ctx, missingFolders);
+                    },
+                  );
                 },
               ),
             ),

@@ -6,11 +6,13 @@ import '../../viewmodels/photo_view_model.dart';
 class FolderItem extends StatelessWidget {
   final String folder;
   final int level;
+  final void Function(BuildContext context, String folder)? onMissingFolder;
 
   const FolderItem({
     super.key,
     required this.folder,
     required this.level,
+    this.onMissingFolder,
   });
 
   @override
@@ -151,7 +153,16 @@ class FolderItem extends StatelessWidget {
                   );
                 },
           child: InkWell(
-            onTap: () => viewModel.selectFolder(folder),
+            onTap: () {
+              final folderExists = Directory(folder).existsSync();
+              if (!folderExists) {
+                if (onMissingFolder != null) {
+                  onMissingFolder!(context, folder);
+                }
+              } else {
+                viewModel.selectFolder(folder);
+              }
+            },
             child: Container(
               padding: EdgeInsets.only(left: 16.0 * level),
               height: 36,
@@ -174,10 +185,10 @@ class FolderItem extends StatelessWidget {
                   Expanded(
                     child: Row(
                       children: [
-                        if (isProblematic) // Conditionally display warning icon
+                        if (isProblematic || !Directory(folder).existsSync()) // Ünlem göster
                           Padding(
                             padding: const EdgeInsets.only(right: 4.0),
-                            child: Icon(Icons.warning, color: hasParentMissing ? Colors.red : Colors.orange, size: 16),
+                            child: Icon(Icons.warning, color: Colors.orange, size: 16),
                           ),
                         Expanded(
                           child: Text(
