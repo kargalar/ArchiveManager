@@ -22,22 +22,91 @@ class FolderItem extends StatelessWidget {
     final folderName = viewModel.getFolderName(folder);
     final isMissing = viewModel.missingFolders.contains(folder); // Check if folder is missing
 
-    Future<void> showDeleteConfirmation() async {
-      return showDialog(
+    // Check if any parent folder is missing
+    bool hasParentMissing = false;
+    String currentPath = folder;
+    while (currentPath.contains(Platform.pathSeparator)) {
+      currentPath = currentPath.substring(0, currentPath.lastIndexOf(Platform.pathSeparator));
+      if (viewModel.missingFolders.contains(currentPath)) {
+        hasParentMissing = true;
+        break;
+      }
+    }
+
+    // Folder is problematic if it's missing or has a missing parent
+    final isProblematic = isMissing || hasParentMissing;
+
+    void showDeleteConfirmation() {
+      // First close the confirmation dialog
+      showDialog(
         context: context,
-        builder: (BuildContext context) {
+        builder: (BuildContext confirmContext) {
           return AlertDialog(
             title: const Text('Delete Folder'),
             content: Text('Are you sure you want to delete "$folderName"?'),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () => Navigator.of(confirmContext).pop(),
                 child: const Text('Cancel'),
               ),
               TextButton(
                 onPressed: () {
-                  viewModel.removeFolder(folder);
-                  Navigator.of(context).pop();
+                  // Close the confirmation dialog
+                  Navigator.of(confirmContext).pop();
+
+                  // Then show a loading dialog
+                  final loadingDialogKey = GlobalKey<State>();
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (BuildContext loadingContext) {
+                      return Dialog(
+                        key: loadingDialogKey,
+                        child: const Padding(
+                          padding: EdgeInsets.all(20.0),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(width: 20),
+                              Text('Deleting folder...'),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+
+                  // Delete the folder
+                  viewModel.removeFolder(folder).then((_) {
+                    // Close the loading dialog if it's still open
+                    if (loadingDialogKey.currentContext != null) {
+                      Navigator.of(loadingDialogKey.currentContext!).pop();
+                    }
+                  }).catchError((error) {
+                    // Close the loading dialog if it's still open
+                    if (loadingDialogKey.currentContext != null) {
+                      Navigator.of(loadingDialogKey.currentContext!).pop();
+                    }
+                    // Show error dialog if the widget is still mounted
+                    if (context.mounted) {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext errorContext) {
+                          return AlertDialog(
+                            title: const Text('Error'),
+                            content: Text('Failed to delete folder: $error'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(errorContext).pop(),
+                                child: const Text('OK'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    }
+                  });
                 },
                 child: const Text('Delete'),
               ),
@@ -51,29 +120,36 @@ class FolderItem extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         InkWell(
-          onSecondaryTap: () {
-            final RenderBox button = context.findRenderObject() as RenderBox;
-            final position = button.localToGlobal(Offset.zero);
-            showMenu(
-              context: context,
-              position: RelativeRect.fromLTRB(
-                position.dx,
-                position.dy + button.size.height,
-                position.dx + button.size.width,
-                position.dy + button.size.height + 100,
-              ),
-              items: [
-                PopupMenuItem(
-                  child: const Text('Delete'),
-                  onTap: () => Future(() => showDeleteConfirmation()),
-                ),
-                PopupMenuItem(
-                  child: const Text('Open in Explorer'),
-                  onTap: () => Process.start('explorer.exe', [folder]),
-                ),
-              ],
-            );
-          },
+          onSecondaryTap: isProblematic
+              ? null
+              : () {
+                  final RenderBox button = context.findRenderObject() as RenderBox;
+                  final position = button.localToGlobal(Offset.zero);
+                  showMenu(
+                    context: context,
+                    position: RelativeRect.fromLTRB(
+                      position.dx,
+                      position.dy + button.size.height,
+                      position.dx + button.size.width,
+                      position.dy + button.size.height + 100,
+                    ),
+                    items: [
+                      PopupMenuItem(
+                        child: const Text('Delete'),
+                        onTap: () {
+                          // We need to use Future.delayed because onTap is called before the menu is closed
+                          Future.delayed(Duration.zero, () {
+                            showDeleteConfirmation();
+                          });
+                        },
+                      ),
+                      PopupMenuItem(
+                        child: const Text('Open in Explorer'),
+                        onTap: () => Process.start('explorer.exe', [folder]),
+                      ),
+                    ],
+                  );
+                },
           child: InkWell(
             onTap: () => viewModel.selectFolder(folder),
             child: Container(
@@ -98,16 +174,16 @@ class FolderItem extends StatelessWidget {
                   Expanded(
                     child: Row(
                       children: [
-                        if (isMissing) // Conditionally display warning icon
-                          const Padding(
-                            padding: EdgeInsets.only(right: 4.0),
-                            child: Icon(Icons.warning, color: Colors.orange, size: 16),
+                        if (isProblematic) // Conditionally display warning icon
+                          Padding(
+                            padding: const EdgeInsets.only(right: 4.0),
+                            child: Icon(Icons.warning, color: hasParentMissing ? Colors.red : Colors.orange, size: 16),
                           ),
                         Expanded(
                           child: Text(
                             folderName,
                             style: TextStyle(
-                              color: isSelected ? Colors.blue : (isMissing ? Colors.orange : Colors.white), // Change color if missing
+                              color: isSelected ? Colors.blue : (hasParentMissing ? Colors.red : (isMissing ? Colors.orange : Colors.white)),
                               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                             ),
                             overflow: TextOverflow.ellipsis,

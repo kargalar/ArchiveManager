@@ -532,65 +532,250 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _showMissingFoldersDialog(BuildContext context, List<String> missingFolders) {
+  void _showMissingFoldersDialog(BuildContext context, List<String> initialMissingFolders) {
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         final viewModel = Provider.of<PhotoViewModel>(context, listen: false);
-        return AlertDialog(
-          title: const Text('Eksik Klasörler'),
-          content: SizedBox(
-            width: 400,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Aşağıdaki klasörler bulunamadı. Lütfen yeni bir yol seçin veya kaldırın:'),
-                  const SizedBox(height: 16),
-                  ...missingFolders.map((folderPath) => Row(
-                        children: [
-                          const Icon(Icons.warning, color: Colors.orange, size: 20),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              viewModel.getFolderName(folderPath),
-                              style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () async {
-                              final result = await FilePicker.platform.getDirectoryPath();
-                              if (result != null) {
-                                viewModel.removeFolder(folderPath);
-                                viewModel.addFolder(result);
-                                Navigator.of(context).pop();
-                              }
-                            },
-                            style: TextButton.styleFrom(foregroundColor: Colors.blue),
-                            child: const Text("Yeni Path Seç"),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              viewModel.removeFolder(folderPath);
-                              Navigator.of(context).pop();
-                            },
-                            style: TextButton.styleFrom(foregroundColor: Colors.red),
-                            child: const Text("Sil"),
-                          ),
-                        ],
-                      )),
-                ],
+
+        // Filter out subfolders of missing folders
+        List<String> filteredMissingFolders = initialMissingFolders.where((folder) {
+          return !viewModel.isSubfolderOfMissingFolder(folder);
+        }).toList();
+
+        // Create a local copy of missing folders to manage in the dialog
+        List<String> currentMissingFolders = List.from(filteredMissingFolders);
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Eksik Klasörler'),
+              content: SizedBox(
+                width: 400,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Aşağıdaki klasörler bulunamadı. Lütfen yeni bir yol seçin veya kaldırın:'),
+                      const SizedBox(height: 16),
+                      if (currentMissingFolders.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16.0),
+                          child: Text('Tüm klasör sorunları çözüldü.', style: TextStyle(color: Colors.green)),
+                        )
+                      else
+                        ...currentMissingFolders.map((folderPath) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8.0),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.warning, color: Colors.orange, size: 20),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      viewModel.getFolderName(folderPath),
+                                      style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      // Open file picker
+                                      FilePicker.platform.getDirectoryPath().then((result) {
+                                        if (result != null && context.mounted) {
+                                          // Show a loading indicator
+                                          final loadingDialogKey = GlobalKey<State>();
+                                          showDialog(
+                                            context: context,
+                                            barrierDismissible: false,
+                                            builder: (BuildContext loadingContext) {
+                                              return Dialog(
+                                                key: loadingDialogKey,
+                                                child: const Padding(
+                                                  padding: EdgeInsets.all(20.0),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      CircularProgressIndicator(),
+                                                      SizedBox(width: 20),
+                                                      Text('Replacing folder...'),
+                                                    ],
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          );
+
+                                          // Replace the folder
+                                          Future(() => viewModel.replaceFolder(folderPath, result)).then((_) {
+                                            // Close the loading dialog if it's still open
+                                            if (loadingDialogKey.currentContext != null) {
+                                              Navigator.of(loadingDialogKey.currentContext!).pop();
+                                            }
+
+                                            // Update the local list
+                                            setState(() {
+                                              currentMissingFolders.remove(folderPath);
+                                            });
+                                          }).catchError((error) {
+                                            // Close the loading dialog if it's still open
+                                            if (loadingDialogKey.currentContext != null) {
+                                              Navigator.of(loadingDialogKey.currentContext!).pop();
+                                            }
+
+                                            // Show error dialog if the widget is still mounted
+                                            if (context.mounted) {
+                                              showDialog(
+                                                context: context,
+                                                builder: (BuildContext errorContext) {
+                                                  return AlertDialog(
+                                                    title: const Text('Error'),
+                                                    content: Text('Failed to replace folder: $error'),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () => Navigator.of(errorContext).pop(),
+                                                        child: const Text('OK'),
+                                                      ),
+                                                    ],
+                                                  );
+                                                },
+                                              );
+                                            }
+                                          });
+                                        }
+                                      }).catchError((error) {
+                                        // Show error dialog if the widget is still mounted
+                                        if (context.mounted) {
+                                          showDialog(
+                                            context: context,
+                                            builder: (BuildContext errorContext) {
+                                              return AlertDialog(
+                                                title: const Text('Error'),
+                                                content: Text('Failed to select folder: $error'),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () => Navigator.of(errorContext).pop(),
+                                                    child: const Text('OK'),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          );
+                                        }
+                                      });
+                                    },
+                                    style: TextButton.styleFrom(foregroundColor: Colors.blue),
+                                    child: const Text("Yeni Path Seç"),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      // Show a confirmation dialog
+                                      showDialog(
+                                        context: context,
+                                        builder: (BuildContext confirmContext) {
+                                          return AlertDialog(
+                                            title: const Text('Delete Folder'),
+                                            content: Text('Are you sure you want to delete "${viewModel.getFolderName(folderPath)}"?'),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.of(confirmContext).pop(),
+                                                child: const Text('Cancel'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () {
+                                                  // Close the confirmation dialog
+                                                  Navigator.of(confirmContext).pop();
+
+                                                  // Show a loading indicator
+                                                  final loadingDialogKey = GlobalKey<State>();
+                                                  showDialog(
+                                                    context: context,
+                                                    barrierDismissible: false,
+                                                    builder: (BuildContext loadingContext) {
+                                                      return Dialog(
+                                                        key: loadingDialogKey,
+                                                        child: const Padding(
+                                                          padding: EdgeInsets.all(20.0),
+                                                          child: Row(
+                                                            mainAxisSize: MainAxisSize.min,
+                                                            children: [
+                                                              CircularProgressIndicator(),
+                                                              SizedBox(width: 20),
+                                                              Text('Deleting folder...'),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      );
+                                                    },
+                                                  );
+
+                                                  // Delete the folder
+                                                  viewModel.removeFolder(folderPath).then((_) {
+                                                    // Close the loading dialog if it's still open
+                                                    if (loadingDialogKey.currentContext != null) {
+                                                      Navigator.of(loadingDialogKey.currentContext!).pop();
+                                                    }
+
+                                                    // Update the local list
+                                                    setState(() {
+                                                      currentMissingFolders.remove(folderPath);
+                                                    });
+                                                  }).catchError((error) {
+                                                    // Close the loading dialog if it's still open
+                                                    if (loadingDialogKey.currentContext != null) {
+                                                      Navigator.of(loadingDialogKey.currentContext!).pop();
+                                                    }
+
+                                                    // Still remove from the UI list even if there was an error
+                                                    setState(() {
+                                                      currentMissingFolders.remove(folderPath);
+                                                    });
+
+                                                    // Show error dialog if the widget is still mounted
+                                                    if (context.mounted) {
+                                                      showDialog(
+                                                        context: context,
+                                                        builder: (BuildContext errorContext) {
+                                                          return AlertDialog(
+                                                            title: const Text('Error'),
+                                                            content: Text('Failed to delete folder: $error'),
+                                                            actions: [
+                                                              TextButton(
+                                                                onPressed: () => Navigator.of(errorContext).pop(),
+                                                                child: const Text('OK'),
+                                                              ),
+                                                            ],
+                                                          );
+                                                        },
+                                                      );
+                                                    }
+                                                  });
+                                                },
+                                                child: const Text('Delete'),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      );
+                                    },
+                                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                    child: const Text("Sil"),
+                                  ),
+                                ],
+                              ),
+                            )),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Kapat'),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Kapat'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -664,7 +849,7 @@ class _HomePageState extends State<HomePage> {
                         const SizedBox(height: 12),
                         Consumer<PhotoViewModel>(
                           builder: (context, viewModel, child) {
-                            final tags = viewModel.tagBox.values.toList();
+                            final tags = viewModel.tagBox?.values.toList() ?? [];
                             return tags.isEmpty
                                 ? const Text('No tags created yet')
                                 : Column(

@@ -6,7 +6,7 @@ part 'photo.g.dart';
 @HiveType(typeId: 0)
 class Photo extends HiveObject {
   @HiveField(0)
-  final String path;
+  String path;
 
   @HiveField(1)
   bool isFavorite;
