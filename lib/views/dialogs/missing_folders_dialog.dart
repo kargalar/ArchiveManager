@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
-import '../../viewmodels/photo_view_model.dart';
+import '../../managers/folder_manager.dart';
 
 class MissingFoldersDialog extends StatelessWidget {
   final List<String> initialMissingFolders;
@@ -10,9 +10,9 @@ class MissingFoldersDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = Provider.of<PhotoViewModel>(context, listen: false);
+    final folderManager = Provider.of<FolderManager>(context, listen: false);
     List<String> filteredMissingFolders = initialMissingFolders.where((folder) {
-      return !viewModel.isSubfolderOfMissingFolder(folder);
+      return !folderManager.isSubfolderOfMissingFolder(folder);
     }).toList();
     List<String> currentMissingFolders = List.from(filteredMissingFolders);
     return StatefulBuilder(
@@ -42,7 +42,7 @@ class MissingFoldersDialog extends StatelessWidget {
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  viewModel.getFolderName(folderPath),
+                                  folderManager.getFolderName(folderPath),
                                   style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -71,12 +71,12 @@ class MissingFoldersDialog extends StatelessWidget {
                                         );
                                       },
                                     );
-                                    await viewModel.replaceFolder(folderPath, result);
-                                    if (Navigator.canPop(context)) Navigator.pop(context); // Close loading
+                                    await folderManager.replaceFolder(folderPath, result);
+                                    if (context.mounted && Navigator.canPop(context)) Navigator.pop(context); // Close loading
                                     setState(() {
                                       currentMissingFolders.remove(folderPath);
                                     });
-                                    await viewModel.checkFoldersExistence();
+                                    await folderManager.checkFoldersExistence();
                                   }
                                 },
                                 style: TextButton.styleFrom(foregroundColor: Colors.blue),
@@ -104,8 +104,8 @@ class MissingFoldersDialog extends StatelessWidget {
                                       );
                                     },
                                   );
-                                  await viewModel.removeFolder(folderPath);
-                                  if (Navigator.canPop(context)) Navigator.pop(context); // Close loading
+                                  await folderManager.removeFolder(folderPath);
+                                  if (context.mounted && Navigator.canPop(context)) Navigator.pop(context); // Close loading
                                   setState(() {
                                     currentMissingFolders.remove(folderPath);
                                   });

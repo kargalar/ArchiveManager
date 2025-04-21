@@ -5,15 +5,21 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:provider/provider.dart';
-// Model ve ViewModel importları
+// Model ve Manager importları
 import 'models/photo.dart';
 import 'models/folder.dart';
 import 'models/tag.dart';
 import 'models/settings.dart';
 import 'models/color_adapter.dart';
 import 'models/keyboard_key_adapter.dart';
-import 'viewmodels/photo_view_model.dart';
+import 'managers/folder_manager.dart';
+import 'managers/photo_manager.dart';
+import 'managers/tag_manager.dart';
+import 'managers/settings_manager.dart';
+import 'managers/filter_manager.dart';
+import 'managers/file_system_watcher.dart';
 import 'viewmodels/home_view_model.dart';
+// PhotoViewModel artık kullanılmıyor, doğrudan manager sınıfları kullanılıyor
 import 'views/home_page.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -61,9 +67,32 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        // Manager providers
         ChangeNotifierProvider(
-          create: (context) => PhotoViewModel(photoBox, folderBox),
+          create: (context) => FolderManager(folderBox, photoBox),
         ),
+        ChangeNotifierProvider(
+          create: (context) => PhotoManager(photoBox),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => SettingsManager(),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => FilterManager(),
+        ),
+        // TagManager needs FilterManager, so we connect them with ProxyProvider
+        ChangeNotifierProxyProvider<FilterManager, TagManager>(
+          create: (context) => TagManager(),
+          update: (context, filterManager, tagManager) {
+            tagManager!.setFilterManager(filterManager);
+            return tagManager;
+          },
+        ),
+        // FileSystemWatcher needs FolderManager, so we create it with ProxyProvider
+        ProxyProvider<FolderManager, FileSystemWatcher>(
+          update: (context, folderManager, _) => FileSystemWatcher(folderBox, folderManager.folders, folderManager.missingFolders),
+        ),
+        // ViewModel providers
         ChangeNotifierProvider(
           create: (context) => HomeViewModel(),
         ),

@@ -1,7 +1,8 @@
 // Ayarlar dialogunu gösteren widget
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../viewmodels/photo_view_model.dart';
+import '../../managers/settings_manager.dart';
+import '../../managers/tag_manager.dart';
 import '../widgets/keyboard_shortcuts_guide.dart';
 import 'tag_dialogs.dart';
 
@@ -41,21 +42,21 @@ class SettingsDialog extends StatelessWidget {
                       const KeyboardShortcutsGuide(),
                       const Text('Photos per Row', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 12),
-                      Consumer<PhotoViewModel>(
-                        builder: (context, viewModel, child) {
+                      Consumer<SettingsManager>(
+                        builder: (context, settingsManager, child) {
                           return Column(
                             children: [
                               Slider(
-                                value: viewModel.photosPerRow.toDouble(),
+                                value: settingsManager.photosPerRow.toDouble(),
                                 min: 1,
                                 max: 10,
                                 divisions: 9,
-                                label: viewModel.photosPerRow.toString(),
+                                label: settingsManager.photosPerRow.toString(),
                                 onChanged: (value) {
-                                  viewModel.setPhotosPerRow(value.toInt());
+                                  settingsManager.setPhotosPerRow(value.toInt());
                                 },
                               ),
-                              Text('${viewModel.photosPerRow} photos'),
+                              Text('${settingsManager.photosPerRow} photos'),
                             ],
                           );
                         },
@@ -72,9 +73,9 @@ class SettingsDialog extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      Consumer<PhotoViewModel>(
-                        builder: (context, viewModel, child) {
-                          final tags = viewModel.tagBox?.values.toList() ?? [];
+                      Consumer<TagManager>(
+                        builder: (context, tagManager, child) {
+                          final tags = tagManager.tags;
                           return tags.isEmpty
                               ? const Text('No tags created yet')
                               : Column(
@@ -103,7 +104,7 @@ class SettingsDialog extends StatelessWidget {
                                                   IconButton(
                                                     icon: const Icon(Icons.delete),
                                                     onPressed: () {
-                                                      viewModel.deleteTag(tag);
+                                                      tagManager.deleteTag(tag);
                                                     },
                                                   ),
                                                 ],

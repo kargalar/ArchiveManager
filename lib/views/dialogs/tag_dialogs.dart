@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../models/tag.dart';
-import '../../viewmodels/photo_view_model.dart';
+import '../../managers/tag_manager.dart';
 
 class AddTagDialog extends StatefulWidget {
   const AddTagDialog({super.key});
@@ -96,10 +96,10 @@ class _AddTagDialogState extends State<AddTagDialog> {
                         context: context,
                         builder: (context) => AlertDialog(
                           title: const Text('Press a key'),
-                          content: RawKeyboardListener(
+                          content: KeyboardListener(
                             focusNode: FocusNode()..requestFocus(),
-                            onKey: (event) {
-                              if (event is RawKeyDownEvent) {
+                            onKeyEvent: (event) {
+                              if (event is KeyDownEvent) {
                                 setState(() => selectedShortcutKey = event.logicalKey);
                                 Navigator.pop(context);
                               }
@@ -122,7 +122,7 @@ class _AddTagDialogState extends State<AddTagDialog> {
                     onPressed: () {
                       if (nameController.text.isNotEmpty && selectedShortcutKey != null) {
                         final tag = Tag(name: nameController.text, color: selectedColor, shortcutKey: selectedShortcutKey!);
-                        context.read<PhotoViewModel>().addTag(tag);
+                        context.read<TagManager>().addTag(tag);
                         Navigator.pop(context);
                       }
                     },
@@ -238,10 +238,10 @@ class _EditTagDialogState extends State<EditTagDialog> {
                         context: context,
                         builder: (context) => AlertDialog(
                           title: const Text('Press a key'),
-                          content: RawKeyboardListener(
+                          content: KeyboardListener(
                             focusNode: FocusNode()..requestFocus(),
-                            onKey: (event) {
-                              if (event is RawKeyDownEvent) {
+                            onKeyEvent: (event) {
+                              if (event is KeyDownEvent) {
                                 setState(() => selectedShortcutKey = event.logicalKey);
                                 Navigator.pop(context);
                               }
@@ -263,8 +263,8 @@ class _EditTagDialogState extends State<EditTagDialog> {
                   ElevatedButton(
                     onPressed: () {
                       if (nameController.text.trim().isNotEmpty) {
-                        final photoViewModel = Provider.of<PhotoViewModel>(context, listen: false);
-                        photoViewModel.updateTag(widget.tag, nameController.text.trim(), selectedColor, selectedShortcutKey);
+                        final tagManager = Provider.of<TagManager>(context, listen: false);
+                        tagManager.updateTag(widget.tag, nameController.text.trim(), selectedColor, selectedShortcutKey);
                         Navigator.pop(context);
                       }
                     },

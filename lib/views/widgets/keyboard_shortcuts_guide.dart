@@ -100,7 +100,7 @@ class KeyboardShortcutsGuide extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withAlpha(51), // 0.2 opacity
                       blurRadius: 2,
                       offset: const Offset(0, 1),
                     ),

@@ -4,7 +4,9 @@ import 'package:archive_manager_v3/views/dialogs/missing_folders_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
-import '../../viewmodels/photo_view_model.dart';
+import '../../managers/folder_manager.dart';
+import '../../managers/tag_manager.dart';
+import '../../managers/filter_manager.dart';
 import '../dialogs/settings_dialog.dart';
 
 class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -42,10 +44,10 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
             onPressed: onCreateFolder,
           ),
           const SizedBox(width: 10),
-          Consumer<PhotoViewModel>(
-            builder: (context, viewModel, child) {
+          Consumer<FolderManager>(
+            builder: (context, folderManager, child) {
               return Text(
-                viewModel.selectedFolder != null ? viewModel.getFolderName(viewModel.selectedFolder!) : 'Photo Archive Manager',
+                folderManager.selectedFolder != null ? folderManager.getFolderName(folderManager.selectedFolder!) : 'Photo Archive Manager',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -58,40 +60,40 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       flexibleSpace: DragToMoveArea(child: Container()),
       actions: [
-        Consumer<PhotoViewModel>(
-          builder: (context, viewModel, child) {
+        Consumer3<FolderManager, TagManager, FilterManager>(
+          builder: (context, folderManager, tagManager, filterManager, child) {
             return Row(
               children: [
-                if (viewModel.missingFolders.isNotEmpty)
+                if (folderManager.missingFolders.isNotEmpty)
                   IconButton(
                     icon: const Icon(Icons.warning, color: Colors.orange, size: 24),
                     tooltip: "Eksik klasörler",
                     onPressed: () {
                       showDialog(
                         context: context,
-                        builder: (_) => MissingFoldersDialog(initialMissingFolders: viewModel.missingFolders),
+                        builder: (_) => MissingFoldersDialog(initialMissingFolders: folderManager.missingFolders),
                       );
                     },
                   ),
-                if (viewModel.tags.isNotEmpty)
+                if (tagManager.tags.isNotEmpty)
                   Container(
                     constraints: const BoxConstraints(maxWidth: 400),
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
-                        children: viewModel.tags
+                        children: tagManager.tags
                             .map((tag) => Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 2),
                                   child: InkWell(
-                                    onTap: () => viewModel.toggleTagFilter(tag),
-                                    onSecondaryTap: () => viewModel.removeTagFilter(tag),
+                                    onTap: () => tagManager.toggleTagFilter(tag),
+                                    onSecondaryTap: () => tagManager.removeTagFilter(tag),
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: viewModel.selectedTags.contains(tag) ? tag.color.withOpacity(0.8) : tag.color.withOpacity(0.2),
+                                        color: tagManager.selectedTags.contains(tag) ? tag.color.withAlpha(204) : tag.color.withAlpha(51), // 0.8 and 0.2 opacity
                                         borderRadius: BorderRadius.circular(6),
                                         border: Border.all(
-                                          color: viewModel.selectedTags.contains(tag) ? tag.color : tag.color.withOpacity(0.5),
+                                          color: tagManager.selectedTags.contains(tag) ? tag.color : tag.color.withAlpha(128), // 0.5 opacity
                                           width: 1,
                                         ),
                                       ),
@@ -99,8 +101,8 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                                         tag.name,
                                         style: TextStyle(
                                           fontSize: 12,
-                                          color: viewModel.selectedTags.contains(tag) ? Colors.white : Colors.white70,
-                                          fontWeight: viewModel.selectedTags.contains(tag) ? FontWeight.bold : FontWeight.normal,
+                                          color: tagManager.selectedTags.contains(tag) ? Colors.white : Colors.white70,
+                                          fontWeight: tagManager.selectedTags.contains(tag) ? FontWeight.bold : FontWeight.normal,
                                         ),
                                       ),
                                     ),
@@ -112,39 +114,48 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                   ),
                 const SizedBox(width: 8),
                 GestureDetector(
-                  onSecondaryTap: () => viewModel.resetFavoriteFilter(),
+                  onSecondaryTap: () => filterManager.resetFavoriteFilter(),
                   child: IconButton(
-                    icon: Icon(_getFavoriteIcon(viewModel.favoriteFilterMode)),
-                    color: _getFavoriteColor(viewModel.favoriteFilterMode),
-                    onPressed: () => viewModel.toggleFavoritesFilter(),
-                    tooltip: _getFavoriteTooltip(viewModel.favoriteFilterMode),
+                    icon: Icon(_getFavoriteIcon(filterManager.favoriteFilterMode)),
+                    color: _getFavoriteColor(filterManager.favoriteFilterMode),
+                    onPressed: () => filterManager.toggleFavoritesFilter(),
+                    tooltip: _getFavoriteTooltip(filterManager.favoriteFilterMode),
                   ),
                 ),
                 GestureDetector(
-                  onSecondaryTap: () => viewModel.resetTagFilter(),
+                  onSecondaryTap: () {
+                    filterManager.resetTagFilter();
+                    tagManager.clearTagFilters();
+                  },
                   child: IconButton(
                     icon: Icon(
-                      viewModel.tagFilterMode == 'none'
+                      filterManager.tagFilterMode == 'none'
                           ? Icons.label_outline
-                          : viewModel.tagFilterMode == 'untagged'
+                          : filterManager.tagFilterMode == 'untagged'
                               ? Icons.label_off
-                              : viewModel.tagFilterMode == 'tagged'
+                              : filterManager.tagFilterMode == 'tagged'
                                   ? Icons.label
                                   : Icons.label, // filtered mode
-                      color: viewModel.tagFilterMode == 'none'
+                      color: filterManager.tagFilterMode == 'none'
                           ? Colors.white70
-                          : viewModel.tagFilterMode == 'untagged'
+                          : filterManager.tagFilterMode == 'untagged'
                               ? Colors.green
-                              : viewModel.tagFilterMode == 'tagged'
+                              : filterManager.tagFilterMode == 'tagged'
                                   ? Colors.blue
                                   : Colors.orange, // filtered mode
                     ),
-                    onPressed: () => viewModel.toggleTagFilterMode(),
-                    tooltip: viewModel.tagFilterMode == 'none'
+                    onPressed: () {
+                      if (tagManager.selectedTags.isNotEmpty) {
+                        filterManager.setTagFilterMode('filtered');
+                      } else {
+                        filterManager.toggleTagFilterMode();
+                      }
+                    },
+                    tooltip: filterManager.tagFilterMode == 'none'
                         ? 'Filter by Tags'
-                        : viewModel.tagFilterMode == 'untagged'
+                        : filterManager.tagFilterMode == 'untagged'
                             ? 'Show Untagged Only'
-                            : viewModel.tagFilterMode == 'tagged'
+                            : filterManager.tagFilterMode == 'tagged'
                                 ? 'Show Tagged Only'
                                 : 'Clear Tag Filters',
                   ),
@@ -157,17 +168,17 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                     children: [
                       Expanded(
                         child: RangeSlider(
-                          values: RangeValues(viewModel.minRatingFilter, viewModel.maxRatingFilter),
+                          values: RangeValues(filterManager.minRatingFilter, filterManager.maxRatingFilter),
                           min: 0,
                           max: 7,
                           divisions: 5,
                           onChanged: (RangeValues values) {
-                            viewModel.setRatingFilter(values.start, values.end);
+                            filterManager.setRatingFilter(values.start, values.end);
                           },
                         ),
                       ),
                       Text(
-                        "${viewModel.minRatingFilter.toInt()}-${viewModel.maxRatingFilter.toInt()}",
+                        "${filterManager.minRatingFilter.toInt()}-${filterManager.maxRatingFilter.toInt()}",
                         style: const TextStyle(color: Colors.white),
                       ),
                     ],
@@ -176,40 +187,40 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                 const SizedBox(width: 8),
                 GestureDetector(
                   onSecondaryTap: () {
-                    viewModel.setRatingFilter(0, 7);
-                    viewModel.resetRatingSort();
+                    filterManager.setRatingFilter(0, 7);
+                    filterManager.resetRatingSort();
                   },
                   child: TextButton.icon(
-                    onPressed: viewModel.toggleRatingSort,
+                    onPressed: () => filterManager.toggleRatingSort(),
                     icon: Icon(
-                        viewModel.ratingSortState == SortState.ascending
+                        filterManager.ratingSortState == SortState.ascending
                             ? Icons.arrow_upward
-                            : viewModel.ratingSortState == SortState.descending
+                            : filterManager.ratingSortState == SortState.descending
                                 ? Icons.arrow_downward
                                 : Icons.remove,
                         size: 16),
                     label: const Text('Rating'),
                     style: TextButton.styleFrom(
-                      foregroundColor: viewModel.ratingSortState != SortState.none ? Colors.blue : Colors.white,
+                      foregroundColor: filterManager.ratingSortState != SortState.none ? Colors.blue : Colors.white,
                     ),
                   ),
                 ),
                 GestureDetector(
                   onSecondaryTap: () {
-                    viewModel.resetDateSort();
+                    filterManager.resetDateSort();
                   },
                   child: TextButton.icon(
-                    onPressed: viewModel.toggleDateSort,
+                    onPressed: () => filterManager.toggleDateSort(),
                     icon: Icon(
-                        viewModel.dateSortState == SortState.ascending
+                        filterManager.dateSortState == SortState.ascending
                             ? Icons.arrow_upward
-                            : viewModel.dateSortState == SortState.descending
+                            : filterManager.dateSortState == SortState.descending
                                 ? Icons.arrow_downward
                                 : Icons.remove,
                         size: 16),
                     label: const Text('Date'),
                     style: TextButton.styleFrom(
-                      foregroundColor: viewModel.dateSortState != SortState.none ? Colors.blue : Colors.white,
+                      foregroundColor: filterManager.dateSortState != SortState.none ? Colors.blue : Colors.white,
                     ),
                   ),
                 ),

@@ -5,7 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../models/photo.dart';
-import '../../viewmodels/photo_view_model.dart';
+import '../../managers/folder_manager.dart';
+import '../../managers/photo_manager.dart';
+import '../../managers/tag_manager.dart';
+import '../../managers/settings_manager.dart';
+import '../../managers/filter_manager.dart';
 import '../../viewmodels/home_view_model.dart';
 
 // Fotoğrafları grid (ızgara) şeklinde gösteren widget.
@@ -15,16 +19,21 @@ class PhotoGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final folderManager = Provider.of<FolderManager>(context);
+    final photoManager = Provider.of<PhotoManager>(context);
+    final tagManager = Provider.of<TagManager>(context);
+    final settingsManager = Provider.of<SettingsManager>(context);
+    final homeViewModel = Provider.of<HomeViewModel>(context);
+    final filterManager = Provider.of<FilterManager>(context);
+
     return FocusScope(
       child: Focus(
         autofocus: true,
-        onKey: (node, event) {
-          if (event is RawKeyDownEvent) {
-            final homeViewModel = context.read<HomeViewModel>();
-            final photoViewModel = context.read<PhotoViewModel>();
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent) {
             if (event.logicalKey == LogicalKeyboardKey.keyF) {
               if (homeViewModel.selectedPhoto != null) {
-                photoViewModel.toggleFavorite(homeViewModel.selectedPhoto!);
+                photoManager.toggleFavorite(homeViewModel.selectedPhoto!);
                 return KeyEventResult.handled;
               }
             } else if (event.logicalKey == LogicalKeyboardKey.digit1 ||
@@ -36,47 +45,51 @@ class PhotoGrid extends StatelessWidget {
                 event.logicalKey == LogicalKeyboardKey.digit7) {
               if (homeViewModel.selectedPhoto != null) {
                 final rating = int.parse(event.logicalKey.keyLabel);
-                photoViewModel.setRating(homeViewModel.selectedPhoto!, rating);
+                photoManager.setRating(homeViewModel.selectedPhoto!, rating);
                 return KeyEventResult.handled;
               }
             }
-            final tags = photoViewModel.tags;
+            final tags = tagManager.tags;
             for (var tag in tags) {
               if (event.logicalKey == tag.shortcutKey && homeViewModel.selectedPhoto != null) {
-                photoViewModel.toggleTag(homeViewModel.selectedPhoto!, tag);
+                tagManager.toggleTag(homeViewModel.selectedPhoto!, tag);
                 break;
               }
             }
           }
           return KeyEventResult.ignored;
         },
-        child: Consumer2<PhotoViewModel, HomeViewModel>(
-          builder: (context, photoViewModel, homeViewModel, child) {
-            if (photoViewModel.selectedFolder == null) {
+        child: Builder(
+          builder: (context) {
+            if (folderManager.selectedFolder == null) {
               return const Center(
                 child: Text('Select a folder to view images'),
               );
             }
 
-            return _buildGrid(context, photoViewModel, homeViewModel);
+            return _buildGrid(context, folderManager, photoManager, tagManager, settingsManager, filterManager, homeViewModel);
           },
         ),
       ),
     );
   }
 
-  Widget _buildGrid(BuildContext context, PhotoViewModel photoViewModel, HomeViewModel homeViewModel) {
+  Widget _buildGrid(BuildContext context, FolderManager folderManager, PhotoManager photoManager, TagManager tagManager, SettingsManager settingsManager, FilterManager filterManager, HomeViewModel homeViewModel) {
+    final filteredPhotos = filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags);
+    // Apply sorting after filtering
+    filterManager.sortPhotos(filteredPhotos);
+
     return Column(
       children: [
         Expanded(
           child: GridView.builder(
             padding: const EdgeInsets.all(8),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: photoViewModel.photosPerRow,
+              crossAxisCount: settingsManager.photosPerRow,
             ),
-            itemCount: photoViewModel.filteredPhotos.length,
+            itemCount: filteredPhotos.length,
             itemBuilder: (context, index) {
-              final photo = photoViewModel.filteredPhotos[index];
+              final photo = filteredPhotos[index];
               return MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: Listener(
@@ -95,13 +108,13 @@ class PhotoGrid extends StatelessWidget {
                     onTap: () => homeViewModel.handlePhotoTap(photo),
                     onSecondaryTapDown: (details) {
                       homeViewModel.handlePhotoTap(photo);
-                      _showPhotoContextMenu(context, photo, photoViewModel, details.globalPosition);
+                      _showPhotoContextMenu(context, photo, photoManager, tagManager, details.globalPosition);
                     },
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        _buildPhotoContainer(photo, homeViewModel, context),
-                        _buildPhotoOverlay(photo, photoViewModel),
+                        _buildPhotoContainer(photo, homeViewModel, context, settingsManager),
+                        _buildPhotoOverlay(photo, tagManager),
                       ],
                     ),
                   ),
@@ -114,8 +127,7 @@ class PhotoGrid extends StatelessWidget {
     );
   }
 
-  Widget _buildPhotoContainer(Photo photo, HomeViewModel homeViewModel, BuildContext context) {
-    final photoViewModel = context.read<PhotoViewModel>();
+  Widget _buildPhotoContainer(Photo photo, HomeViewModel homeViewModel, BuildContext context, SettingsManager settingsManager) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
@@ -123,7 +135,7 @@ class PhotoGrid extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withAlpha(51), // 0.2 opacity
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -134,19 +146,19 @@ class PhotoGrid extends StatelessWidget {
         child: Image.file(
           File(photo.path),
           fit: BoxFit.cover,
-          cacheHeight: photoViewModel.photosPerRow == 1
+          cacheHeight: settingsManager.photosPerRow == 1
               ? 4000
-              : photoViewModel.photosPerRow == 2
+              : settingsManager.photosPerRow == 2
                   ? 2000
-                  : photoViewModel.photosPerRow == 3
+                  : settingsManager.photosPerRow == 3
                       ? 1000
-                      : photoViewModel.photosPerRow == 4
+                      : settingsManager.photosPerRow == 4
                           ? 700
-                          : photoViewModel.photosPerRow == 5
+                          : settingsManager.photosPerRow == 5
                               ? 600
-                              : photoViewModel.photosPerRow == 6
+                              : settingsManager.photosPerRow == 6
                                   ? 500
-                                  : photoViewModel.photosPerRow == 7
+                                  : settingsManager.photosPerRow == 7
                                       ? 400
                                       : 300,
         ),
@@ -154,7 +166,7 @@ class PhotoGrid extends StatelessWidget {
     );
   }
 
-  void _showPhotoContextMenu(BuildContext context, Photo photo, PhotoViewModel viewModel, Offset tapPosition) {
+  void _showPhotoContextMenu(BuildContext context, Photo photo, PhotoManager photoManager, TagManager tagManager, Offset tapPosition) {
     final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     showMenu(
       context: context,
@@ -168,17 +180,17 @@ class PhotoGrid extends StatelessWidget {
       items: [
         PopupMenuItem(
           child: const Text('Favorilere Ekle/Çıkar'),
-          onTap: () => viewModel.toggleFavorite(photo),
+          onTap: () => photoManager.toggleFavorite(photo),
         ),
         PopupMenuItem(
           child: const Text('Sil'),
-          onTap: () => viewModel.deletePhoto(photo),
+          onTap: () => photoManager.deletePhoto(photo),
         ),
       ],
     );
   }
 
-  Widget _buildPhotoOverlay(Photo photo, PhotoViewModel viewModel) {
+  Widget _buildPhotoOverlay(Photo photo, TagManager tagManager) {
     return Stack(
       children: [
         if (photo.tags.isNotEmpty)

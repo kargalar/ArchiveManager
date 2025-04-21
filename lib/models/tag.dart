@@ -15,7 +15,7 @@ class Tag extends HiveObject {
   String name;
 
   @HiveField(1)
-  int get colorValue => color.value;
+  int get colorValue => color.toARGB32();
   set colorValue(int value) => color = Color(value);
 
   @HiveField(2)

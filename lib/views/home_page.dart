@@ -3,7 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
-import '../viewmodels/photo_view_model.dart';
+import '../managers/folder_manager.dart';
+import '../managers/photo_manager.dart';
+import '../managers/tag_manager.dart';
+import '../managers/settings_manager.dart';
 import '../viewmodels/home_view_model.dart';
 import 'widgets/folder_item.dart';
 import 'widgets/photo_grid.dart';
@@ -27,9 +30,22 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
-    RawKeyboard.instance.addListener(_handleKeyEvent);
+    ServicesBinding.instance.keyboard.addHandler(_handleKeyboardEvent);
     GestureBinding.instance.pointerRouter.addGlobalRoute(_handlePointerEvent);
-    final missingFolders = Provider.of<PhotoViewModel>(context, listen: false).missingFolders;
+
+    final folderManager = Provider.of<FolderManager>(context, listen: false);
+    final photoManager = Provider.of<PhotoManager>(context, listen: false);
+
+    // Klasör seçildiğinde fotoğrafları yükle
+    folderManager.addListener(() {
+      if (folderManager.selectedFolder != null) {
+        photoManager.loadPhotosFromFolder(folderManager.selectedFolder!);
+      } else {
+        photoManager.clearPhotos();
+      }
+    });
+
+    final missingFolders = folderManager.missingFolders;
     if (missingFolders.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         showDialog(context: context, builder: (_) => MissingFoldersDialog(initialMissingFolders: missingFolders));
@@ -39,15 +55,22 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
-    RawKeyboard.instance.removeListener(_handleKeyEvent);
+    ServicesBinding.instance.keyboard.removeHandler(_handleKeyboardEvent);
     GestureBinding.instance.pointerRouter.removeGlobalRoute(_handlePointerEvent);
     super.dispose();
   }
 
-  void _handleKeyEvent(RawKeyEvent event) {
-    if (event is RawKeyDownEvent) {
-      final photoViewModel = context.read<PhotoViewModel>();
-      _homeViewModel.handleKeyEvent(event, context, photoViewModel);
+  bool _handleKeyboardEvent(KeyEvent event) {
+    _handleKeyEvent(event);
+    return false; // Let other handlers process the event too
+  }
+
+  void _handleKeyEvent(KeyEvent event) {
+    if (event is KeyDownEvent) {
+      final folderManager = context.read<FolderManager>();
+      final photoManager = context.read<PhotoManager>();
+      final tagManager = context.read<TagManager>();
+      _homeViewModel.handleKeyEvent(event, context, folderManager, photoManager, tagManager);
       if (event.logicalKey == LogicalKeyboardKey.enter && _homeViewModel.selectedPhoto != null) {
         Navigator.of(context).push(
           MaterialPageRoute(
@@ -59,13 +82,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _handlePointerEvent(PointerEvent event) {
-    if (event is PointerScrollEvent && RawKeyboard.instance.keysPressed.contains(LogicalKeyboardKey.controlLeft)) {
+    if (event is PointerScrollEvent && HardwareKeyboard.instance.isControlPressed) {
       final delta = event.scrollDelta.dy;
-      final viewModel = context.read<PhotoViewModel>();
+      final settingsManager = Provider.of<SettingsManager>(context, listen: false);
       if (delta < 0) {
-        viewModel.setPhotosPerRow(viewModel.photosPerRow + 1);
+        settingsManager.setPhotosPerRow(settingsManager.photosPerRow + 1);
       } else if (delta > 0) {
-        viewModel.setPhotosPerRow(viewModel.photosPerRow - 1);
+        settingsManager.setPhotosPerRow(settingsManager.photosPerRow - 1);
       }
     }
   }
@@ -77,9 +100,10 @@ class _HomePageState extends State<HomePage> {
         isMenuExpanded: _isMenuExpanded,
         onMenuToggle: () => setState(() => _isMenuExpanded = !_isMenuExpanded),
         onCreateFolder: () async {
+          final folderManager = Provider.of<FolderManager>(context, listen: false);
           final result = await FilePicker.platform.getDirectoryPath();
-          if (result != null) {
-            context.read<PhotoViewModel>().addFolder(result);
+          if (result != null && mounted) {
+            folderManager.addFolder(result);
           }
         },
         width: MediaQuery.of(context).size.width,
@@ -90,10 +114,10 @@ class _HomePageState extends State<HomePage> {
             Expanded(
               flex: (_dividerPosition * 100).toInt(),
               child: ListView.builder(
-                itemCount: context.watch<PhotoViewModel>().folders.length,
+                itemCount: context.watch<FolderManager>().folders.length,
                 itemBuilder: (context, index) {
-                  final folder = context.watch<PhotoViewModel>().folders[index];
-                  final isRoot = !context.watch<PhotoViewModel>().folderHierarchy.values.any((list) => list.contains(folder));
+                  final folder = context.watch<FolderManager>().folders[index];
+                  final isRoot = !context.watch<FolderManager>().folderHierarchy.values.any((list) => list.contains(folder));
                   if (!isRoot) return const SizedBox.shrink();
                   return FolderItem(
                     folder: folder,

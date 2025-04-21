@@ -3,13 +3,19 @@ import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import '../models/photo.dart';
 import '../models/tag.dart';
+import 'filter_manager.dart';
 
 class TagManager extends ChangeNotifier {
   Box<Tag>? _tagBox;
   final List<Tag> _selectedTags = [];
+  FilterManager? _filterManager;
 
   TagManager() {
     _initTagBox();
+  }
+
+  void setFilterManager(FilterManager filterManager) {
+    _filterManager = filterManager;
   }
 
   Box<Tag>? get tagBox => _tagBox;
@@ -90,8 +96,14 @@ class TagManager extends ChangeNotifier {
   void toggleTagFilter(Tag tag) {
     if (_selectedTags.contains(tag)) {
       _selectedTags.remove(tag);
+      if (_selectedTags.isEmpty && _filterManager != null) {
+        _filterManager!.resetTagFilter();
+      }
     } else {
       _selectedTags.add(tag);
+      if (_filterManager != null) {
+        _filterManager!.setTagFilterMode('filtered');
+      }
     }
     notifyListeners();
   }

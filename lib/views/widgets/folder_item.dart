@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
-import '../../viewmodels/photo_view_model.dart';
+import '../../managers/folder_manager.dart';
 
 // Klasör ağacında bir klasörü ve alt klasörlerini gösteren widget.
 // Klasör seçimi, silme ve explorer'da açma işlemleri içerir.
@@ -19,19 +19,19 @@ class FolderItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = context.watch<PhotoViewModel>();
-    final hasChildren = viewModel.folderHierarchy[folder]?.isNotEmpty ?? false;
-    final isExpanded = viewModel.isFolderExpanded(folder);
-    final isSelected = viewModel.selectedFolder == folder;
-    final folderName = viewModel.getFolderName(folder);
-    final isMissing = viewModel.missingFolders.contains(folder); // Check if folder is missing
+    final folderManager = context.watch<FolderManager>();
+    final hasChildren = folderManager.folderHierarchy[folder]?.isNotEmpty ?? false;
+    final isExpanded = folderManager.isFolderExpanded(folder);
+    final isSelected = folderManager.selectedFolder == folder;
+    final folderName = folderManager.getFolderName(folder);
+    final isMissing = folderManager.missingFolders.contains(folder); // Check if folder is missing
 
     // Check if any parent folder is missing
     bool hasParentMissing = false;
     String currentPath = folder;
     while (currentPath.contains(Platform.pathSeparator)) {
       currentPath = currentPath.substring(0, currentPath.lastIndexOf(Platform.pathSeparator));
-      if (viewModel.missingFolders.contains(currentPath)) {
+      if (folderManager.missingFolders.contains(currentPath)) {
         hasParentMissing = true;
         break;
       }
@@ -82,7 +82,7 @@ class FolderItem extends StatelessWidget {
                   );
 
                   // Delete the folder
-                  viewModel.removeFolder(folder).then((_) {
+                  folderManager.removeFolder(folder).then((_) {
                     // Close the loading dialog if it's still open
                     if (loadingDialogKey.currentContext != null) {
                       Navigator.of(loadingDialogKey.currentContext!).pop();
@@ -162,7 +162,7 @@ class FolderItem extends StatelessWidget {
                   onMissingFolder!(context, folder);
                 }
               } else {
-                viewModel.selectFolder(folder);
+                folderManager.selectFolder(folder);
               }
             },
             child: Container(
@@ -176,7 +176,7 @@ class FolderItem extends StatelessWidget {
                         isExpanded ? Icons.expand_more : Icons.chevron_right,
                         size: 20,
                       ),
-                      onPressed: () => viewModel.toggleFolderExpanded(folder),
+                      onPressed: () => folderManager.toggleFolderExpanded(folder),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     )
@@ -211,7 +211,7 @@ class FolderItem extends StatelessWidget {
           ),
         ),
         if (isExpanded && hasChildren)
-          ...viewModel.folderHierarchy[folder]!.map(
+          ...folderManager.folderHierarchy[folder]!.map(
             (childPath) => FolderItem(folder: childPath, level: level + 1),
           ),
       ],
