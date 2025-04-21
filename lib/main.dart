@@ -28,17 +28,19 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
 
-  // Pencere ayarları (Windows için)
+  // Pencere kapatma olayını dinle
+  windowManager.setPreventClose(true);
+
+  // Minimal pencere ayarları - sadece görünürlük için
+  // Gerçek boyut ve konum ayarları daha sonra yüklenecek
   WindowOptions windowOptions = const WindowOptions(
-    size: Size(1280, 720),
-    center: true,
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.hidden,
   );
+
   await windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.show();
-    await windowManager.focus();
   });
 
   // Hive ve adapter kayıtları
@@ -57,11 +59,81 @@ void main() async {
   runApp(MyApp(photoBox: photoBox, folderBox: folderBox));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   final Box<Photo> photoBox;
   final Box<Folder> folderBox;
 
   const MyApp({super.key, required this.photoBox, required this.folderBox});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WindowListener {
+  late SettingsManager _settingsManager;
+
+  @override
+  void initState() {
+    super.initState();
+    windowManager.addListener(this);
+    _settingsManager = SettingsManager();
+
+    windowManager.setMinimumSize(const Size(800, 450));
+
+    // Uygulama başlatıldığında pencere konumunu ve boyutunu geri yükle
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      debugPrint('Waiting for settings to initialize...');
+
+      // Ayarların başlatılmasını bekle (en fazla 5 saniye)
+      for (int i = 0; i < 50; i++) {
+        if (_settingsManager.isInitialized) break;
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
+      debugPrint('Settings initialized: ${_settingsManager.isInitialized}');
+
+      // Kaydedilen ayarlar varsa onları yükle, yoksa varsayılan ayarları kullan
+      final hasSettings = await _settingsManager.restoreWindowPosition();
+
+      if (!hasSettings) {
+        debugPrint('Using default window settings');
+        // Varsayılan pencere ayarlarını uygula
+        await windowManager.setBounds(const Rect.fromLTWH(100, 100, 1280, 720));
+        await windowManager.center();
+      }
+
+      // Her durumda pencereyi öne getir
+      await windowManager.focus();
+
+      // Debug için mevcut pencere konumunu yazdır
+      final bounds = await windowManager.getBounds();
+      debugPrint('Current window bounds: ${bounds.width}x${bounds.height} at (${bounds.left},${bounds.top})');
+    });
+  }
+
+  @override
+  void dispose() {
+    windowManager.removeListener(this);
+    super.dispose();
+  }
+
+  @override
+  void onWindowClose() async {
+    // Sadece uygulama kapat
+    await windowManager.destroy();
+  }
+
+  @override
+  void onWindowResized() async {
+    // Pencere boyutu değiştiğinde kaydet
+    await _settingsManager.saveWindowPosition();
+  }
+
+  @override
+  void onWindowMoved() async {
+    // Pencere konumu değiştiğinde kaydet
+    await _settingsManager.saveWindowPosition();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,13 +141,13 @@ class MyApp extends StatelessWidget {
       providers: [
         // Manager providers
         ChangeNotifierProvider(
-          create: (context) => FolderManager(folderBox, photoBox),
+          create: (context) => FolderManager(widget.folderBox, widget.photoBox),
         ),
         ChangeNotifierProvider(
-          create: (context) => PhotoManager(photoBox),
+          create: (context) => PhotoManager(widget.photoBox),
         ),
-        ChangeNotifierProvider(
-          create: (context) => SettingsManager(),
+        ChangeNotifierProvider.value(
+          value: _settingsManager,
         ),
         ChangeNotifierProvider(
           create: (context) => FilterManager(),
@@ -90,7 +162,7 @@ class MyApp extends StatelessWidget {
         ),
         // FileSystemWatcher needs FolderManager, so we create it with ProxyProvider
         ProxyProvider<FolderManager, FileSystemWatcher>(
-          update: (context, folderManager, _) => FileSystemWatcher(folderBox, folderManager.folders, folderManager.missingFolders),
+          update: (context, folderManager, _) => FileSystemWatcher(widget.folderBox, folderManager.folders, folderManager.missingFolders),
         ),
         // ViewModel providers
         ChangeNotifierProvider(

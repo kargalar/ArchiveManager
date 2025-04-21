@@ -24,7 +24,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late HomeViewModel _homeViewModel;
   bool _isMenuExpanded = true;
-  double _dividerPosition = 0.3;
+  late double _dividerPosition;
 
   @override
   void initState() {
@@ -35,6 +35,21 @@ class _HomePageState extends State<HomePage> {
 
     final folderManager = Provider.of<FolderManager>(context, listen: false);
     final photoManager = Provider.of<PhotoManager>(context, listen: false);
+    final settingsManager = Provider.of<SettingsManager>(context, listen: false);
+
+    // Ayarlardan bölünmüş görünüm konumunu yükle
+    _dividerPosition = settingsManager.dividerPosition;
+
+    // SettingsManager'daki değişiklikleri dinle
+    settingsManager.addListener(() {
+      if (mounted && _dividerPosition != settingsManager.dividerPosition) {
+        setState(() {
+          _dividerPosition = settingsManager.dividerPosition;
+        });
+        debugPrint('DividerPosition updated from settings: $_dividerPosition');
+      }
+    });
+    debugPrint('Initial DividerPosition: $_dividerPosition');
 
     // Klasör seçildiğinde fotoğrafları yükle
     folderManager.addListener(() {
@@ -136,12 +151,16 @@ class _HomePageState extends State<HomePage> {
                   _dividerPosition = _dividerPosition.clamp(0.1, 0.3);
                 });
               },
+              onPanEnd: (_) {
+                final settingsManager = Provider.of<SettingsManager>(context, listen: false);
+                settingsManager.setDividerPosition(_dividerPosition);
+              },
               child: MouseRegion(
                 cursor: SystemMouseCursors.resizeLeftRight,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Container(
-                    width: 1,
+                    width: 0.5,
                     color: Colors.grey[300],
                   ),
                 ),

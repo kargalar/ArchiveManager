@@ -33,8 +33,11 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
   late final Box<Tag> _tagBox;
   final TransformationController _transformationController = TransformationController();
   final double _minScale = 1.0;
-  final double _maxScale = 10.0;
+  final double _maxScale = 20.0;
   double _currentScale = 1.0;
+  bool _isZooming = false;
+  bool _isDragging = false;
+  Offset? _lastDragPosition;
 
   List<Tag> get tags => _tagBox.values.toList();
 
@@ -77,6 +80,11 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
 
     // Ölçek değişmediyse işlem yapma
     if (newScale == _currentScale) return;
+
+    // Zoom başladığında _isZooming'i true yap
+    setState(() {
+      _isZooming = true;
+    });
 
     // Ekran boyutlarını al
     final Size viewSize = MediaQuery.of(context).size;
@@ -133,6 +141,17 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
 
     // Mevcut ölçeği güncelle
     _currentScale = newScale;
+
+    // Zoom işlemi tamamlandığında _isZooming'i false yap
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        setState(() {
+          _isZooming = false;
+          // Cursor durumu otomatik olarak güncellenecek
+          // (_currentScale değerine göre MouseRegion widget'i cursor'u güncelleyecek)
+        });
+      }
+    });
   }
 
   @override
@@ -226,38 +245,146 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
         backgroundColor: Colors.black,
         body: Stack(
           children: [
-            Listener(
-              onPointerDown: (event) {
-                if (event.buttons == kMiddleMouseButton) {
-                  Navigator.of(context).pop();
-                }
-              },
-              onPointerSignal: (pointerSignal) {
-                if (pointerSignal is PointerScrollEvent) {
-                  _handleMouseScroll(pointerSignal);
-                }
-              },
-              child: Center(
-                child: SizedBox.expand(
-                  child: InteractiveViewer(
-                    transformationController: _transformationController,
-                    minScale: _minScale,
-                    maxScale: _maxScale,
-                    onInteractionEnd: (details) {
-                      // Güncellenen ölçeği kaydet
-                      final scale = _transformationController.value.getMaxScaleOnAxis();
+            MouseRegion(
+                cursor: _isDragging
+                    ? SystemMouseCursors.grabbing
+                    : _isZooming
+                        ? SystemMouseCursors.zoomIn
+                        : _currentScale > _minScale
+                            ? SystemMouseCursors.grab // Zoom yapılmışsa grab cursor göster (sürüklenebilir)
+                            : SystemMouseCursors.click, // Zoom yapılmamışsa normal cursor göster
+                child: Listener(
+                  onPointerDown: (event) {
+                    if (event.buttons == kMiddleMouseButton) {
+                      // Eğer zoom yapılmışsa sürükleme, değilse çıkış yap
+                      if (_currentScale > _minScale) {
+                        // Zoom yapılmışsa sürükleme başlat
+                        setState(() {
+                          _isDragging = true;
+                          _lastDragPosition = event.position;
+                        });
+                      } else {
+                        // Zoom yapılmamışsa çıkış yap (ESC gibi)
+                        Navigator.of(context).pop();
+                      }
+                    }
+                  },
+                  onPointerMove: (event) {
+                    if (_isDragging && _lastDragPosition != null) {
+                      // Sürükleme hareketi
+                      final delta = event.position - _lastDragPosition!;
+                      final Matrix4 matrix = Matrix4.copy(_transformationController.value);
+                      matrix.translate(delta.dx / _currentScale, delta.dy / _currentScale);
+                      _transformationController.value = matrix;
+                      _lastDragPosition = event.position;
+                    }
+                  },
+                  onPointerUp: (event) {
+                    if (_isDragging) {
                       setState(() {
-                        _currentScale = scale;
+                        _isDragging = false;
+                        _lastDragPosition = null;
+                      });
+                    }
+                  },
+                  onPointerSignal: (pointerSignal) {
+                    if (pointerSignal is PointerScrollEvent) {
+                      _handleMouseScroll(pointerSignal);
+                    }
+                  },
+                  child: GestureDetector(
+                    onDoubleTapDown: (details) {
+                      // Çift tıklama pozisyonunu kaydet
+                      _lastDragPosition = details.localPosition;
+                    },
+                    onDoubleTap: () {
+                      setState(() {
+                        if (_currentScale > _minScale) {
+                          // Eğer zoom yapılmışsa, sıfırla
+                          _transformationController.value = Matrix4.identity();
+                          _currentScale = _minScale;
+                          // Cursor durumu otomatik olarak güncellenecek
+                        } else {
+                          // Eğer zoom yapılmamışsa, tıklanan noktaya zoom yap
+                          if (_lastDragPosition != null) {
+                            // Ekran boyutlarını al
+                            final Size viewSize = MediaQuery.of(context).size;
+
+                            // Tıklama pozisyonunu al
+                            final Offset focalPointScene = _lastDragPosition!;
+
+                            // Ekranın merkezini hesapla
+                            final Offset viewCenter = Offset(viewSize.width / 2, viewSize.height / 2);
+
+                            // Tıklama pozisyonunun merkeze göre farkını hesapla
+                            final Offset focalPointDelta = focalPointScene - viewCenter;
+
+                            // Yeni dönüşüm matrisini hesapla
+                            final Matrix4 matrix = Matrix4.identity();
+
+                            // Ölçekleme faktörünü hesapla
+                            final double scaleFactor = 2.0;
+
+                            // Tıklama pozisyonuna göre zoom yap
+                            // 1. Tıklama pozisyonunu merkeze taşı
+                            matrix.translate(
+                              focalPointScene.dx,
+                              focalPointScene.dy,
+                            );
+
+                            // 2. Ölçekle
+                            matrix.scale(scaleFactor);
+
+                            // 3. Tıklama pozisyonunu geri taşı
+                            matrix.translate(
+                              -focalPointScene.dx,
+                              -focalPointScene.dy,
+                            );
+
+                            // 4. Tıklama pozisyonuna göre ek kaydırma ekle
+                            // Bu, zoom yaparken tıklama pozisyonunun sabit kalmasını sağlar
+                            matrix.translate(
+                              focalPointDelta.dx * (1 - scaleFactor),
+                              focalPointDelta.dy * (1 - scaleFactor),
+                            );
+
+                            _transformationController.value = matrix;
+                            _currentScale = scaleFactor;
+                          } else {
+                            // Eğer tıklama pozisyonu yoksa, merkeze zoom yap
+                            final Matrix4 matrix = Matrix4.identity();
+                            matrix.scale(2.0);
+                            _transformationController.value = matrix;
+                            _currentScale = 2.0;
+                          }
+                          // Cursor durumu otomatik olarak güncellenecek
+                        }
                       });
                     },
-                    child: Image.file(
-                      File(_currentPhoto.path),
-                      fit: BoxFit.contain,
+                    child: Center(
+                      child: SizedBox.expand(
+                        child: InteractiveViewer(
+                          transformationController: _transformationController,
+                          minScale: _minScale,
+                          maxScale: _maxScale,
+                          onInteractionEnd: (details) {
+                            // Güncellenen ölçeği kaydet
+                            final scale = _transformationController.value.getMaxScaleOnAxis();
+                            setState(() {
+                              _currentScale = scale;
+                              // Zoom durumuna göre cursor güncellenir
+                              // (MouseRegion widget'inin cursor özelliği otomatik olarak güncellenecek)
+                            });
+                          },
+                          child: Image.file(
+                            File(_currentPhoto.path),
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-            ),
+                )),
             if (!_zenMode)
               Positioned(
                 top: 0,
