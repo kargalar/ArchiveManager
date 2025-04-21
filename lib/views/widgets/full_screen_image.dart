@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
+import 'package:vector_math/vector_math_64.dart' hide Colors;
 import '../../models/photo.dart';
 import '../../managers/photo_manager.dart';
 import '../../managers/tag_manager.dart';
@@ -23,13 +24,17 @@ class FullScreenImage extends StatefulWidget {
   State<FullScreenImage> createState() => _FullScreenImageState();
 }
 
-class _FullScreenImageState extends State<FullScreenImage> {
+class _FullScreenImageState extends State<FullScreenImage> with TickerProviderStateMixin {
   late Photo _currentPhoto;
   late bool _autoNext;
   late bool _showInfo;
   late bool _zenMode;
   final FocusNode _focusNode = FocusNode();
   late final Box<Tag> _tagBox;
+  final TransformationController _transformationController = TransformationController();
+  final double _minScale = 1.0;
+  final double _maxScale = 10.0;
+  double _currentScale = 1.0;
 
   List<Tag> get tags => _tagBox.values.toList();
 
@@ -41,16 +46,99 @@ class _FullScreenImageState extends State<FullScreenImage> {
     _showInfo = context.read<SettingsManager>().showImageInfo;
     _autoNext = context.read<SettingsManager>().fullscreenAutoNext;
     _zenMode = false;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
     });
   }
 
-  // This method is replaced by inline code in the build method
+  // Zoom durumunu animasyonlu şekilde sıfırlar
+  void _resetZoom() {
+    _currentScale = 1.0;
+  }
+
+  // Fare tekerleği ile zoom yapma işlemini gerçekleştirir
+  void _handleMouseScroll(PointerScrollEvent event) {
+    // Animasyon devam ediyorsa işlem yapma
+
+    // Fare tekerleği yukarı kaydırıldığında zoom in, aşağı kaydırıldığında zoom out yapar
+    final delta = event.scrollDelta.dy;
+    // Mevcut dönüşüm matrisini al
+    final Matrix4 currentTransformation = _transformationController.value;
+    // Mevcut ölçeği al
+    _currentScale = currentTransformation.getMaxScaleOnAxis();
+
+    // Yeni ölçeği hesapla (tekerlek yukarı = zoom in, tekerlek aşağı = zoom out)
+    // Daha küçük değişim faktörü kullanarak daha smooth zoom sağla
+    double newScale = delta > 0 ? _currentScale / 1.05 : _currentScale * 1.05;
+
+    // Ölçeği sınırla
+    newScale = newScale.clamp(_minScale, _maxScale);
+
+    // Ölçek değişmediyse işlem yapma
+    if (newScale == _currentScale) return;
+
+    // Ekran boyutlarını al
+    final Size viewSize = MediaQuery.of(context).size;
+
+    // Fare pozisyonunu al (yerel koordinatlarda)
+    final Offset focalPointScene = event.localPosition;
+
+    // Ekranın merkezini hesapla
+    final Offset viewCenter = Offset(viewSize.width / 2, viewSize.height / 2);
+
+    // Fare pozisyonunun merkeze göre farkını hesapla
+    final Offset focalPointDelta = focalPointScene - viewCenter;
+
+    // Mevcut dönüşüm matrisinden kaydırma değerlerini al
+    final Vector3 currentTranslation = currentTransformation.getTranslation();
+
+    // Yeni dönüşüm matrisini hesapla
+    final Matrix4 newTransformation = Matrix4.copy(currentTransformation);
+
+    // Ölçekleme faktörünü hesapla
+    final double scaleFactor = newScale / _currentScale;
+
+    // Fare pozisyonuna göre zoom yap
+    // 1. Mevcut kaydırma değerlerini sıfırla
+    newTransformation.setTranslation(Vector3.zero());
+
+    // 2. Fare pozisyonunu merkeze taşı
+    newTransformation.translate(
+      focalPointScene.dx,
+      focalPointScene.dy,
+    );
+
+    // 3. Ölçekle
+    newTransformation.scale(scaleFactor);
+
+    // 4. Fare pozisyonunu geri taşı
+    newTransformation.translate(
+      -focalPointScene.dx,
+      -focalPointScene.dy,
+    );
+
+    // 5. Mevcut kaydırma değerlerini geri ekle
+    newTransformation.translate(
+      currentTranslation.x,
+      currentTranslation.y,
+    );
+
+    // 6. Fare pozisyonuna göre ek kaydırma ekle
+    // Bu, zoom yaparken fare pozisyonunun sabit kalmasını sağlar
+    newTransformation.translate(
+      focalPointDelta.dx * (1 - scaleFactor),
+      focalPointDelta.dy * (1 - scaleFactor),
+    );
+
+    // Mevcut ölçeği güncelle
+    _currentScale = newScale;
+  }
 
   @override
   void dispose() {
     _focusNode.dispose();
+    _transformationController.dispose();
     super.dispose();
   }
 
@@ -75,10 +163,12 @@ class _FullScreenImageState extends State<FullScreenImage> {
           if (event.logicalKey == LogicalKeyboardKey.arrowLeft && currentIndex > 0) {
             setState(() {
               _currentPhoto = filteredPhotos[currentIndex - 1];
+              _resetZoom();
             });
           } else if (event.logicalKey == LogicalKeyboardKey.arrowRight && currentIndex < filteredPhotos.length - 1) {
             setState(() {
               _currentPhoto = filteredPhotos[currentIndex + 1];
+              _resetZoom();
             });
           } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
             photoManager.toggleFavorite(_currentPhoto);
@@ -91,6 +181,7 @@ class _FullScreenImageState extends State<FullScreenImage> {
             } else {
               setState(() {
                 _currentPhoto = filteredPhotos[currentIndex < filteredPhotos.length ? currentIndex : filteredPhotos.length - 1];
+                _resetZoom();
               });
             }
           } else if (event.logicalKey == LogicalKeyboardKey.escape) {
@@ -124,6 +215,7 @@ class _FullScreenImageState extends State<FullScreenImage> {
               if (_autoNext && currentIndex < filteredPhotos.length - 1) {
                 setState(() {
                   _currentPhoto = filteredPhotos[currentIndex + 1];
+                  _resetZoom();
                 });
               }
             }
@@ -140,11 +232,28 @@ class _FullScreenImageState extends State<FullScreenImage> {
                   Navigator.of(context).pop();
                 }
               },
+              onPointerSignal: (pointerSignal) {
+                if (pointerSignal is PointerScrollEvent) {
+                  _handleMouseScroll(pointerSignal);
+                }
+              },
               child: Center(
                 child: SizedBox.expand(
-                  child: Image.file(
-                    File(_currentPhoto.path),
-                    fit: BoxFit.contain,
+                  child: InteractiveViewer(
+                    transformationController: _transformationController,
+                    minScale: _minScale,
+                    maxScale: _maxScale,
+                    onInteractionEnd: (details) {
+                      // Güncellenen ölçeği kaydet
+                      final scale = _transformationController.value.getMaxScaleOnAxis();
+                      setState(() {
+                        _currentScale = scale;
+                      });
+                    },
+                    child: Image.file(
+                      File(_currentPhoto.path),
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
               ),
