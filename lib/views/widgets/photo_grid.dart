@@ -8,6 +8,8 @@ import '../../models/photo.dart';
 import '../../viewmodels/photo_view_model.dart';
 import '../../viewmodels/home_view_model.dart';
 
+// Fotoğrafları grid (ızgara) şeklinde gösteren widget.
+// Seçim, etiketleme, puanlama ve bağlam menüsü içerir.
 class PhotoGrid extends StatelessWidget {
   const PhotoGrid({super.key});
 

@@ -2,6 +2,9 @@ import 'package:hive/hive.dart';
 
 part 'folder.g.dart';
 
+// Klasör modelini temsil eder. Hive ile saklanır.
+// path: klasörün tam yolu
+// subFolders: alt klasörlerin yolları
 @HiveType(typeId: 1)
 class Folder extends HiveObject {
   @HiveField(0)

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
+// Hive için Color (renk) tipini saklamaya yarayan adapter
+// Uygulama genelinde renklerin Hive ile kaydedilmesi için gereklidir.
 class ColorAdapter extends TypeAdapter<Color> {
   @override
   final int typeId = 3;

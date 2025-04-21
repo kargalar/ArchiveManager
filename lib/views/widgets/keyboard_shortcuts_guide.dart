@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+// Uygulamadaki klavye kısayollarını gösteren rehber widget.
+// Kullanıcıya hızlı erişim ve kullanım kolaylığı sağlar.
 class KeyboardShortcutsGuide extends StatelessWidget {
   const KeyboardShortcutsGuide({super.key});
 

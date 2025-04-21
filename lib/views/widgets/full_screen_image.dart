@@ -9,6 +9,8 @@ import 'package:provider/provider.dart';
 import '../../models/photo.dart';
 import '../../viewmodels/photo_view_model.dart';
 
+// Fotoğrafı tam ekranda gösteren widget.
+// Klavye ve mouse ile gezinme, etiketleme, puanlama ve bilgi gösterimi içerir.
 class FullScreenImage extends StatefulWidget {
   final Photo photo;
 

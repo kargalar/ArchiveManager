@@ -3,6 +3,12 @@ import 'tag.dart';
 
 part 'photo.g.dart';
 
+// Fotoğraf modelini temsil eder. Hive ile saklanır.
+// path: fotoğraf dosya yolu
+// isFavorite: favori mi
+// rating: puan (0-7)
+// isRecycled: geri dönüşümde mi
+// tags: etiketler
 @HiveType(typeId: 0)
 class Photo extends HiveObject {
   @HiveField(0)

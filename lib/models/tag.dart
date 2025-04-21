@@ -4,6 +4,11 @@ import 'package:uuid/uuid.dart';
 
 part 'tag.g.dart';
 
+// Etiket (tag) modelini temsil eder. Hive ile saklanır.
+// name: etiket adı
+// color: etiket rengi
+// shortcutKey: kısayol tuşu
+// id: benzersiz kimlik
 @HiveType(typeId: 2)
 class Tag extends HiveObject {
   @HiveField(0)

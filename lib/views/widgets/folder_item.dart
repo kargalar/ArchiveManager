@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'dart:io';
 import '../../viewmodels/photo_view_model.dart';
 
+// Klasör ağacında bir klasörü ve alt klasörlerini gösteren widget.
+// Klasör seçimi, silme ve explorer'da açma işlemleri içerir.
 class FolderItem extends StatelessWidget {
   final String folder;
   final int level;

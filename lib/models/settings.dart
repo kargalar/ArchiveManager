@@ -2,6 +2,11 @@ import 'package:hive/hive.dart';
 
 part 'settings.g.dart';
 
+// Uygulama ayarlarını temsil eden model. Hive ile saklanır.
+// photosPerRow: satır başına fotoğraf sayısı
+// showImageInfo: fotoğraf bilgisi gösterilsin mi
+// fullscreenAutoNext: tam ekranda otomatik geçiş
+
 @HiveType(typeId: 5)
 class Settings extends HiveObject {
   @HiveField(0)
