@@ -15,8 +15,30 @@ import '../../viewmodels/home_view_model.dart';
 
 // Fotoğrafları grid (ızgara) şeklinde gösteren widget.
 // Seçim, etiketleme, puanlama ve bağlam menüsü içerir.
-class PhotoGrid extends StatelessWidget {
+class PhotoGrid extends StatefulWidget {
   const PhotoGrid({super.key});
+
+  @override
+  State<PhotoGrid> createState() => _PhotoGridState();
+}
+
+class _PhotoGridState extends State<PhotoGrid> {
+  // Sorting durumunu yönetmek için
+  bool _isLoading = false;
+  bool _isSorted = false;
+  SortState? _lastResolutionSortState;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final filterManager = Provider.of<FilterManager>(context);
+
+    // Sıralama türü değiştiğinde _isSorted değişkenini sıfırla
+    if (_lastResolutionSortState != filterManager.resolutionSortState) {
+      _lastResolutionSortState = filterManager.resolutionSortState;
+      _isSorted = false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -122,47 +144,54 @@ class PhotoGrid extends StatelessWidget {
   Widget _buildGrid(BuildContext context, FolderManager folderManager, PhotoManager photoManager, TagManager tagManager, SettingsManager settingsManager, FilterManager filterManager, HomeViewModel homeViewModel) {
     final filteredPhotos = filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags);
 
-    // Check if we need to use FutureBuilder for resolution sorting
-    if (filterManager.resolutionSortState != SortState.none) {
-      // Use FutureBuilder for resolution sorting as it might need to load dimensions
-      return FutureBuilder<void>(
-        future: filterManager.sortPhotos(filteredPhotos),
-        builder: (context, snapshot) {
-          // Show loading indicator while sorting is in progress
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Fotoğraflar sıralanıyor...', style: TextStyle(color: Colors.white70)),
-                ],
-              ),
-            );
-          }
+    // Check if we need to sort by resolution
+    if (filterManager.resolutionSortState != SortState.none && !_isSorted) {
+      // Start sorting in the background if not already loading
+      if (!_isLoading) {
+        _isLoading = true;
+        _isSorted = false;
 
-          return Column(
+        // Show loading indicator while sorting
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          // Sort photos in the background
+          filterManager.sortPhotos(filteredPhotos).then((_) {
+            // When sorting is complete, update the UI
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+                _isSorted = true;
+              });
+            }
+          });
+        });
+      }
+
+      // Show loading indicator while sorting is in progress
+      if (_isLoading) {
+        return const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Expanded(
-                child: _buildGridView(filteredPhotos, settingsManager, homeViewModel, photoManager, tagManager, context),
-              ),
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Fotoğraflar sıralanıyor...', style: TextStyle(color: Colors.white70)),
             ],
-          );
-        },
-      );
+          ),
+        );
+      }
     } else {
       // For date and rating sorting, we can do it synchronously
       filterManager.sortPhotos(filteredPhotos);
-
-      return Column(
-        children: [
-          Expanded(
-            child: _buildGridView(filteredPhotos, settingsManager, homeViewModel, photoManager, tagManager, context),
-          ),
-        ],
-      );
+      _isSorted = true;
     }
+
+    return Column(
+      children: [
+        Expanded(
+          child: _buildGridView(filteredPhotos, settingsManager, homeViewModel, photoManager, tagManager, context),
+        ),
+      ],
+    );
   }
 
   Widget _buildPhotoContainer(Photo photo, HomeViewModel homeViewModel, BuildContext context, SettingsManager settingsManager) {

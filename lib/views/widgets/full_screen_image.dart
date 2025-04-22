@@ -40,6 +40,23 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
   bool _isDragging = false;
   Offset? _lastDragPosition;
 
+  // Sorting durumunu yönetmek için
+  bool _isLoading = false;
+  bool _isSorted = false;
+  SortState? _lastResolutionSortState;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final filterManager = Provider.of<FilterManager>(context);
+
+    // Sıralama türü değiştiğinde _isSorted değişkenini sıfırla
+    if (_lastResolutionSortState != filterManager.resolutionSortState) {
+      _lastResolutionSortState = filterManager.resolutionSortState;
+      _isSorted = false;
+    }
+  }
+
   List<Tag> get tags => _tagBox.values.toList();
 
   @override
@@ -170,37 +187,51 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
 
     final filteredPhotos = filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags);
 
-    // Check if we need to use FutureBuilder for resolution sorting
-    if (filterManager.resolutionSortState != SortState.none) {
-      // Use FutureBuilder for resolution sorting as it might need to load dimensions
-      return FutureBuilder<void>(
-        future: filterManager.sortPhotos(filteredPhotos),
-        builder: (context, snapshot) {
-          // Show loading indicator while sorting is in progress
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Scaffold(
-              backgroundColor: Colors.black,
-              body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Fotoğraflar sıralanıyor...', style: TextStyle(color: Colors.white70)),
-                  ],
-                ),
-              ),
-            );
-          }
+    // Check if we need to sort by resolution
+    if (filterManager.resolutionSortState != SortState.none && !_isSorted) {
+      // Start sorting in the background if not already loading
+      if (!_isLoading) {
+        _isLoading = true;
+        _isSorted = false;
 
-          return _buildFullScreenView(filteredPhotos);
-        },
-      );
+        // Show loading indicator while sorting
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          // Sort photos in the background
+          filterManager.sortPhotos(filteredPhotos).then((_) {
+            // When sorting is complete, update the UI
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+                _isSorted = true;
+              });
+            }
+          });
+        });
+      }
+
+      // Show loading indicator while sorting is in progress
+      if (_isLoading) {
+        return Scaffold(
+          backgroundColor: Colors.black,
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Fotoğraflar sıralanıyor...', style: TextStyle(color: Colors.white70)),
+              ],
+            ),
+          ),
+        );
+      }
     } else {
       // For date and rating sorting, we can do it synchronously
       filterManager.sortPhotos(filteredPhotos);
-      return _buildFullScreenView(filteredPhotos);
+      _isSorted = true;
     }
+
+    return _buildFullScreenView(filteredPhotos);
   }
 
   Widget _buildFullScreenView(List<Photo> filteredPhotos) {
