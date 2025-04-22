@@ -85,6 +85,14 @@ class _HomePageState extends State<HomePage> {
       final folderManager = context.read<FolderManager>();
       final photoManager = context.read<PhotoManager>();
       final tagManager = context.read<TagManager>();
+      final settingsManager = context.read<SettingsManager>();
+
+      // F11 tuşuna basıldığında tam ekran modunu aç/kapat
+      if (event.logicalKey == LogicalKeyboardKey.f11) {
+        settingsManager.toggleFullscreen();
+        return;
+      }
+
       _homeViewModel.handleKeyEvent(event, context, folderManager, photoManager, tagManager);
       if (event.logicalKey == LogicalKeyboardKey.enter && _homeViewModel.selectedPhoto != null) {
         Navigator.of(context).push(

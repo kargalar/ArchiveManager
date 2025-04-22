@@ -25,13 +25,14 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       windowHeight: fields[5] as double?,
       windowLeft: fields[6] as double?,
       windowTop: fields[7] as double?,
+      isFullscreen: fields[8] == null ? false : fields[8] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, Settings obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.photosPerRow)
       ..writeByte(1)
@@ -47,7 +48,9 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       ..writeByte(6)
       ..write(obj.windowLeft)
       ..writeByte(7)
-      ..write(obj.windowTop);
+      ..write(obj.windowTop)
+      ..writeByte(8)
+      ..write(obj.isFullscreen);
   }
 
   @override

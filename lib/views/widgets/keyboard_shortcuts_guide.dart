@@ -52,6 +52,7 @@ class KeyboardShortcutsGuide extends StatelessWidget {
         _buildShortcutCategory(
           'Görünüm',
           [
+            _ShortcutInfo(LogicalKeyboardKey.f11, 'Tam ekran modunu aç/kapat'),
             _ShortcutInfo(LogicalKeyboardKey.controlLeft, 'Bilgi panelini göster/gizle'),
             _ShortcutInfo(LogicalKeyboardKey.shiftLeft, 'Otomatik ilerlemeyi aç/kapat'),
             _ShortcutInfo(null, 'Ctrl + Fare Tekerleği: Görüntü boyutunu değiştir'),
@@ -151,6 +152,7 @@ class KeyboardShortcutsGuide extends StatelessWidget {
     if (key == LogicalKeyboardKey.delete) return 'Delete';
     if (key == LogicalKeyboardKey.controlLeft) return 'Ctrl';
     if (key == LogicalKeyboardKey.shiftLeft) return 'Shift';
+    if (key == LogicalKeyboardKey.f11) return 'F11';
 
     // Diğer tuşlar için keyLabel kullan
     return key.keyLabel;

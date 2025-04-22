@@ -20,6 +20,7 @@ class SettingsManager extends ChangeNotifier {
   bool get showImageInfo => _settingsBox?.getAt(0)?.showImageInfo ?? false;
   bool get fullscreenAutoNext => _settingsBox?.getAt(0)?.fullscreenAutoNext ?? false;
   double get dividerPosition => _dividerPosition;
+  bool get isFullscreen => _settingsBox?.getAt(0)?.isFullscreen ?? false;
 
   double? get windowWidth => _settingsBox?.getAt(0)?.windowWidth;
   double? get windowHeight => _settingsBox?.getAt(0)?.windowHeight;
@@ -71,6 +72,54 @@ class SettingsManager extends ChangeNotifier {
     if (_settingsBox?.getAt(0) != null) {
       _settingsBox!.getAt(0)!.fullscreenAutoNext = value;
       _settingsBox!.getAt(0)!.save();
+      notifyListeners();
+    }
+  }
+
+  // Tam ekran modunu aç/kapat ve ayarları kaydet
+  Future<void> toggleFullscreen() async {
+    if (!_isInitialized) {
+      debugPrint('Cannot toggle fullscreen: settings not initialized');
+      return;
+    }
+
+    if (_settingsBox?.getAt(0) != null) {
+      final settings = _settingsBox!.getAt(0)!;
+      final newValue = !settings.isFullscreen;
+
+      // Tam ekran durumunu değiştir
+      await windowManager.setFullScreen(newValue);
+
+      // Ayarları kaydet
+      settings.isFullscreen = newValue;
+      await settings.save();
+
+      debugPrint('Fullscreen toggled: $newValue');
+      notifyListeners();
+    }
+  }
+
+  // Tam ekran modunu ayarla ve kaydet
+  Future<void> setFullscreen(bool value) async {
+    if (!_isInitialized) {
+      debugPrint('Cannot set fullscreen: settings not initialized');
+      return;
+    }
+
+    if (_settingsBox?.getAt(0) != null) {
+      final settings = _settingsBox!.getAt(0)!;
+
+      // Değer zaten aynıysa işlem yapma
+      if (settings.isFullscreen == value) return;
+
+      // Tam ekran durumunu değiştir
+      await windowManager.setFullScreen(value);
+
+      // Ayarları kaydet
+      settings.isFullscreen = value;
+      await settings.save();
+
+      debugPrint('Fullscreen set to: $value');
       notifyListeners();
     }
   }

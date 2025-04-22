@@ -287,6 +287,9 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
               _autoNext = !_autoNext;
               settingsManager.setFullscreenAutoNext(_autoNext);
             });
+          } else if (event.logicalKey == LogicalKeyboardKey.f11) {
+            // F11 tuşuna basıldığında tam ekran modunu aç/kapat
+            settingsManager.toggleFullscreen();
           } else {
             for (var tag in tags) {
               if (event.logicalKey == tag.shortcutKey) {

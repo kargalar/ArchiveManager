@@ -104,6 +104,12 @@ class _MyAppState extends State<MyApp> with WindowListener {
         await windowManager.center();
       }
 
+      // Tam ekran durumunu yükle
+      if (_settingsManager.isFullscreen) {
+        debugPrint('Restoring fullscreen state: true');
+        await windowManager.setFullScreen(true);
+      }
+
       // Her durumda pencereyi öne getir
       await windowManager.focus();
 

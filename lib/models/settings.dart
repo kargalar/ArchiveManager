@@ -11,6 +11,7 @@ part 'settings.g.dart';
 // windowHeight: pencere yüksekliği
 // windowLeft: pencere sol konumu
 // windowTop: pencere üst konumu
+// isFullscreen: tam ekran modu açık mı
 
 @HiveType(typeId: 5)
 class Settings extends HiveObject {
@@ -38,6 +39,9 @@ class Settings extends HiveObject {
   @HiveField(7)
   double? windowTop;
 
+  @HiveField(8, defaultValue: false)
+  bool isFullscreen;
+
   Settings({
     this.photosPerRow = 4,
     this.showImageInfo = true,
@@ -47,5 +51,6 @@ class Settings extends HiveObject {
     this.windowHeight,
     this.windowLeft,
     this.windowTop,
+    this.isFullscreen = false,
   });
 }
