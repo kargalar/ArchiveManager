@@ -35,6 +35,7 @@ class FolderManager extends ChangeNotifier {
 
   // Getters
   List<String> get folders => _searchQuery.isEmpty ? _folders : _filteredFolders;
+  List<String> get filteredFolders => _filteredFolders; // Sadece filtrelenmiş klasörleri döndür
   String? get selectedFolder => _selectedFolder;
   Map<String, List<String>> get folderHierarchy => _folderHierarchy;
   Map<String, bool> get expandedFolders => _expandedFolders;
@@ -386,6 +387,9 @@ class FolderManager extends ChangeNotifier {
     return folderInBox.isNotEmpty ? folderInBox.first.isFavorite : false;
   }
 
+  // Check if search is active
+  bool get isSearchActive => _searchQuery.isNotEmpty;
+
   // Filter folders based on search query
   void filterFolders(String query) {
     _searchQuery = query.trim().toLowerCase();
@@ -401,13 +405,13 @@ class FolderManager extends ChangeNotifier {
       return;
     }
 
-    // Filter all folders
+    // Filter all folders - only include folders that actually contain the search query
     _filteredFolders = _folders.where((path) {
       final folderName = getFolderName(path).toLowerCase();
       return folderName.contains(_searchQuery);
     }).toList();
 
-    // Filter favorite folders
+    // Filter favorite folders - only include folders that actually contain the search query
     _filteredFavoriteFolders = _favoriteFolders.where((path) {
       final folderName = getFolderName(path).toLowerCase();
       return folderName.contains(_searchQuery);
