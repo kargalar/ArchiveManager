@@ -10,6 +10,7 @@ import '../../managers/photo_manager.dart';
 import '../../managers/tag_manager.dart';
 import '../../managers/settings_manager.dart';
 import '../../managers/filter_manager.dart';
+import '../../models/sort_state.dart';
 import '../../viewmodels/home_view_model.dart';
 
 // Fotoğrafları grid (ızgara) şeklinde gösteren widget.
@@ -74,57 +75,94 @@ class PhotoGrid extends StatelessWidget {
     );
   }
 
+  // Helper method to build the grid view
+  Widget _buildGridView(List<Photo> photos, SettingsManager settingsManager, HomeViewModel homeViewModel, PhotoManager photoManager, TagManager tagManager, BuildContext context) {
+    return GridView.builder(
+      padding: const EdgeInsets.all(8),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: settingsManager.photosPerRow,
+      ),
+      itemCount: photos.length,
+      itemBuilder: (context, index) {
+        final photo = photos[index];
+        return MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: Listener(
+            onPointerDown: (event) {
+              if (event.buttons == kMiddleMouseButton) {
+                homeViewModel.handlePhotoTap(photo);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FullScreenImage(photo: photo),
+                  ),
+                );
+              }
+            },
+            child: GestureDetector(
+              onTap: () => homeViewModel.handlePhotoTap(photo),
+              onSecondaryTapDown: (details) {
+                homeViewModel.handlePhotoTap(photo);
+                _showPhotoContextMenu(context, photo, photoManager, tagManager, details.globalPosition);
+              },
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _buildPhotoContainer(photo, homeViewModel, context, settingsManager),
+                  _buildPhotoOverlay(photo, tagManager),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildGrid(BuildContext context, FolderManager folderManager, PhotoManager photoManager, TagManager tagManager, SettingsManager settingsManager, FilterManager filterManager, HomeViewModel homeViewModel) {
     final filteredPhotos = filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags);
-    // Apply sorting after filtering
-    filterManager.sortPhotos(filteredPhotos);
 
-    return Column(
-      children: [
-        Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.all(8),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: settingsManager.photosPerRow,
-            ),
-            itemCount: filteredPhotos.length,
-            itemBuilder: (context, index) {
-              final photo = filteredPhotos[index];
-              return MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: Listener(
-                  onPointerDown: (event) {
-                    if (event.buttons == kMiddleMouseButton) {
-                      homeViewModel.handlePhotoTap(photo);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => FullScreenImage(photo: photo),
-                        ),
-                      );
-                    }
-                  },
-                  child: GestureDetector(
-                    onTap: () => homeViewModel.handlePhotoTap(photo),
-                    onSecondaryTapDown: (details) {
-                      homeViewModel.handlePhotoTap(photo);
-                      _showPhotoContextMenu(context, photo, photoManager, tagManager, details.globalPosition);
-                    },
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        _buildPhotoContainer(photo, homeViewModel, context, settingsManager),
-                        _buildPhotoOverlay(photo, tagManager),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
+    // Check if we need to use FutureBuilder for resolution sorting
+    if (filterManager.resolutionSortState != SortState.none) {
+      // Use FutureBuilder for resolution sorting as it might need to load dimensions
+      return FutureBuilder<void>(
+        future: filterManager.sortPhotos(filteredPhotos),
+        builder: (context, snapshot) {
+          // Show loading indicator while sorting is in progress
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Fotoğraflar sıralanıyor...', style: TextStyle(color: Colors.white70)),
+                ],
+              ),
+            );
+          }
+
+          return Column(
+            children: [
+              Expanded(
+                child: _buildGridView(filteredPhotos, settingsManager, homeViewModel, photoManager, tagManager, context),
+              ),
+            ],
+          );
+        },
+      );
+    } else {
+      // For date and rating sorting, we can do it synchronously
+      filterManager.sortPhotos(filteredPhotos);
+
+      return Column(
+        children: [
+          Expanded(
+            child: _buildGridView(filteredPhotos, settingsManager, homeViewModel, photoManager, tagManager, context),
           ),
-        ),
-      ],
-    );
+        ],
+      );
+    }
   }
 
   Widget _buildPhotoContainer(Photo photo, HomeViewModel homeViewModel, BuildContext context, SettingsManager settingsManager) {

@@ -12,6 +12,7 @@ import 'models/tag.dart';
 import 'models/settings.dart';
 import 'models/color_adapter.dart';
 import 'models/keyboard_key_adapter.dart';
+import 'models/datetime_adapter.dart';
 import 'managers/folder_manager.dart';
 import 'managers/photo_manager.dart';
 import 'managers/tag_manager.dart';
@@ -49,6 +50,7 @@ void main() async {
   final hivePath = '${appDocDir.path}/Archive Manager';
   await Directory(hivePath).create(recursive: true);
   await Hive.initFlutter(hivePath);
+  Hive.registerAdapter(DateTimeAdapter());
   Hive.registerAdapter(PhotoAdapter());
   Hive.registerAdapter(FolderAdapter());
   Hive.registerAdapter(TagAdapter());
@@ -144,13 +146,18 @@ class _MyAppState extends State<MyApp> with WindowListener {
           create: (context) => FolderManager(widget.folderBox, widget.photoBox),
         ),
         ChangeNotifierProvider(
+          create: (context) => FilterManager(),
+        ),
+        // PhotoManager needs FilterManager, so we connect them with ProxyProvider
+        ChangeNotifierProxyProvider<FilterManager, PhotoManager>(
           create: (context) => PhotoManager(widget.photoBox),
+          update: (context, filterManager, photoManager) {
+            photoManager!.setFilterManager(filterManager);
+            return photoManager;
+          },
         ),
         ChangeNotifierProvider.value(
           value: _settingsManager,
-        ),
-        ChangeNotifierProvider(
-          create: (context) => FilterManager(),
         ),
         // TagManager needs FilterManager, so we connect them with ProxyProvider
         ChangeNotifierProxyProvider<FilterManager, TagManager>(

@@ -224,6 +224,25 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                     ),
                   ),
                 ),
+                GestureDetector(
+                  onSecondaryTap: () {
+                    filterManager.resetResolutionSort();
+                  },
+                  child: TextButton.icon(
+                    onPressed: () => filterManager.toggleResolutionSort(),
+                    icon: Icon(
+                        filterManager.resolutionSortState == SortState.ascending
+                            ? Icons.arrow_upward
+                            : filterManager.resolutionSortState == SortState.descending
+                                ? Icons.arrow_downward
+                                : Icons.remove,
+                        size: 16),
+                    label: const Text('Resolution'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: filterManager.resolutionSortState != SortState.none ? Colors.blue : Colors.white,
+                    ),
+                  ),
+                ),
               ],
             );
           },

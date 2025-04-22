@@ -2,12 +2,18 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../models/photo.dart';
+import 'filter_manager.dart';
 
 class PhotoManager extends ChangeNotifier {
   final Box<Photo> _photoBox;
   final List<Photo> _photos = [];
+  FilterManager? _filterManager;
 
   PhotoManager(this._photoBox);
+
+  void setFilterManager(FilterManager filterManager) {
+    _filterManager = filterManager;
+  }
 
   List<Photo> get photos => _photos;
 
@@ -22,9 +28,17 @@ class PhotoManager extends ChangeNotifier {
         if (file is File) {
           final extension = file.path.toLowerCase().split('.').last;
           if (imageExtensions.contains('.$extension')) {
+            // Check if photo exists in box
             final photo = _photoBox.values.firstWhere(
               (p) => p.path == file.path,
-              orElse: () => Photo(path: file.path),
+              orElse: () {
+                // Create new photo with date modified
+                final newPhoto = Photo(
+                  path: file.path,
+                  dateModified: file.statSync().modified,
+                );
+                return newPhoto;
+              },
             );
             if (!_photoBox.values.contains(photo)) {
               _photoBox.add(photo);
@@ -37,7 +51,18 @@ class PhotoManager extends ChangeNotifier {
       debugPrint('Error loading photos: $e');
     }
 
+    // Notify listeners first so UI updates quickly
     notifyListeners();
+
+    // Then start loading actual dimensions in the background
+    if (_filterManager != null) {
+      Future.microtask(() async {
+        for (var photo in _photos) {
+          // Load and save actual dimensions for each photo
+          await _filterManager!.loadActualDimensions(photo);
+        }
+      });
+    }
   }
 
   void toggleFavorite(Photo photo) {

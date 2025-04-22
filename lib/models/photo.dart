@@ -9,6 +9,9 @@ part 'photo.g.dart';
 // rating: puan (0-7)
 // isRecycled: geri dönüşümde mi
 // tags: etiketler
+// width: genişlik (piksel)
+// height: yükseklik (piksel)
+// dateModified: değiştirilme tarihi
 @HiveType(typeId: 0)
 class Photo extends HiveObject {
   @HiveField(0)
@@ -26,13 +29,28 @@ class Photo extends HiveObject {
   @HiveField(4)
   List<Tag> tags;
 
+  @HiveField(5, defaultValue: 0)
+  int width;
+
+  @HiveField(6, defaultValue: 0)
+  int height;
+
+  @HiveField(7)
+  DateTime? dateModified;
+
   Photo({
     required this.path,
     this.isFavorite = false,
     this.rating = 0,
     this.isRecycled = false,
     this.tags = const [],
+    this.width = 0,
+    this.height = 0,
+    this.dateModified,
   });
+
+  // Calculate resolution (total pixels)
+  int get resolution => width * height;
 
   void toggleFavorite() {
     isFavorite = !isFavorite;

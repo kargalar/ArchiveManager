@@ -12,6 +12,7 @@ import '../../managers/photo_manager.dart';
 import '../../managers/tag_manager.dart';
 import '../../managers/settings_manager.dart';
 import '../../managers/filter_manager.dart';
+import '../../models/sort_state.dart';
 
 // Fotoğrafı tam ekranda gösteren widget.
 // Klavye ve mouse ile gezinme, etiketleme, puanlama ve bilgi gösterimi içerir.
@@ -165,12 +166,48 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
   Widget build(BuildContext context) {
     final photoManager = Provider.of<PhotoManager>(context);
     final tagManager = Provider.of<TagManager>(context);
-    final settingsManager = Provider.of<SettingsManager>(context);
     final filterManager = Provider.of<FilterManager>(context);
 
     final filteredPhotos = filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags);
-    // Apply sorting after filtering
-    filterManager.sortPhotos(filteredPhotos);
+
+    // Check if we need to use FutureBuilder for resolution sorting
+    if (filterManager.resolutionSortState != SortState.none) {
+      // Use FutureBuilder for resolution sorting as it might need to load dimensions
+      return FutureBuilder<void>(
+        future: filterManager.sortPhotos(filteredPhotos),
+        builder: (context, snapshot) {
+          // Show loading indicator while sorting is in progress
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Scaffold(
+              backgroundColor: Colors.black,
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Fotoğraflar sıralanıyor...', style: TextStyle(color: Colors.white70)),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          return _buildFullScreenView(filteredPhotos);
+        },
+      );
+    } else {
+      // For date and rating sorting, we can do it synchronously
+      filterManager.sortPhotos(filteredPhotos);
+      return _buildFullScreenView(filteredPhotos);
+    }
+  }
+
+  Widget _buildFullScreenView(List<Photo> filteredPhotos) {
+    final photoManager = Provider.of<PhotoManager>(context);
+    final tagManager = Provider.of<TagManager>(context);
+    final settingsManager = Provider.of<SettingsManager>(context);
+    final tags = tagManager.tags;
 
     return KeyboardListener(
       focusNode: _focusNode,

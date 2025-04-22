@@ -22,13 +22,16 @@ class PhotoAdapter extends TypeAdapter<Photo> {
       rating: fields[2] as int,
       isRecycled: fields[3] as bool,
       tags: (fields[4] as List).cast<Tag>(),
+      width: fields[5] == null ? 0 : fields[5] as int,
+      height: fields[6] == null ? 0 : fields[6] as int,
+      dateModified: fields[7] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Photo obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.path)
       ..writeByte(1)
@@ -38,7 +41,13 @@ class PhotoAdapter extends TypeAdapter<Photo> {
       ..writeByte(3)
       ..write(obj.isRecycled)
       ..writeByte(4)
-      ..write(obj.tags);
+      ..write(obj.tags)
+      ..writeByte(5)
+      ..write(obj.width)
+      ..writeByte(6)
+      ..write(obj.height)
+      ..writeByte(7)
+      ..write(obj.dateModified);
   }
 
   @override
