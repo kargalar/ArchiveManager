@@ -15,6 +15,11 @@ class FolderManager extends ChangeNotifier {
   String? _selectedFolder;
   final List<String> _favoriteFolders = [];
 
+  // Folder filtering
+  String _searchQuery = '';
+  List<String> _filteredFolders = [];
+  List<String> _filteredFavoriteFolders = [];
+
   // Section visibility flags
   bool _isFavoriteSectionExpanded = true;
   bool _isAllFoldersSectionExpanded = true;
@@ -25,15 +30,16 @@ class FolderManager extends ChangeNotifier {
   FolderManager(this._folderBox, this._photoBox) {
     _loadFolders();
     checkFoldersExistence();
+    _updateFilteredFolders();
   }
 
   // Getters
-  List<String> get folders => _folders;
+  List<String> get folders => _searchQuery.isEmpty ? _folders : _filteredFolders;
   String? get selectedFolder => _selectedFolder;
   Map<String, List<String>> get folderHierarchy => _folderHierarchy;
   Map<String, bool> get expandedFolders => _expandedFolders;
   List<String> get missingFolders => _missingFolders;
-  List<String> get favoriteFolders => _favoriteFolders;
+  List<String> get favoriteFolders => _searchQuery.isEmpty ? _favoriteFolders : _filteredFavoriteFolders;
   bool get isFavoriteSectionExpanded => _isFavoriteSectionExpanded;
   bool get isAllFoldersSectionExpanded => _isAllFoldersSectionExpanded;
   String? get selectedSection => _selectedSection;
@@ -378,6 +384,34 @@ class FolderManager extends ChangeNotifier {
   bool isFavorite(String path) {
     final folderInBox = _folderBox.values.where((f) => f.path == path).toList();
     return folderInBox.isNotEmpty ? folderInBox.first.isFavorite : false;
+  }
+
+  // Filter folders based on search query
+  void filterFolders(String query) {
+    _searchQuery = query.trim().toLowerCase();
+    _updateFilteredFolders();
+    notifyListeners();
+  }
+
+  // Update filtered folder lists based on current search query
+  void _updateFilteredFolders() {
+    if (_searchQuery.isEmpty) {
+      _filteredFolders = List.from(_folders);
+      _filteredFavoriteFolders = List.from(_favoriteFolders);
+      return;
+    }
+
+    // Filter all folders
+    _filteredFolders = _folders.where((path) {
+      final folderName = getFolderName(path).toLowerCase();
+      return folderName.contains(_searchQuery);
+    }).toList();
+
+    // Filter favorite folders
+    _filteredFavoriteFolders = _favoriteFolders.where((path) {
+      final folderName = getFolderName(path).toLowerCase();
+      return folderName.contains(_searchQuery);
+    }).toList();
   }
 
   // Toggle favorite section expanded state
