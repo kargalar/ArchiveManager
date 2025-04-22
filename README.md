@@ -1,6 +1,6 @@
 # Archive Manager v3 🗃️
 
-> An photo archive management application, developed almost entirely through Trae AI prompts as a personal project.
+> An photo archive management application, developed almost entirely through Trae, Augment, Copilot AI prompts as a personal project.
 
 ## ⚠️ Important Note
 
@@ -21,11 +21,11 @@ Still, it is quite sufficient for personal use.
 ## 🛠️ Built With
 
 - **Flutter** - UI framework
-- **Trae AI** - Development assistant
+- **Trae, Augment, Copilot AI** - Development assistants
 
 ## 📝 Development Notes
 
-This project was created to test the potential of AI-assisted development. Approximately 95% of the code was written using Trae AI prompts, with only minor manual adjustments. Since the main focus was on testing rapid development with the help of AI, clean code principles and architecture were not considered.
+This project was created to test the potential of AI-assisted development. Approximately 95% of the code was written using Trae, Augment, Copilot AI prompts, with only minor manual adjustments. Since the main focus was on testing rapid development with the help of AI, clean code principles and architecture were not considered.
 
 ## 📄 License
 
