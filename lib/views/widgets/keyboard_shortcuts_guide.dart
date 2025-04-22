@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-// Uygulamadaki klavye kısayollarını gösteren rehber widget.
-// Kullanıcıya hızlı erişim ve kullanım kolaylığı sağlar.
+// Guide widget showing keyboard shortcuts in the application.
+// Provides quick access and ease of use for the user.
 class KeyboardShortcutsGuide extends StatelessWidget {
   const KeyboardShortcutsGuide({super.key});
 
@@ -12,51 +12,51 @@ class KeyboardShortcutsGuide extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Klavye Kısayolları',
+          'Keyboard Shortcuts',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         _buildShortcutCategory(
-          'Navigasyon',
+          'Navigation',
           [
-            _ShortcutInfo(LogicalKeyboardKey.arrowLeft, 'Sola git'),
-            _ShortcutInfo(LogicalKeyboardKey.arrowRight, 'Sağa git'),
-            _ShortcutInfo(LogicalKeyboardKey.arrowUp, 'Yukarı git'),
-            _ShortcutInfo(LogicalKeyboardKey.arrowDown, 'Aşağı git'),
-            _ShortcutInfo(LogicalKeyboardKey.enter, 'Tam ekran görüntüleme'),
-            _ShortcutInfo(LogicalKeyboardKey.escape, 'Tam ekrandan çık'),
+            _ShortcutInfo(LogicalKeyboardKey.arrowLeft, 'Go left'),
+            _ShortcutInfo(LogicalKeyboardKey.arrowRight, 'Go right'),
+            _ShortcutInfo(LogicalKeyboardKey.arrowUp, 'Go up'),
+            _ShortcutInfo(LogicalKeyboardKey.arrowDown, 'Go down'),
+            _ShortcutInfo(LogicalKeyboardKey.enter, 'Fullscreen view'),
+            _ShortcutInfo(LogicalKeyboardKey.escape, 'Exit fullscreen'),
           ],
         ),
         SizedBox(height: 15),
         _buildShortcutCategory(
-          'Fotoğraf İşlemleri',
+          'Photo Operations',
           [
-            _ShortcutInfo(LogicalKeyboardKey.keyF, 'Favorilere ekle/çıkar'),
-            _ShortcutInfo(LogicalKeyboardKey.delete, 'Fotoğrafı sil'),
+            _ShortcutInfo(LogicalKeyboardKey.keyF, 'Add/remove from favorites'),
+            _ShortcutInfo(LogicalKeyboardKey.delete, 'Delete photo'),
           ],
         ),
         SizedBox(height: 15),
         _buildShortcutCategory(
-          'Derecelendirme',
+          'Rating',
           [
-            _ShortcutInfo(LogicalKeyboardKey.digit1, '1 yıldız ver'),
-            _ShortcutInfo(LogicalKeyboardKey.digit2, '2 yıldız ver'),
-            _ShortcutInfo(LogicalKeyboardKey.digit3, '3 yıldız ver'),
-            _ShortcutInfo(LogicalKeyboardKey.digit4, '4 yıldız ver'),
-            _ShortcutInfo(LogicalKeyboardKey.digit5, '5 yıldız ver'),
-            _ShortcutInfo(LogicalKeyboardKey.digit6, '6 yıldız ver'),
-            _ShortcutInfo(LogicalKeyboardKey.digit7, '7 yıldız ver'),
+            _ShortcutInfo(LogicalKeyboardKey.digit1, 'Give 1 star'),
+            _ShortcutInfo(LogicalKeyboardKey.digit2, 'Give 2 stars'),
+            _ShortcutInfo(LogicalKeyboardKey.digit3, 'Give 3 stars'),
+            _ShortcutInfo(LogicalKeyboardKey.digit4, 'Give 4 stars'),
+            _ShortcutInfo(LogicalKeyboardKey.digit5, 'Give 5 stars'),
+            _ShortcutInfo(LogicalKeyboardKey.digit6, 'Give 6 stars'),
+            _ShortcutInfo(LogicalKeyboardKey.digit7, 'Give 7 stars'),
           ],
         ),
         SizedBox(height: 15),
         _buildShortcutCategory(
-          'Görünüm',
+          'View',
           [
-            _ShortcutInfo(LogicalKeyboardKey.f11, 'Tam ekran modunu aç/kapat'),
-            _ShortcutInfo(LogicalKeyboardKey.controlLeft, 'Bilgi panelini göster/gizle'),
-            _ShortcutInfo(LogicalKeyboardKey.shiftLeft, 'Otomatik ilerlemeyi aç/kapat'),
-            _ShortcutInfo(null, 'Ctrl + Fare Tekerleği: Görüntü boyutunu değiştir'),
-            _ShortcutInfo(LogicalKeyboardKey.tab, 'Zen modunu aç/kapat'),
+            _ShortcutInfo(LogicalKeyboardKey.f11, 'Toggle fullscreen mode'),
+            _ShortcutInfo(LogicalKeyboardKey.controlLeft, 'Show/hide info panel'),
+            _ShortcutInfo(LogicalKeyboardKey.shiftLeft, 'Toggle auto-advance'),
+            _ShortcutInfo(null, 'Mouse Wheel: Image zoom'),
+            _ShortcutInfo(LogicalKeyboardKey.tab, 'Toggle zen mode'),
           ],
         ),
         SizedBox(height: 15),
@@ -142,7 +142,7 @@ class KeyboardShortcutsGuide extends StatelessWidget {
   String _getKeyLabel(LogicalKeyboardKey? key) {
     if (key == null) return '';
 
-    // Özel tuş etiketleri
+    // Special key labels
     if (key == LogicalKeyboardKey.arrowLeft) return '←';
     if (key == LogicalKeyboardKey.arrowRight) return '→';
     if (key == LogicalKeyboardKey.arrowUp) return '↑';

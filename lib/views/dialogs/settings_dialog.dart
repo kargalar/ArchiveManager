@@ -1,4 +1,4 @@
-// Ayarlar dialogunu gösteren widget
+// Widget that displays the settings dialog
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../managers/settings_manager.dart';
