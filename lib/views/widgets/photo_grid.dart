@@ -84,7 +84,7 @@ class _PhotoGridState extends State<PhotoGrid> {
         },
         child: Builder(
           builder: (context) {
-            if (folderManager.selectedFolder == null) {
+            if (folderManager.selectedFolder == null && folderManager.selectedSection == null) {
               return const Center(
                 child: Text('Select a folder to view images'),
               );

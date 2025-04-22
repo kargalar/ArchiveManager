@@ -13,6 +13,14 @@ class FolderManager extends ChangeNotifier {
   final Map<String, bool> _expandedFolders = {};
   List<String> _missingFolders = [];
   String? _selectedFolder;
+  final List<String> _favoriteFolders = [];
+
+  // Section visibility flags
+  bool _isFavoriteSectionExpanded = true;
+  bool _isAllFoldersSectionExpanded = true;
+
+  // Track which section is selected for viewing all photos
+  String? _selectedSection;
 
   FolderManager(this._folderBox, this._photoBox) {
     _loadFolders();
@@ -25,15 +33,31 @@ class FolderManager extends ChangeNotifier {
   Map<String, List<String>> get folderHierarchy => _folderHierarchy;
   Map<String, bool> get expandedFolders => _expandedFolders;
   List<String> get missingFolders => _missingFolders;
+  List<String> get favoriteFolders => _favoriteFolders;
+  bool get isFavoriteSectionExpanded => _isFavoriteSectionExpanded;
+  bool get isAllFoldersSectionExpanded => _isAllFoldersSectionExpanded;
+  String? get selectedSection => _selectedSection;
 
   void _loadFolders() {
     for (var folder in _folderBox.values) {
       _folders.add(folder.path);
       _addToHierarchy(folder.path);
+
+      // Load favorite folders
+      if (folder.isFavorite && !_favoriteFolders.contains(folder.path)) {
+        _favoriteFolders.add(folder.path);
+      }
+
       for (var subFolder in folder.subFolders) {
         if (!_folders.contains(subFolder)) {
           _folders.add(subFolder);
           _addToHierarchy(subFolder);
+
+          // Check if this subfolder is a favorite
+          final subFolderInBox = _folderBox.values.where((f) => f.path == subFolder).toList();
+          if (subFolderInBox.isNotEmpty && subFolderInBox.first.isFavorite && !_favoriteFolders.contains(subFolder)) {
+            _favoriteFolders.add(subFolder);
+          }
         }
       }
     }
@@ -96,6 +120,10 @@ class FolderManager extends ChangeNotifier {
               folder.addSubFolder(subPath);
               _folders.add(subPath);
               _addToHierarchy(subPath);
+
+              // Create a Folder object for the subfolder
+              final subFolder = Folder(path: subPath);
+              _folderBox.add(subFolder);
             }
           }
         }
@@ -323,6 +351,64 @@ class FolderManager extends ChangeNotifier {
 
   void selectFolder(String? path) {
     _selectedFolder = path;
+    notifyListeners();
+  }
+
+  // Toggle favorite status for a folder
+  void toggleFavorite(String path) {
+    final folderInBox = _folderBox.values.where((f) => f.path == path).toList();
+    if (folderInBox.isNotEmpty) {
+      final folder = folderInBox.first;
+      folder.isFavorite = !folder.isFavorite;
+      folder.save();
+
+      if (folder.isFavorite) {
+        if (!_favoriteFolders.contains(path)) {
+          _favoriteFolders.add(path);
+        }
+      } else {
+        _favoriteFolders.remove(path);
+      }
+
+      notifyListeners();
+    }
+  }
+
+  // Check if a folder is a favorite
+  bool isFavorite(String path) {
+    final folderInBox = _folderBox.values.where((f) => f.path == path).toList();
+    return folderInBox.isNotEmpty ? folderInBox.first.isFavorite : false;
+  }
+
+  // Toggle favorite section expanded state
+  void toggleFavoriteSectionExpanded() {
+    _isFavoriteSectionExpanded = !_isFavoriteSectionExpanded;
+    notifyListeners();
+  }
+
+  // Toggle all folders section expanded state
+  void toggleAllFoldersSectionExpanded() {
+    _isAllFoldersSectionExpanded = !_isAllFoldersSectionExpanded;
+    notifyListeners();
+  }
+
+  // Select the Favorites section to view all photos from favorite folders
+  void selectFavoritesSection() {
+    _selectedSection = 'favorites';
+    _selectedFolder = null; // Clear the selected folder
+    notifyListeners();
+  }
+
+  // Select the All Folders section to view all photos from all folders
+  void selectAllFoldersSection() {
+    _selectedSection = 'all';
+    _selectedFolder = null; // Clear the selected folder
+    notifyListeners();
+  }
+
+  // Clear section selection
+  void clearSectionSelection() {
+    _selectedSection = null;
     notifyListeners();
   }
 }

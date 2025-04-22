@@ -19,6 +19,46 @@ class PhotoManager extends ChangeNotifier {
 
   void loadPhotosFromFolder(String path) {
     _photos.clear();
+    _loadPhotosFromSingleFolder(path);
+
+    // Notify listeners first so UI updates quickly
+    notifyListeners();
+
+    // Then start loading actual dimensions in the background
+    if (_filterManager != null) {
+      Future.microtask(() async {
+        for (var photo in _photos) {
+          // Load and save actual dimensions for each photo
+          await _filterManager!.loadActualDimensions(photo);
+        }
+      });
+    }
+  }
+
+  // Load photos from multiple folders
+  void loadPhotosFromMultipleFolders(List<String> paths) {
+    _photos.clear();
+
+    for (var path in paths) {
+      _loadPhotosFromSingleFolder(path);
+    }
+
+    // Notify listeners first so UI updates quickly
+    notifyListeners();
+
+    // Then start loading actual dimensions in the background
+    if (_filterManager != null) {
+      Future.microtask(() async {
+        for (var photo in _photos) {
+          // Load and save actual dimensions for each photo
+          await _filterManager!.loadActualDimensions(photo);
+        }
+      });
+    }
+  }
+
+  // Helper method to load photos from a single folder
+  void _loadPhotosFromSingleFolder(String path) {
     final directory = Directory(path);
     final imageExtensions = ['.jpg', '.jpeg', '.png', '.gif'];
 
@@ -48,20 +88,7 @@ class PhotoManager extends ChangeNotifier {
         }
       }
     } catch (e) {
-      debugPrint('Error loading photos: $e');
-    }
-
-    // Notify listeners first so UI updates quickly
-    notifyListeners();
-
-    // Then start loading actual dimensions in the background
-    if (_filterManager != null) {
-      Future.microtask(() async {
-        for (var photo in _photos) {
-          // Load and save actual dimensions for each photo
-          await _filterManager!.loadActualDimensions(photo);
-        }
-      });
+      debugPrint('Error loading photos from folder $path: $e');
     }
   }
 

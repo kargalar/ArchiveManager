@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 import 'dart:io';
 import '../../managers/folder_manager.dart';
 
-// Klasör ağacında bir klasörü ve alt klasörlerini gösteren widget.
-// Klasör seçimi, silme ve explorer'da açma işlemleri içerir.
+// Widget that displays a folder and its subfolders in the folder tree.
+// Includes folder selection, deletion, favorite marking, and opening in explorer.
 class FolderItem extends StatelessWidget {
   final String folder;
   final int level;
@@ -25,6 +25,7 @@ class FolderItem extends StatelessWidget {
     final isSelected = folderManager.selectedFolder == folder;
     final folderName = folderManager.getFolderName(folder);
     final isMissing = folderManager.missingFolders.contains(folder); // Check if folder is missing
+    final isFavorite = folderManager.isFavorite(folder); // Check if folder is a favorite
 
     // Check if any parent folder is missing
     bool hasParentMissing = false;
@@ -139,7 +140,27 @@ class FolderItem extends StatelessWidget {
                     ),
                     items: [
                       PopupMenuItem(
-                        child: const Text('Delete'),
+                        child: Row(
+                          children: [
+                            Icon(isFavorite ? Icons.star : Icons.star_border, size: 18, color: isFavorite ? Colors.amber : null),
+                            const SizedBox(width: 8),
+                            Text(isFavorite ? 'Remove from Favorites' : 'Add to Favorites'),
+                          ],
+                        ),
+                        onTap: () {
+                          Future.delayed(Duration.zero, () {
+                            folderManager.toggleFavorite(folder);
+                          });
+                        },
+                      ),
+                      PopupMenuItem(
+                        child: const Row(
+                          children: [
+                            Icon(Icons.delete, size: 18),
+                            SizedBox(width: 8),
+                            Text('Delete'),
+                          ],
+                        ),
                         onTap: () {
                           // We need to use Future.delayed because onTap is called before the menu is closed
                           Future.delayed(Duration.zero, () {
@@ -148,7 +169,13 @@ class FolderItem extends StatelessWidget {
                         },
                       ),
                       PopupMenuItem(
-                        child: const Text('Open in Explorer'),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.folder_open, size: 18),
+                            SizedBox(width: 8),
+                            Text('Open in Explorer'),
+                          ],
+                        ),
                         onTap: () => Process.start('explorer.exe', [folder]),
                       ),
                     ],
@@ -162,6 +189,7 @@ class FolderItem extends StatelessWidget {
                   onMissingFolder!(context, folder);
                 }
               } else {
+                folderManager.clearSectionSelection(); // Clear any section selection
                 folderManager.selectFolder(folder);
               }
             },
@@ -182,7 +210,11 @@ class FolderItem extends StatelessWidget {
                     )
                   else
                     const SizedBox(width: 20),
-                  const Icon(Icons.folder, size: 20),
+                  Icon(
+                    isFavorite ? Icons.folder_special : Icons.folder,
+                    size: 20,
+                    color: isFavorite ? Colors.amber : null,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Row(
@@ -212,7 +244,11 @@ class FolderItem extends StatelessWidget {
         ),
         if (isExpanded && hasChildren)
           ...folderManager.folderHierarchy[folder]!.map(
-            (childPath) => FolderItem(folder: childPath, level: level + 1),
+            (childPath) => FolderItem(
+              folder: childPath,
+              level: level + 1,
+              onMissingFolder: onMissingFolder,
+            ),
           ),
       ],
     );
