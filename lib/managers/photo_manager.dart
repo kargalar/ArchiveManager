@@ -39,8 +39,11 @@ class PhotoManager extends ChangeNotifier {
   void loadPhotosFromMultipleFolders(List<String> paths) {
     _photos.clear();
 
+    // Use a Set to track unique photo paths
+    final Set<String> addedPhotoPaths = {};
+
     for (var path in paths) {
-      _loadPhotosFromSingleFolder(path);
+      _loadPhotosFromSingleFolder(path, addedPhotoPaths);
     }
 
     // Notify listeners first so UI updates quickly
@@ -58,7 +61,7 @@ class PhotoManager extends ChangeNotifier {
   }
 
   // Helper method to load photos from a single folder
-  void _loadPhotosFromSingleFolder(String path) {
+  void _loadPhotosFromSingleFolder(String path, [Set<String>? addedPhotoPaths]) {
     final directory = Directory(path);
     final imageExtensions = ['.jpg', '.jpeg', '.png', '.gif'];
 
@@ -68,6 +71,11 @@ class PhotoManager extends ChangeNotifier {
         if (file is File) {
           final extension = file.path.toLowerCase().split('.').last;
           if (imageExtensions.contains('.$extension')) {
+            // Skip if this photo path has already been added (when using addedPhotoPaths)
+            if (addedPhotoPaths != null && addedPhotoPaths.contains(file.path)) {
+              continue;
+            }
+
             // Check if photo exists in box
             final photo = _photoBox.values.firstWhere(
               (p) => p.path == file.path,
@@ -83,7 +91,10 @@ class PhotoManager extends ChangeNotifier {
             if (!_photoBox.values.contains(photo)) {
               _photoBox.add(photo);
             }
+
+            // Add to photos list and track the path if needed
             _photos.add(photo);
+            addedPhotoPaths?.add(file.path);
           }
         }
       }
