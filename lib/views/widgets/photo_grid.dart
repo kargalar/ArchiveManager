@@ -65,7 +65,9 @@ class _PhotoGridState extends State<PhotoGrid> {
                 event.logicalKey == LogicalKeyboardKey.digit4 ||
                 event.logicalKey == LogicalKeyboardKey.digit5 ||
                 event.logicalKey == LogicalKeyboardKey.digit6 ||
-                event.logicalKey == LogicalKeyboardKey.digit7) {
+                event.logicalKey == LogicalKeyboardKey.digit7 ||
+                event.logicalKey == LogicalKeyboardKey.digit8 ||
+                event.logicalKey == LogicalKeyboardKey.digit9) {
               if (homeViewModel.selectedPhoto != null) {
                 final rating = int.parse(event.logicalKey.keyLabel);
                 photoManager.setRating(homeViewModel.selectedPhoto!, rating);

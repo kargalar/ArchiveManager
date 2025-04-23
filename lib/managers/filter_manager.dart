@@ -17,7 +17,7 @@ class FilterManager extends ChangeNotifier {
   String _tagFilterMode = 'none'; // none, untagged, tagged, filtered
   bool _showUntaggedOnly = false;
   double _minRatingFilter = 0;
-  double _maxRatingFilter = 7;
+  double _maxRatingFilter = 9;
 
   // Getters
   SortState get dateSortState => _dateSortState;

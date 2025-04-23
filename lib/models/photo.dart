@@ -6,7 +6,7 @@ part 'photo.g.dart';
 // Fotoğraf modelini temsil eder. Hive ile saklanır.
 // path: fotoğraf dosya yolu
 // isFavorite: favori mi
-// rating: puan (0-7)
+// rating: puan (0-9)
 // isRecycled: geri dönüşümde mi
 // tags: etiketler
 // width: genişlik (piksel)
@@ -58,7 +58,7 @@ class Photo extends HiveObject {
   }
 
   void setRating(int value) {
-    if (value >= 0 && value <= 7) {
+    if (value >= 0 && value <= 9) {
       rating = value;
       save();
     }

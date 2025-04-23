@@ -46,6 +46,8 @@ class KeyboardShortcutsGuide extends StatelessWidget {
             _ShortcutInfo(LogicalKeyboardKey.digit5, 'Give 5 stars'),
             _ShortcutInfo(LogicalKeyboardKey.digit6, 'Give 6 stars'),
             _ShortcutInfo(LogicalKeyboardKey.digit7, 'Give 7 stars'),
+            _ShortcutInfo(LogicalKeyboardKey.digit8, 'Give 8 stars'),
+            _ShortcutInfo(LogicalKeyboardKey.digit9, 'Give 9 stars'),
           ],
         ),
         SizedBox(height: 15),

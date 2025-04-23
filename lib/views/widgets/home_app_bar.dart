@@ -170,7 +170,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                         child: RangeSlider(
                           values: RangeValues(filterManager.minRatingFilter, filterManager.maxRatingFilter),
                           min: 0,
-                          max: 7,
+                          max: 9,
                           divisions: 5,
                           onChanged: (RangeValues values) {
                             filterManager.setRatingFilter(values.start, values.end);
@@ -187,7 +187,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                 const SizedBox(width: 8),
                 GestureDetector(
                   onSecondaryTap: () {
-                    filterManager.setRatingFilter(0, 7);
+                    filterManager.setRatingFilter(0, 9);
                     filterManager.resetRatingSort();
                   },
                   child: TextButton.icon(

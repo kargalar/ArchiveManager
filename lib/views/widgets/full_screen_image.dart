@@ -299,7 +299,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
               }
             }
             final key = event.logicalKey.keyLabel;
-            if (key.length == 1 && RegExp(r'[1-7]').hasMatch(key)) {
+            if (key.length == 1 && RegExp(r'[1-9]').hasMatch(key)) {
               photoManager.setRating(_currentPhoto, int.parse(key));
               setState(() {});
               if (_autoNext && currentIndex < filteredPhotos.length - 1) {
