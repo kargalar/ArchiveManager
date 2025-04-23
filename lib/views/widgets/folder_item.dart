@@ -47,14 +47,74 @@ class FolderItem extends StatelessWidget {
         context: context,
         builder: (BuildContext confirmContext) {
           return AlertDialog(
-            title: const Text('Delete Folder'),
-            content: Text('Are you sure you want to delete "$folderName"?'),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withAlpha(30),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 24),
+                ),
+                const SizedBox(width: 16),
+                const Text('Delete Folder'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Are you sure you want to delete this folder?'),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withAlpha(20),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.folder_rounded, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          folderName,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (folderManager.folderHierarchy[folder]?.isNotEmpty ?? false)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16.0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 16),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'All subfolders will also be deleted.',
+                            style: TextStyle(color: Colors.orange),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(confirmContext).pop(),
                 child: const Text('Cancel'),
               ),
-              TextButton(
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
                 onPressed: () {
                   // Close the confirmation dialog
                   Navigator.of(confirmContext).pop();
@@ -67,14 +127,20 @@ class FolderItem extends StatelessWidget {
                     builder: (BuildContext loadingContext) {
                       return Dialog(
                         key: loadingDialogKey,
-                        child: const Padding(
-                          padding: EdgeInsets.all(20.0),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(20.0),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              CircularProgressIndicator(),
-                              SizedBox(width: 20),
-                              Text('Deleting folder...'),
+                              const SizedBox(width: 8),
+                              const CircularProgressIndicator(),
+                              const SizedBox(width: 24),
+                              Text(
+                                'Deleting folder...',
+                                style: TextStyle(fontSize: 14),
+                              ),
+                              const SizedBox(width: 8),
                             ],
                           ),
                         ),
@@ -99,7 +165,21 @@ class FolderItem extends StatelessWidget {
                         context: context,
                         builder: (BuildContext errorContext) {
                           return AlertDialog(
-                            title: const Text('Error'),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            title: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withAlpha(30),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(Icons.error_outline_rounded, color: Colors.red, size: 24),
+                                ),
+                                const SizedBox(width: 16),
+                                const Text('Error'),
+                              ],
+                            ),
                             content: Text('Failed to delete folder: $error'),
                             actions: [
                               TextButton(
@@ -127,15 +207,16 @@ class FolderItem extends StatelessWidget {
         Padding(
           padding: EdgeInsets.only(left: 8.0 * level),
           child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
               color: isSelected ? const Color(0xFF3A3A3A) : Colors.transparent,
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(8),
+              border: isSelected ? Border.all(color: Colors.blue.withAlpha(50), width: 1) : null,
             ),
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(8),
                 onSecondaryTap: isProblematic
                     ? null
                     : () {
@@ -149,13 +230,31 @@ class FolderItem extends StatelessWidget {
                             position.dx + button.size.width,
                             position.dy + button.size.height + 100,
                           ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 8,
                           items: [
                             PopupMenuItem(
+                              height: 42,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               child: Row(
                                 children: [
-                                  Icon(isFavorite ? Icons.star_rounded : Icons.star_outline_rounded, size: 18, color: isFavorite ? Colors.amber : null),
-                                  const SizedBox(width: 8),
-                                  Text(isFavorite ? 'Remove from Favorites' : 'Add to Favorites'),
+                                  Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: isFavorite ? Colors.amber.withAlpha(30) : Colors.grey.withAlpha(30),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Icon(
+                                      isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
+                                      size: 16,
+                                      color: isFavorite ? Colors.amber : Colors.grey[400],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
                                 ],
                               ),
                               onTap: () {
@@ -165,11 +264,20 @@ class FolderItem extends StatelessWidget {
                               },
                             ),
                             PopupMenuItem(
-                              child: const Row(
+                              height: 42,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              child: Row(
                                 children: [
-                                  Icon(Icons.delete_outline_rounded, size: 18),
-                                  SizedBox(width: 8),
-                                  Text('Delete'),
+                                  Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withAlpha(30),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.red),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Text('Delete', style: TextStyle(fontSize: 13)),
                                 ],
                               ),
                               onTap: () {
@@ -180,11 +288,20 @@ class FolderItem extends StatelessWidget {
                               },
                             ),
                             PopupMenuItem(
-                              child: const Row(
+                              height: 42,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              child: Row(
                                 children: [
-                                  Icon(Icons.folder_open_rounded, size: 18),
-                                  SizedBox(width: 8),
-                                  Text('Open in Explorer'),
+                                  Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.withAlpha(30),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Icon(Icons.folder_open_rounded, size: 16, color: Colors.blue),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Text('Open in Explorer', style: TextStyle(fontSize: 13)),
                                 ],
                               ),
                               onTap: () => Process.start('explorer.exe', [folder]),
@@ -204,30 +321,44 @@ class FolderItem extends StatelessWidget {
                   }
                 },
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                  padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
                   child: Row(
                     children: [
                       if (hasChildren)
-                        InkWell(
-                          onTap: () => folderManager.toggleFolderExpanded(folder),
-                          child: AnimatedRotation(
-                            turns: isExpanded ? 0.25 : 0,
-                            duration: const Duration(milliseconds: 200),
-                            child: const Icon(
-                              Icons.chevron_right_rounded,
-                              size: 18,
+                        Container(
+                          decoration: BoxDecoration(
+                            color: isSelected ? Colors.blue.withAlpha(30) : const Color(0xFF2A2A2A),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(4),
+                              onTap: () => folderManager.toggleFolderExpanded(folder),
+                              child: Padding(
+                                padding: const EdgeInsets.all(2.0),
+                                child: AnimatedRotation(
+                                  turns: isExpanded ? 0.25 : 0,
+                                  duration: const Duration(milliseconds: 200),
+                                  child: Icon(
+                                    Icons.chevron_right_rounded,
+                                    size: 16,
+                                    color: isSelected ? Colors.blue : Colors.grey,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         )
                       else
-                        const SizedBox(width: 18),
-                      const SizedBox(width: 4),
+                        const SizedBox(width: 24),
+                      const SizedBox(width: 8),
                       Icon(
                         isFavorite ? Icons.folder_special_rounded : Icons.folder_rounded,
                         size: 20,
                         color: isFavorite ? Colors.amber : (isSelected ? Colors.blue : null),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Row(
                           children: [
@@ -242,6 +373,7 @@ class FolderItem extends StatelessWidget {
                                 style: TextStyle(
                                   color: isSelected ? Colors.blue : (hasParentMissing ? Colors.red : (isMissing ? Colors.orange : Colors.white)),
                                   fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
+                                  fontSize: 13,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),

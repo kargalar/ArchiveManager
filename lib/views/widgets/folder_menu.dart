@@ -34,11 +34,11 @@ class _FolderMenuState extends State<FolderMenu> {
       child: Container(
         decoration: BoxDecoration(
           color: const Color(0xFF1E1E1E),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withAlpha(51), // 20% opacity
-              blurRadius: 5,
+              color: Colors.black.withAlpha(40),
+              blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
@@ -84,13 +84,19 @@ class _FolderMenuState extends State<FolderMenu> {
     return Consumer<FolderManager>(
       builder: (context, folderManager, child) {
         return Padding(
-          padding: const EdgeInsets.all(12.0),
+          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
           child: Container(
-            height: 36,
+            height: 40,
             decoration: BoxDecoration(
-              color: const Color(0xFF2A2A2A),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFF3A3A3A), width: 1),
+              color: const Color(0xFF252525),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(30),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
             ),
             child: TextField(
               controller: _searchController,
@@ -102,22 +108,33 @@ class _FolderMenuState extends State<FolderMenu> {
               decoration: InputDecoration(
                 hintText: 'Search folders...',
                 hintStyle: const TextStyle(color: Color(0xFF8A8A8A)),
-                prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF8A8A8A)),
+                prefixIcon: const Padding(
+                  padding: EdgeInsets.only(left: 12.0, right: 8.0),
+                  child: Icon(Icons.search_rounded, size: 18, color: Color(0xFF8A8A8A)),
+                ),
                 suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear, size: 16, color: Color(0xFF8A8A8A)),
-                        onPressed: () {
-                          _searchController.clear();
-                          folderManager.filterFolders('');
-                          setState(() {}); // Rebuild to hide clear button
-                        },
-                        constraints: const BoxConstraints(maxHeight: 32, maxWidth: 32),
-                        padding: EdgeInsets.zero,
-                        iconSize: 16,
+                    ? Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () {
+                              _searchController.clear();
+                              folderManager.filterFolders('');
+                              setState(() {}); // Rebuild to hide clear button
+                            },
+                            child: const Padding(
+                              padding: EdgeInsets.all(4.0),
+                              child: Icon(Icons.close_rounded, size: 16, color: Color(0xFF8A8A8A)),
+                            ),
+                          ),
+                        ),
                       )
                     : null,
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                isDense: true,
               ),
             ),
           ),
@@ -131,35 +148,45 @@ class _FolderMenuState extends State<FolderMenu> {
     final filteredFolders = folderManager.filteredFolders;
 
     if (filteredFolders.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text(
-            'No folders found',
-            style: TextStyle(color: Colors.grey),
-          ),
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.search_off_rounded, size: 48, color: Colors.grey.withAlpha(128)),
+            const SizedBox(height: 16),
+            const Text(
+              'No folders found',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ],
         ),
       );
     }
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       decoration: BoxDecoration(
         color: const Color(0xFF252525),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Text(
-              'Search Results',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.blue,
-              ),
+            padding: const EdgeInsets.fromLTRB(16.0, 12.0, 16.0, 8.0),
+            child: Row(
+              children: [
+                const Icon(Icons.search_rounded, size: 16, color: Colors.blue),
+                const SizedBox(width: 8),
+                Text(
+                  'Search Results',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.blue,
+                  ),
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -196,46 +223,66 @@ class _FolderMenuState extends State<FolderMenu> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+          margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           decoration: BoxDecoration(
-            color: const Color(0xFF2A2A2A),
-            borderRadius: BorderRadius.circular(6),
+            color: const Color(0xFF252525),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(30),
+                blurRadius: 4,
+                offset: const Offset(0, 1),
+              ),
+            ],
           ),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(8),
               onTap: () {
                 // Select section to view all photos
                 folderManager.selectFavoritesSection();
               },
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                 child: Row(
                   children: [
                     // Clickable arrow icon for expanding/collapsing
-                    InkWell(
-                      onTap: () {
-                        // Toggle section expansion
-                        folderManager.toggleFavoriteSectionExpanded();
-                      },
-                      child: AnimatedRotation(
-                        turns: folderManager.isFavoriteSectionExpanded ? 0.25 : 0,
-                        duration: const Duration(milliseconds: 200),
-                        child: const Icon(
-                          Icons.chevron_right,
-                          color: Colors.amber,
-                          size: 18,
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withAlpha(25),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(4),
+                          onTap: () {
+                            // Toggle section expansion
+                            folderManager.toggleFavoriteSectionExpanded();
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(4.0),
+                            child: AnimatedRotation(
+                              turns: folderManager.isFavoriteSectionExpanded ? 0.25 : 0,
+                              duration: const Duration(milliseconds: 200),
+                              child: const Icon(
+                                Icons.chevron_right_rounded,
+                                color: Colors.amber,
+                                size: 16,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 12),
                     const Icon(Icons.star_rounded, color: Colors.amber, size: 18),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 10),
                     // Clickable section title to show all photos
                     Expanded(
                       child: Text(
-                        'Favorite Folders',
+                        'Favorites',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
@@ -244,9 +291,23 @@ class _FolderMenuState extends State<FolderMenu> {
                       ),
                     ),
                     if (folderManager.selectedSection == 'favorites')
-                      const Padding(
-                        padding: EdgeInsets.only(left: 4.0),
-                        child: Icon(Icons.photo_library_rounded, color: Colors.blue, size: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withAlpha(50),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.photo_library_rounded, color: Colors.blue, size: 14),
+                            SizedBox(width: 4),
+                            Text(
+                              'Viewing',
+                              style: TextStyle(color: Colors.blue, fontSize: 12),
+                            ),
+                          ],
+                        ),
                       ),
                   ],
                 ),
@@ -254,15 +315,25 @@ class _FolderMenuState extends State<FolderMenu> {
             ),
           ),
         ),
-        const SizedBox(height: 8),
         if (folderManager.isFavoriteSectionExpanded)
-          ...favoriteFolders.map((folder) => FolderItem(
-                folder: folder,
-                level: 0,
-                onMissingFolder: (ctx, missingFolder) {
-                  showDialog(context: ctx, builder: (_) => MissingFoldersDialog(initialMissingFolders: [missingFolder]));
-                },
-              )),
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF222222),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              children: [
+                ...favoriteFolders.map((folder) => FolderItem(
+                      folder: folder,
+                      level: 0,
+                      onMissingFolder: (ctx, missingFolder) {
+                        showDialog(context: ctx, builder: (_) => MissingFoldersDialog(initialMissingFolders: [missingFolder]));
+                      },
+                    )),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -274,45 +345,65 @@ class _FolderMenuState extends State<FolderMenu> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             decoration: BoxDecoration(
-              color: const Color(0xFF2A2A2A),
-              borderRadius: BorderRadius.circular(6),
+              color: const Color(0xFF252525),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(30),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
             ),
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(8),
                 onTap: () {
                   // Select section to view all photos
                   folderManager.selectAllFoldersSection();
                 },
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                   child: Row(
                     children: [
                       // Clickable arrow icon for expanding/collapsing
-                      InkWell(
-                        onTap: () {
-                          // Toggle section expansion
-                          folderManager.toggleAllFoldersSectionExpanded();
-                        },
-                        child: AnimatedRotation(
-                          turns: folderManager.isAllFoldersSectionExpanded ? 0.25 : 0,
-                          duration: const Duration(milliseconds: 200),
-                          child: const Icon(
-                            Icons.chevron_right,
-                            size: 18,
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF3A3A3A),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(4),
+                            onTap: () {
+                              // Toggle section expansion
+                              folderManager.toggleAllFoldersSectionExpanded();
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(4.0),
+                              child: AnimatedRotation(
+                                turns: folderManager.isAllFoldersSectionExpanded ? 0.25 : 0,
+                                duration: const Duration(milliseconds: 200),
+                                child: const Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 16,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
                       const Icon(Icons.folder_rounded, size: 18),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       // Clickable section title to show all photos
                       Expanded(
                         child: Text(
-                          'All Folders',
+                          'All',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -321,9 +412,23 @@ class _FolderMenuState extends State<FolderMenu> {
                         ),
                       ),
                       if (folderManager.selectedSection == 'all')
-                        const Padding(
-                          padding: EdgeInsets.only(left: 4.0),
-                          child: Icon(Icons.photo_library_rounded, color: Colors.blue, size: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withAlpha(50),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.photo_library_rounded, color: Colors.blue, size: 14),
+                              SizedBox(width: 4),
+                              Text(
+                                'Viewing',
+                                style: TextStyle(color: Colors.blue, fontSize: 12),
+                              ),
+                            ],
+                          ),
                         ),
                     ],
                   ),
@@ -331,17 +436,16 @@ class _FolderMenuState extends State<FolderMenu> {
               ),
             ),
           ),
-          const SizedBox(height: 8),
           if (folderManager.isAllFoldersSectionExpanded)
             Expanded(
               child: Container(
-                margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF252525),
-                  borderRadius: BorderRadius.circular(6),
+                  color: const Color(0xFF222222),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                   itemCount: folderManager.folders.length,
                   itemBuilder: (context, index) {
                     final folder = folderManager.folders[index];
