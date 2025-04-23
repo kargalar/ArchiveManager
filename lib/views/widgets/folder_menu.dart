@@ -290,25 +290,6 @@ class _FolderMenuState extends State<FolderMenu> {
                         ),
                       ),
                     ),
-                    if (folderManager.selectedSection == 'favorites')
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withAlpha(50),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.photo_library_rounded, color: Colors.blue, size: 14),
-                            SizedBox(width: 4),
-                            Text(
-                              'Viewing',
-                              style: TextStyle(color: Colors.blue, fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      ),
                   ],
                 ),
               ),
@@ -411,25 +392,6 @@ class _FolderMenuState extends State<FolderMenu> {
                           ),
                         ),
                       ),
-                      if (folderManager.selectedSection == 'all')
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withAlpha(50),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.photo_library_rounded, color: Colors.blue, size: 14),
-                              SizedBox(width: 4),
-                              Text(
-                                'Viewing',
-                                style: TextStyle(color: Colors.blue, fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ),
                     ],
                   ),
                 ),

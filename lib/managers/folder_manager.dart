@@ -185,6 +185,7 @@ class FolderManager extends ChangeNotifier {
       _folderHierarchy.remove(path);
       _expandedFolders.remove(path);
       _missingFolders.remove(path); // Also remove from missing folders list
+      _favoriteFolders.remove(path); // Remove from favorites list
 
       // Remove associated photos
       final photosToRemove = _photoBox.values.where((p) => p.path.startsWith(path)).toList();
@@ -273,6 +274,14 @@ class FolderManager extends ChangeNotifier {
           .where((f) => !nonExistentSubfolders.contains(f)) // Remove non-existent folders
           .map((f) => oldToNewMap[f] ?? f) // Map to new paths
           .toList();
+
+      // Update _favoriteFolders and remove non-existent favorites
+      final updatedFavorites = _favoriteFolders
+          .where((f) => !nonExistentSubfolders.contains(f)) // Remove non-existent folders
+          .map((f) => oldToNewMap[f] ?? f) // Map to new paths
+          .toList();
+      _favoriteFolders.clear();
+      _favoriteFolders.addAll(updatedFavorites);
 
       // Delete non-existent folders from Hive
       for (var nonExistentSubfolder in nonExistentSubfolders) {
