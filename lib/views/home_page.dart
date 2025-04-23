@@ -24,7 +24,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late HomeViewModel _homeViewModel;
   bool _isMenuExpanded = true;
-  late double _dividerPosition;
+  double _folderMenuWidth = 250; // Fixed initial width for folder menu
 
   @override
   void initState() {
@@ -37,19 +37,19 @@ class _HomePageState extends State<HomePage> {
     final photoManager = Provider.of<PhotoManager>(context, listen: false);
     final settingsManager = Provider.of<SettingsManager>(context, listen: false);
 
-    // Ayarlardan bölünmüş görünüm konumunu yükle
-    _dividerPosition = settingsManager.dividerPosition;
+    // Load folder menu width from settings
+    _folderMenuWidth = settingsManager.folderMenuWidth;
 
-    // SettingsManager'daki değişiklikleri dinle
+    // Listen for changes in SettingsManager
     settingsManager.addListener(() {
-      if (mounted && _dividerPosition != settingsManager.dividerPosition) {
+      if (mounted && _folderMenuWidth != settingsManager.folderMenuWidth) {
         setState(() {
-          _dividerPosition = settingsManager.dividerPosition;
+          _folderMenuWidth = settingsManager.folderMenuWidth;
         });
-        debugPrint('DividerPosition updated from settings: $_dividerPosition');
+        debugPrint('FolderMenuWidth updated from settings: $_folderMenuWidth');
       }
     });
-    debugPrint('Initial DividerPosition: $_dividerPosition');
+    debugPrint('Initial FolderMenuWidth: $_folderMenuWidth');
 
     // Klasör veya bölüm seçildiğinde fotoğrafları yükle
     folderManager.addListener(() {
@@ -149,32 +149,34 @@ class _HomePageState extends State<HomePage> {
       body: Row(
         children: [
           if (_isMenuExpanded) ...[
-            FolderMenu(dividerPosition: _dividerPosition),
+            FolderMenu(width: _folderMenuWidth),
             GestureDetector(
               onPanUpdate: (details) {
                 setState(() {
-                  _dividerPosition += details.delta.dx / MediaQuery.of(context).size.width;
-                  _dividerPosition = _dividerPosition.clamp(0.1, 0.3);
+                  _folderMenuWidth += details.delta.dx;
+                  _folderMenuWidth = _folderMenuWidth.clamp(200.0, 400.0); // Limit width between 200 and 400 pixels
                 });
               },
               onPanEnd: (_) {
                 final settingsManager = Provider.of<SettingsManager>(context, listen: false);
-                settingsManager.setDividerPosition(_dividerPosition);
+                settingsManager.setFolderMenuWidth(_folderMenuWidth);
               },
               child: MouseRegion(
                 cursor: SystemMouseCursors.resizeLeftRight,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Container(
-                    width: 0.5,
-                    color: Colors.grey[300],
+                child: Container(
+                  width: 8,
+                  color: Colors.transparent,
+                  child: Center(
+                    child: Container(
+                      width: 2,
+                      color: Colors.grey[600],
+                    ),
                   ),
                 ),
               ),
             ),
           ],
           Expanded(
-            flex: ((1 - _dividerPosition) * 100).toInt(),
             child: _buildPhotoGrid(),
           ),
         ],

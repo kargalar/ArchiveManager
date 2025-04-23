@@ -7,6 +7,7 @@ class SettingsManager extends ChangeNotifier {
   Box<Settings>? _settingsBox;
   int _photosPerRow = 4; // Default value
   double _dividerPosition = 0.3; // Default value
+  double _folderMenuWidth = 250; // Default value
   bool _isInitialized = false;
 
   // Ayarlar kutusu başlatıldı mı?
@@ -20,6 +21,7 @@ class SettingsManager extends ChangeNotifier {
   bool get showImageInfo => _settingsBox?.getAt(0)?.showImageInfo ?? false;
   bool get fullscreenAutoNext => _settingsBox?.getAt(0)?.fullscreenAutoNext ?? false;
   double get dividerPosition => _dividerPosition;
+  double get folderMenuWidth => _folderMenuWidth;
   bool get isFullscreen => _settingsBox?.getAt(0)?.isFullscreen ?? false;
 
   double? get windowWidth => _settingsBox?.getAt(0)?.windowWidth;
@@ -41,8 +43,9 @@ class SettingsManager extends ChangeNotifier {
 
       _photosPerRow = _settingsBox!.getAt(0)?.photosPerRow ?? 4;
       _dividerPosition = _settingsBox!.getAt(0)?.dividerPosition ?? 0.3;
+      _folderMenuWidth = _settingsBox!.getAt(0)?.folderMenuWidth ?? 250;
       _isInitialized = true;
-      debugPrint('Settings initialized: photosPerRow=$_photosPerRow, dividerPosition=$_dividerPosition');
+      debugPrint('Settings initialized: photosPerRow=$_photosPerRow, dividerPosition=$_dividerPosition, folderMenuWidth=$_folderMenuWidth');
       notifyListeners();
     } catch (e) {
       debugPrint('Error initializing settings box: $e');
@@ -161,6 +164,33 @@ class SettingsManager extends ChangeNotifier {
           settings.dividerPosition = value;
           settings.save();
           debugPrint('Divider position saved: $value');
+        }
+      }
+
+      notifyListeners();
+    }
+  }
+
+  void setFolderMenuWidth(double value) {
+    if (!_isInitialized) {
+      debugPrint('Cannot set folderMenuWidth: settings not initialized');
+      // Still update the local variable, will be synchronized later
+      if (value >= 200 && value <= 400 && value != _folderMenuWidth) {
+        _folderMenuWidth = value;
+        notifyListeners();
+      }
+      return;
+    }
+
+    if (value >= 200 && value <= 400 && value != _folderMenuWidth) {
+      _folderMenuWidth = value;
+
+      if (_settingsBox?.getAt(0) != null) {
+        final settings = _settingsBox!.getAt(0)!;
+        if (settings.folderMenuWidth != value) {
+          settings.folderMenuWidth = value;
+          settings.save();
+          debugPrint('Folder menu width saved: $value');
         }
       }
 

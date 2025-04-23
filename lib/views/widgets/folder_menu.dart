@@ -7,11 +7,11 @@ import '../dialogs/missing_folders_dialog.dart';
 /// A widget that displays the folder navigation menu on the left side of the home page.
 /// Shows favorite folders and all folders in a hierarchical structure.
 class FolderMenu extends StatefulWidget {
-  final double dividerPosition;
+  final double width;
 
   const FolderMenu({
     super.key,
-    required this.dividerPosition,
+    this.width = 250, // Default fixed width of 250 pixels
   });
 
   @override
@@ -29,8 +29,8 @@ class _FolderMenuState extends State<FolderMenu> {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      flex: (widget.dividerPosition * 100).toInt(),
+    return SizedBox(
+      width: widget.width,
       child: Container(
         decoration: BoxDecoration(
           color: const Color(0xFF1E1E1E),
