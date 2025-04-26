@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hive/hive.dart';
-import 'package:window_manager/window_manager.dart';
+// Use window_manager on desktop platforms, and a stub implementation on web
+import 'package:window_manager/window_manager.dart' if (dart.library.html) '../utils/web_window_manager.dart';
 import '../models/settings.dart';
 
 class SettingsManager extends ChangeNotifier {
@@ -9,6 +12,9 @@ class SettingsManager extends ChangeNotifier {
   double _dividerPosition = 0.3; // Default value
   double _folderMenuWidth = 250; // Default value
   bool _isInitialized = false;
+
+  // Desktop platformda mıyız?
+  final bool _isDesktop = !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
 
   // Ayarlar kutusu başlatıldı mı?
   bool get isInitialized => _isInitialized;
@@ -90,8 +96,10 @@ class SettingsManager extends ChangeNotifier {
       final settings = _settingsBox!.getAt(0)!;
       final newValue = !settings.isFullscreen;
 
-      // Tam ekran durumunu değiştir
-      await windowManager.setFullScreen(newValue);
+      // Sadece desktop platformlarda tam ekran modunu değiştir
+      if (_isDesktop) {
+        await windowManager.setFullScreen(newValue);
+      }
 
       // Ayarları kaydet
       settings.isFullscreen = newValue;
@@ -115,8 +123,10 @@ class SettingsManager extends ChangeNotifier {
       // Değer zaten aynıysa işlem yapma
       if (settings.isFullscreen == value) return;
 
-      // Tam ekran durumunu değiştir
-      await windowManager.setFullScreen(value);
+      // Sadece desktop platformlarda tam ekran modunu değiştir
+      if (_isDesktop) {
+        await windowManager.setFullScreen(value);
+      }
 
       // Ayarları kaydet
       settings.isFullscreen = value;
@@ -206,6 +216,11 @@ class SettingsManager extends ChangeNotifier {
       return;
     }
 
+    // Sadece desktop platformlarda pencere konumunu kaydet
+    if (!_isDesktop) {
+      return;
+    }
+
     if (_settingsBox?.getAt(0) != null) {
       final windowInfo = await windowManager.getBounds();
       final settings = _settingsBox!.getAt(0)!;
@@ -243,6 +258,11 @@ class SettingsManager extends ChangeNotifier {
   // Kaydedilen pencere konumunu ve boyutunu uygula
   // Ayarlar başarıyla uygulandıysa true, aksi halde false döndürür
   Future<bool> restoreWindowPosition() async {
+    // Sadece desktop platformlarda pencere konumunu geri yükle
+    if (!_isDesktop) {
+      return false;
+    }
+
     // Ayarlar kutusu başlatılmadıysa bekle
     if (!_isInitialized) {
       debugPrint('Settings not initialized yet, waiting...');

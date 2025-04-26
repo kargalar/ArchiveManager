@@ -2,8 +2,10 @@
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:window_manager/window_manager.dart';
+// Use window_manager on desktop platforms, and a stub implementation on web
+import 'package:window_manager/window_manager.dart' if (dart.library.html) 'utils/web_window_manager.dart';
 import 'package:provider/provider.dart';
 // Model ve Manager importları
 import 'models/photo.dart';
@@ -27,22 +29,28 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await windowManager.ensureInitialized();
 
-  // Pencere kapatma olayını dinle
-  windowManager.setPreventClose(true);
+  // Sadece desktop platformlarda window manager'ı başlat
+  final bool isDesktop = !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
 
-  // Minimal pencere ayarları - sadece görünürlük için
-  // Gerçek boyut ve konum ayarları daha sonra yüklenecek
-  WindowOptions windowOptions = const WindowOptions(
-    backgroundColor: Colors.transparent,
-    skipTaskbar: false,
-    titleBarStyle: TitleBarStyle.hidden,
-  );
+  if (isDesktop) {
+    await windowManager.ensureInitialized();
 
-  await windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.show();
-  });
+    // Pencere kapatma olayını dinle
+    windowManager.setPreventClose(true);
+
+    // Minimal pencere ayarları - sadece görünürlük için
+    // Gerçek boyut ve konum ayarları daha sonra yüklenecek
+    WindowOptions windowOptions = const WindowOptions(
+      backgroundColor: Colors.transparent,
+      skipTaskbar: false,
+      titleBarStyle: TitleBarStyle.hidden,
+    );
+
+    await windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+    });
+  }
 
   // Hive ve adapter kayıtları
   Hive.registerAdapter(ColorAdapter());
@@ -73,16 +81,21 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> with WindowListener {
   late SettingsManager _settingsManager;
+  final bool _isDesktop = !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
 
   @override
   void initState() {
     super.initState();
-    windowManager.addListener(this);
+
+    // Sadece desktop platformlarda window manager'ı kullan
+    if (_isDesktop) {
+      windowManager.addListener(this);
+      windowManager.setMinimumSize(const Size(800, 450));
+    }
+
     _settingsManager = SettingsManager();
 
-    windowManager.setMinimumSize(const Size(800, 450));
-
-    // Uygulama başlatıldığında pencere konumunu ve boyutunu geri yükle
+    // Uygulama başlatıldığında pencere konumunu ve boyutunu geri yükle (sadece desktop)
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       debugPrint('Waiting for settings to initialize...');
 
@@ -94,53 +107,64 @@ class _MyAppState extends State<MyApp> with WindowListener {
 
       debugPrint('Settings initialized: ${_settingsManager.isInitialized}');
 
-      // Kaydedilen ayarlar varsa onları yükle, yoksa varsayılan ayarları kullan
-      final hasSettings = await _settingsManager.restoreWindowPosition();
+      // Sadece desktop platformlarda pencere ayarlarını uygula
+      if (_isDesktop) {
+        // Kaydedilen ayarlar varsa onları yükle, yoksa varsayılan ayarları kullan
+        final hasSettings = await _settingsManager.restoreWindowPosition();
 
-      if (!hasSettings) {
-        debugPrint('Using default window settings');
-        // Varsayılan pencere ayarlarını uygula
-        await windowManager.setBounds(const Rect.fromLTWH(100, 100, 1280, 720));
-        await windowManager.center();
+        if (!hasSettings) {
+          debugPrint('Using default window settings');
+          // Varsayılan pencere ayarlarını uygula
+          await windowManager.setBounds(const Rect.fromLTWH(100, 100, 1280, 720));
+          await windowManager.center();
+        }
+
+        // Tam ekran durumunu yükle
+        if (_settingsManager.isFullscreen) {
+          debugPrint('Restoring fullscreen state: true');
+          await windowManager.setFullScreen(true);
+        }
+
+        // Her durumda pencereyi öne getir
+        await windowManager.focus();
+
+        // Debug için mevcut pencere konumunu yazdır
+        final bounds = await windowManager.getBounds();
+        debugPrint('Current window bounds: ${bounds.width}x${bounds.height} at (${bounds.left},${bounds.top})');
       }
-
-      // Tam ekran durumunu yükle
-      if (_settingsManager.isFullscreen) {
-        debugPrint('Restoring fullscreen state: true');
-        await windowManager.setFullScreen(true);
-      }
-
-      // Her durumda pencereyi öne getir
-      await windowManager.focus();
-
-      // Debug için mevcut pencere konumunu yazdır
-      final bounds = await windowManager.getBounds();
-      debugPrint('Current window bounds: ${bounds.width}x${bounds.height} at (${bounds.left},${bounds.top})');
     });
   }
 
   @override
   void dispose() {
-    windowManager.removeListener(this);
+    if (_isDesktop) {
+      windowManager.removeListener(this);
+    }
     super.dispose();
   }
 
   @override
   void onWindowClose() async {
-    // Sadece uygulama kapat
-    await windowManager.destroy();
+    if (_isDesktop) {
+      // Sadece uygulama kapat
+      await windowManager.destroy();
+    }
   }
 
   @override
   void onWindowResized() async {
-    // Pencere boyutu değiştiğinde kaydet
-    await _settingsManager.saveWindowPosition();
+    if (_isDesktop) {
+      // Pencere boyutu değiştiğinde kaydet
+      await _settingsManager.saveWindowPosition();
+    }
   }
 
   @override
   void onWindowMoved() async {
-    // Pencere konumu değiştiğinde kaydet
-    await _settingsManager.saveWindowPosition();
+    if (_isDesktop) {
+      // Pencere konumu değiştiğinde kaydet
+      await _settingsManager.saveWindowPosition();
+    }
   }
 
   @override
