@@ -51,27 +51,38 @@ class _HomePageState extends State<HomePage> {
     });
     debugPrint('Initial FolderMenuWidth: $_folderMenuWidth');
 
-    // Klasör veya bölüm seçildiğinde fotoğrafları yükle
+    // Klasör veya bölüm seçildiğinde fotoğrafları yükle - optimized version
+    String? lastSelectedFolder;
+    String? lastSelectedSection;
+
     folderManager.addListener(() {
-      if (folderManager.selectedFolder != null) {
-        // Load photos from a single selected folder
-        photoManager.loadPhotosFromFolder(folderManager.selectedFolder!);
-      } else if (folderManager.selectedSection == 'favorites') {
-        // Load photos from all favorite folders
-        if (folderManager.favoriteFolders.isNotEmpty) {
-          photoManager.loadPhotosFromMultipleFolders(folderManager.favoriteFolders);
+      // Only reload photos if the selection has actually changed
+      if (folderManager.selectedFolder != lastSelectedFolder || folderManager.selectedSection != lastSelectedSection) {
+        // Update tracking variables
+        lastSelectedFolder = folderManager.selectedFolder;
+        lastSelectedSection = folderManager.selectedSection;
+
+        // Load photos based on selection
+        if (folderManager.selectedFolder != null) {
+          // Load photos from a single selected folder
+          photoManager.loadPhotosFromFolder(folderManager.selectedFolder!);
+        } else if (folderManager.selectedSection == 'favorites') {
+          // Load photos from all favorite folders
+          if (folderManager.favoriteFolders.isNotEmpty) {
+            photoManager.loadPhotosFromMultipleFolders(folderManager.favoriteFolders);
+          } else {
+            photoManager.clearPhotos();
+          }
+        } else if (folderManager.selectedSection == 'all') {
+          // Load photos from all folders
+          if (folderManager.folders.isNotEmpty) {
+            photoManager.loadPhotosFromMultipleFolders(folderManager.folders);
+          } else {
+            photoManager.clearPhotos();
+          }
         } else {
           photoManager.clearPhotos();
         }
-      } else if (folderManager.selectedSection == 'all') {
-        // Load photos from all folders
-        if (folderManager.folders.isNotEmpty) {
-          photoManager.loadPhotosFromMultipleFolders(folderManager.folders);
-        } else {
-          photoManager.clearPhotos();
-        }
-      } else {
-        photoManager.clearPhotos();
       }
     });
 

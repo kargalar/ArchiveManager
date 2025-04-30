@@ -17,85 +17,155 @@ class PhotoManager extends ChangeNotifier {
 
   List<Photo> get photos => _photos;
 
-  void loadPhotosFromFolder(String path) {
+  // Optimized photo loading with batching
+  Future<void> loadPhotosFromFolder(String path) async {
     _photos.clear();
-    _loadPhotosFromSingleFolder(path);
 
-    // Notify listeners first so UI updates quickly
+    // Show loading indicator
     notifyListeners();
 
-    // Then start loading actual dimensions in the background
+    // Load photos asynchronously
+    await _loadPhotosFromSingleFolder(path);
+
+    // Notify listeners that photos are loaded
+    notifyListeners();
+
+    // Then start loading actual dimensions in batches
     if (_filterManager != null) {
-      Future.microtask(() async {
-        for (var photo in _photos) {
-          // Load and save actual dimensions for each photo
-          await _filterManager!.loadActualDimensions(photo);
-        }
-      });
+      _loadDimensionsInBatches(_photos);
     }
   }
 
   // Load photos from multiple folders
-  void loadPhotosFromMultipleFolders(List<String> paths) {
+  Future<void> loadPhotosFromMultipleFolders(List<String> paths) async {
     _photos.clear();
+
+    // Show loading indicator
+    notifyListeners();
 
     // Use a Set to track unique photo paths
     final Set<String> addedPhotoPaths = {};
 
+    // Load photos from each folder
     for (var path in paths) {
-      _loadPhotosFromSingleFolder(path, addedPhotoPaths);
+      await _loadPhotosFromSingleFolder(path, addedPhotoPaths);
+
+      // Notify after each folder to show progress
+      notifyListeners();
     }
 
-    // Notify listeners first so UI updates quickly
-    notifyListeners();
-
-    // Then start loading actual dimensions in the background
+    // Then start loading actual dimensions in batches
     if (_filterManager != null) {
-      Future.microtask(() async {
-        for (var photo in _photos) {
-          // Load and save actual dimensions for each photo
-          await _filterManager!.loadActualDimensions(photo);
-        }
-      });
+      _loadDimensionsInBatches(_photos);
     }
   }
 
-  // Helper method to load photos from a single folder
-  void _loadPhotosFromSingleFolder(String path, [Set<String>? addedPhotoPaths]) {
+  // Load dimensions in batches to prevent UI freezing and memory leaks
+  void _loadDimensionsInBatches(List<Photo> photos) {
+    // First filter out photos that already have dimensions
+    final List<Photo> photosNeedingDimensions = photos.where((photo) => photo.width <= 0 || photo.height <= 0).toList();
+
+    // If no photos need dimensions, return early
+    if (photosNeedingDimensions.isEmpty) {
+      debugPrint('No photos need dimensions, skipping batch processing');
+      return;
+    }
+
+    debugPrint('Loading dimensions for ${photosNeedingDimensions.length} photos');
+
+    const int batchSize = 10; // Process fewer photos at a time to reduce memory pressure
+    int totalPhotos = photosNeedingDimensions.length;
+    int processedCount = 0;
+
+    Future<void> processBatch() async {
+      if (processedCount >= totalPhotos) {
+        debugPrint('Finished loading dimensions for all photos');
+        return;
+      }
+
+      int endIndex = (processedCount + batchSize < totalPhotos) ? processedCount + batchSize : totalPhotos;
+
+      List<Photo> batch = photosNeedingDimensions.sublist(processedCount, endIndex);
+
+      // Process this batch
+      for (var photo in batch) {
+        if (_filterManager != null) {
+          await _filterManager!.loadActualDimensions(photo);
+        }
+      }
+
+      processedCount = endIndex;
+
+      // Allow UI to update between batches and give more time for GC
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      // Process next batch
+      await processBatch();
+    }
+
+    // Start processing batches
+    Future.microtask(processBatch);
+  }
+
+  // Helper method to load photos from a single folder - optimized version
+  Future<void> _loadPhotosFromSingleFolder(String path, [Set<String>? addedPhotoPaths]) async {
     final directory = Directory(path);
     final imageExtensions = ['.jpg', '.jpeg', '.png', '.gif'];
 
     try {
+      // Create a map of existing photos for faster lookup
+      final Map<String, Photo> existingPhotos = {};
+      for (var photo in _photoBox.values) {
+        existingPhotos[photo.path] = photo;
+      }
+
+      // Process files in batches to prevent UI freezing
       final files = directory.listSync(recursive: true);
+      final List<File> imageFiles = [];
+
+      // First filter out only image files (faster than checking each file individually)
       for (var file in files) {
         if (file is File) {
           final extension = file.path.toLowerCase().split('.').last;
           if (imageExtensions.contains('.$extension')) {
-            // Skip if this photo path has already been added (when using addedPhotoPaths)
+            // Skip if this photo path has already been added
             if (addedPhotoPaths != null && addedPhotoPaths.contains(file.path)) {
               continue;
             }
-
-            // Check if photo exists in box
-            final photo = _photoBox.values.firstWhere(
-              (p) => p.path == file.path,
-              orElse: () {
-                // Create new photo with date modified
-                final newPhoto = Photo(
-                  path: file.path,
-                  dateModified: file.statSync().modified,
-                );
-                return newPhoto;
-              },
-            );
-            if (!_photoBox.values.contains(photo)) {
-              _photoBox.add(photo);
-            }
-
-            // Add to photos list and track the path if needed
-            _photos.add(photo);
-            addedPhotoPaths?.add(file.path);
+            imageFiles.add(file);
           }
+        }
+      }
+
+      // Process image files in batches
+      const int batchSize = 100;
+      for (int i = 0; i < imageFiles.length; i += batchSize) {
+        final int end = (i + batchSize < imageFiles.length) ? i + batchSize : imageFiles.length;
+        final batch = imageFiles.sublist(i, end);
+
+        for (var file in batch) {
+          // Use the map for faster lookup instead of firstWhere
+          final photo = existingPhotos[file.path] ??
+              Photo(
+                path: file.path,
+                dateModified: file.statSync().modified,
+              );
+
+          // Add to Hive box if it's a new photo
+          if (!existingPhotos.containsKey(file.path)) {
+            _photoBox.add(photo);
+            existingPhotos[file.path] = photo; // Update the map
+          }
+
+          // Add to photos list and track the path if needed
+          _photos.add(photo);
+          addedPhotoPaths?.add(file.path);
+        }
+
+        // Allow UI to update between batches during initial loading
+        if (i + batchSize < imageFiles.length) {
+          // Only yield if we're not on the last batch
+          await Future.delayed(Duration.zero);
         }
       }
     } catch (e) {
@@ -104,17 +174,37 @@ class PhotoManager extends ChangeNotifier {
   }
 
   void toggleFavorite(Photo photo) {
+    // Save previous state
+    final bool wasFavorite = photo.isFavorite;
+
+    // Toggle favorite
     photo.toggleFavorite();
-    notifyListeners();
+
+    // Only notify if the state actually changed
+    // This is redundant since toggleFavorite always changes state,
+    // but it's a good practice for consistency
+    if (wasFavorite != photo.isFavorite) {
+      // Use microtask to prevent UI freezing during state update
+      Future.microtask(() => notifyListeners());
+    }
   }
 
   void setRating(Photo photo, int rating) {
+    // Save previous rating
+    final int oldRating = photo.rating;
+
+    // Set new rating
     if (photo.rating == rating) {
       photo.setRating(0);
     } else {
       photo.setRating(rating);
     }
-    notifyListeners();
+
+    // Only notify if the rating actually changed
+    if (oldRating != photo.rating) {
+      // Use microtask to prevent UI freezing during state update
+      Future.microtask(() => notifyListeners());
+    }
   }
 
   void deletePhoto(Photo photo) {

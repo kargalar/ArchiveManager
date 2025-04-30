@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:archive_manager_v3/views/widgets/full_screen_image.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -27,6 +28,46 @@ class _PhotoGridState extends State<PhotoGrid> {
   bool _isLoading = false;
   bool _isSorted = false;
   SortState? _lastResolutionSortState;
+
+  // Timer for periodic memory cleanup
+  Timer? _cleanupTimer;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Delay setting up the timer to ensure the widget is fully initialized
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Set up periodic memory cleanup every 30 seconds
+      _cleanupTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+        _cleanupImageCache();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    // Cancel timer when widget is disposed
+    _cleanupTimer?.cancel();
+    super.dispose();
+  }
+
+  // Method to clean up image cache to prevent memory leaks
+  void _cleanupImageCache() {
+    try {
+      // Clear Flutter's image cache
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+
+      // Set a smaller image cache size limit
+      PaintingBinding.instance.imageCache.maximumSize = 100;
+      PaintingBinding.instance.imageCache.maximumSizeBytes = 50 * 1024 * 1024; // 50 MB
+
+      debugPrint('Image cache cleared to prevent memory leaks');
+    } catch (e) {
+      debugPrint('Error clearing image cache: $e');
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -99,42 +140,54 @@ class _PhotoGridState extends State<PhotoGrid> {
     );
   }
 
-  // Helper method to build the grid view
+  // Helper method to build the grid view - optimized version
   Widget _buildGridView(List<Photo> photos, SettingsManager settingsManager, HomeViewModel homeViewModel, PhotoManager photoManager, TagManager tagManager, BuildContext context) {
     return GridView.builder(
       padding: const EdgeInsets.all(8),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: settingsManager.photosPerRow,
+        // Add some spacing between grid items
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
       ),
+      // Use caching for better performance
+      cacheExtent: 500, // Cache more items for smoother scrolling
+      // Optimize for large lists
       itemCount: photos.length,
+      // Use addAutomaticKeepAlives: false for better memory usage
+      addAutomaticKeepAlives: false,
+      // Use addRepaintBoundaries: true for better rendering performance
+      addRepaintBoundaries: true,
       itemBuilder: (context, index) {
         final photo = photos[index];
-        return MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: Listener(
-            onPointerDown: (event) {
-              if (event.buttons == kMiddleMouseButton) {
-                homeViewModel.handlePhotoTap(photo);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FullScreenImage(photo: photo),
-                  ),
-                );
-              }
-            },
-            child: GestureDetector(
-              onTap: () => homeViewModel.handlePhotoTap(photo),
-              onSecondaryTapDown: (details) {
-                homeViewModel.handlePhotoTap(photo);
-                _showPhotoContextMenu(context, photo, photoManager, tagManager, details.globalPosition);
+        return RepaintBoundary(
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: Listener(
+              onPointerDown: (event) {
+                if (event.buttons == kMiddleMouseButton) {
+                  homeViewModel.handlePhotoTap(photo);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FullScreenImage(photo: photo),
+                    ),
+                  );
+                }
               },
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  _buildPhotoContainer(photo, homeViewModel, context, settingsManager),
-                  _buildPhotoOverlay(photo, tagManager),
-                ],
+              child: GestureDetector(
+                onTap: () => homeViewModel.handlePhotoTap(photo),
+                onSecondaryTapDown: (details) {
+                  homeViewModel.handlePhotoTap(photo);
+                  _showPhotoContextMenu(context, photo, photoManager, tagManager, details.globalPosition);
+                },
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    _buildPhotoContainer(photo, homeViewModel, context, settingsManager),
+                    _buildPhotoOverlay(photo, tagManager),
+                  ],
+                ),
               ),
             ),
           ),
@@ -153,38 +206,72 @@ class _PhotoGridState extends State<PhotoGrid> {
         _isLoading = true;
         _isSorted = false;
 
-        // Show loading indicator while sorting
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          // Sort photos in the background
-          filterManager.sortPhotos(filteredPhotos).then((_) {
-            // When sorting is complete, update the UI
-            if (mounted) {
-              setState(() {
-                _isLoading = false;
-                _isSorted = true;
-              });
-            }
-          });
+        // Add a timeout to prevent getting stuck in loading state
+        Future.delayed(const Duration(seconds: 10), () {
+          if (_isLoading && mounted) {
+            setState(() {
+              _isLoading = false;
+              _isSorted = true;
+              debugPrint('Sorting timed out after 10 seconds, showing photos anyway');
+            });
+          }
+        });
+
+        // Sort photos in the background
+        filterManager.sortPhotos(filteredPhotos).then((_) {
+          // When sorting is complete, update the UI
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+              _isSorted = true;
+              debugPrint('Sorting completed successfully');
+            });
+          }
+        }).catchError((error) {
+          // Handle errors during sorting
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+              _isSorted = true;
+              debugPrint('Error during sorting: $error');
+            });
+          }
         });
       }
 
       // Show loading indicator while sorting is in progress
       if (_isLoading) {
-        return const Center(
+        return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Fotoğraflar sıralanıyor...', style: TextStyle(color: Colors.white70)),
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              const Text('Fotoğraflar sıralanıyor...', style: TextStyle(color: Colors.white70)),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _isLoading = false;
+                    _isSorted = true;
+                  });
+                },
+                child: const Text('İptal Et', style: TextStyle(color: Colors.blue)),
+              ),
             ],
           ),
         );
       }
     } else {
       // For date and rating sorting, we can do it synchronously
-      filterManager.sortPhotos(filteredPhotos);
-      _isSorted = true;
+      try {
+        filterManager.sortPhotos(filteredPhotos);
+        _isSorted = true;
+      } catch (e) {
+        debugPrint('Error during synchronous sorting: $e');
+        // Continue showing photos even if sorting fails
+        _isSorted = true;
+      }
     }
 
     return Column(
@@ -197,10 +284,12 @@ class _PhotoGridState extends State<PhotoGrid> {
   }
 
   Widget _buildPhotoContainer(Photo photo, HomeViewModel homeViewModel, BuildContext context, SettingsManager settingsManager) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+    // Use a more efficient approach with conditional widgets instead of AnimatedContainer
+    final bool isSelected = homeViewModel.selectedPhoto == photo;
+
+    return Container(
       decoration: BoxDecoration(
-        border: homeViewModel.selectedPhoto == photo ? Border.all(color: const Color.fromARGB(255, 179, 179, 179), width: 2) : Border.all(color: Colors.transparent, width: 4),
+        border: isSelected ? Border.all(color: const Color.fromARGB(255, 179, 179, 179), width: 2) : Border.all(color: Colors.transparent, width: 4),
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
@@ -212,25 +301,79 @@ class _PhotoGridState extends State<PhotoGrid> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(6),
-        child: Image.file(
-          File(photo.path),
-          fit: BoxFit.cover,
-          cacheHeight: settingsManager.photosPerRow == 1
-              ? 4000
-              : settingsManager.photosPerRow == 2
-                  ? 2000
-                  : settingsManager.photosPerRow == 3
-                      ? 1000
-                      : settingsManager.photosPerRow == 4
-                          ? 700
-                          : settingsManager.photosPerRow == 5
-                              ? 600
-                              : settingsManager.photosPerRow == 6
-                                  ? 500
-                                  : settingsManager.photosPerRow == 7
-                                      ? 400
-                                      : 300,
+        child: _optimizedImage(
+          photo: photo,
+          photosPerRow: settingsManager.photosPerRow,
         ),
+      ),
+    );
+  }
+
+  // Optimized image widget with memory caching and memory leak prevention
+  Widget _optimizedImage({required Photo photo, required int photosPerRow}) {
+    // Calculate appropriate cache size based on grid size - use higher values for better quality
+    final int cacheHeight = photosPerRow == 1
+        ? 2000
+        : photosPerRow == 2
+            ? 1500
+            : photosPerRow == 3
+                ? 1000
+                : photosPerRow == 4
+                    ? 800
+                    : photosPerRow == 5
+                        ? 600
+                        : photosPerRow == 6
+                            ? 500
+                            : photosPerRow == 7
+                                ? 400
+                                : 300;
+
+    // Create a unique key for each image to help with memory management
+    final Key imageKey = ValueKey('img_${photo.path}_$cacheHeight');
+
+    // Check if file exists first to prevent errors
+    final file = File(photo.path);
+    if (!file.existsSync()) {
+      return Container(
+        color: Colors.grey[900],
+        child: const Center(
+          child: Icon(Icons.broken_image, color: Colors.white54),
+        ),
+      );
+    }
+
+    // Use a more memory-efficient approach
+    return RepaintBoundary(
+      child: Image.file(
+        file,
+        key: imageKey,
+        fit: BoxFit.cover,
+        cacheHeight: cacheHeight,
+        // Don't set cacheWidth to preserve aspect ratio
+        cacheWidth: null, // Let system calculate width based on aspect ratio
+        gaplessPlayback: true, // Prevent flickering during image loading
+        // Error handling to prevent crashes
+        errorBuilder: (context, error, stackTrace) {
+          debugPrint('Error loading image: $error');
+          return Container(
+            color: Colors.grey[900],
+            child: const Center(
+              child: Icon(Icons.broken_image, color: Colors.white54),
+            ),
+          );
+        },
+        // Use fade-in animation for smoother loading
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (wasSynchronouslyLoaded) {
+            return child;
+          }
+          return AnimatedOpacity(
+            opacity: frame == null ? 0 : 1,
+            duration: const Duration(milliseconds: 200), // Faster animation
+            curve: Curves.easeOut,
+            child: child,
+          );
+        },
       ),
     );
   }

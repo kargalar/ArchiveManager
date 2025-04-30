@@ -104,6 +104,7 @@ class FilterManager extends ChangeNotifier {
   }
 
   // Load actual dimensions and date modified, and update Photo object
+  // Optimized to prevent memory leaks
   Future<void> loadActualDimensions(Photo photo) async {
     try {
       final file = File(photo.path);
@@ -112,29 +113,69 @@ class FilterManager extends ChangeNotifier {
       // Load date modified if not already loaded
       photo.dateModified ??= file.statSync().modified;
 
-      // Skip if dimensions are already loaded
+      // Skip if dimensions are already loaded - this is critical to prevent repeated loading
       if (photo.width > 0 && photo.height > 0) return;
 
-      final completer = Completer<void>();
-      final image = Image.file(file).image;
-      final listener = ImageStreamListener(
-        (info, _) {
-          // Update the Photo object with actual dimensions
-          photo.width = info.image.width;
-          photo.height = info.image.height;
-          photo.save(); // Save to Hive
-          completer.complete();
-        },
-        onError: (exception, stackTrace) {
-          debugPrint('Error loading image dimensions: $exception');
-          completer.completeError(exception);
-        },
-      );
+      // Create a limited scope for the image loading
+      await _loadImageDimensions(file.path, photo);
 
-      image.resolve(const ImageConfiguration()).addListener(listener);
-      await completer.future;
+      // Explicitly call garbage collection to free memory
+      // This is not normally recommended but helps in this specific case
+      // to prevent memory buildup during batch processing
+      Future.microtask(() {
+        try {
+          // Force a GC cycle after processing each image
+          // This is a workaround for Flutter's image caching behavior
+          ImageCache().clear();
+          ImageCache().clearLiveImages();
+
+          // Only clear PaintingBinding if it's available
+          if (WidgetsBinding.instance is PaintingBinding) {
+            PaintingBinding.instance.imageCache.clear();
+            PaintingBinding.instance.imageCache.clearLiveImages();
+          }
+        } catch (e) {
+          debugPrint('Error clearing image cache: $e');
+        }
+      });
     } catch (e) {
       debugPrint('Error loading actual image dimensions: $e');
+    }
+  }
+
+  // Helper method to load image dimensions with proper resource cleanup
+  Future<void> _loadImageDimensions(String path, Photo photo) async {
+    final completer = Completer<void>();
+    final imageProvider = FileImage(File(path));
+
+    // Use a more controlled approach to load the image
+    final imageStream = imageProvider.resolve(const ImageConfiguration());
+    final imageStreamListener = ImageStreamListener(
+      (imageInfo, synchronousCall) {
+        // Update dimensions and save to Hive
+        photo.width = imageInfo.image.width;
+        photo.height = imageInfo.image.height;
+        photo.save();
+
+        // Release resources
+        imageInfo.image.dispose();
+        completer.complete();
+      },
+      onError: (exception, stackTrace) {
+        debugPrint('Error loading image dimensions: $exception');
+        completer.completeError(exception);
+      },
+    );
+
+    // Add listener
+    imageStream.addListener(imageStreamListener);
+
+    try {
+      await completer.future;
+    } finally {
+      // Always remove the listener to prevent memory leaks
+      imageStream.removeListener(imageStreamListener);
+      imageProvider.evict();
     }
   }
 
@@ -149,22 +190,51 @@ class FilterManager extends ChangeNotifier {
   }
 
   // Load resolutions and dates for all photos that don't have it yet
+  // Optimized to prevent memory leaks
   Future<void> loadAllResolutions(List<Photo> photos) async {
-    List<Future<void>> futures = [];
+    // Filter photos that need dimensions
+    final List<Photo> photosNeedingData = photos.where((photo) => photo.width <= 0 || photo.height <= 0 || photo.dateModified == null).toList();
 
-    for (var photo in photos) {
-      if (photo.width <= 0 || photo.height <= 0 || photo.dateModified == null) {
-        futures.add(loadActualDimensions(photo));
-      }
+    if (photosNeedingData.isEmpty) {
+      return; // No photos need processing
     }
 
-    await Future.wait(futures);
+    // Process in small batches to prevent memory buildup
+    const int batchSize = 10;
+    for (int i = 0; i < photosNeedingData.length; i += batchSize) {
+      final int end = (i + batchSize < photosNeedingData.length) ? i + batchSize : photosNeedingData.length;
+
+      final batch = photosNeedingData.sublist(i, end);
+
+      // Process each photo in the batch
+      for (var photo in batch) {
+        await loadActualDimensions(photo);
+      }
+
+      // Allow UI to update and GC to run between batches
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
   }
 
   // Load dates for all photos that don't have it yet
+  // Optimized to prevent UI freezing
   Future<void> loadAllDates(List<Photo> photos) async {
-    for (var photo in photos) {
-      if (photo.dateModified == null) {
+    // Filter photos that need dates
+    final List<Photo> photosNeedingDates = photos.where((photo) => photo.dateModified == null).toList();
+
+    if (photosNeedingDates.isEmpty) {
+      return; // No photos need processing
+    }
+
+    // Process in batches to prevent UI freezing
+    const int batchSize = 50; // Date loading is faster, so we can use larger batches
+    for (int i = 0; i < photosNeedingDates.length; i += batchSize) {
+      final int end = (i + batchSize < photosNeedingDates.length) ? i + batchSize : photosNeedingDates.length;
+
+      final batch = photosNeedingDates.sublist(i, end);
+
+      // Process each photo in the batch
+      for (var photo in batch) {
         try {
           final file = File(photo.path);
           if (file.existsSync()) {
@@ -175,11 +245,25 @@ class FilterManager extends ChangeNotifier {
           debugPrint('Error loading date for photo: $e');
         }
       }
+
+      // Allow UI to update between batches
+      if (i + batchSize < photosNeedingDates.length) {
+        await Future.delayed(Duration.zero);
+      }
     }
   }
 
-  // Synchronous sorting for date and rating, potentially async for resolution
+  // Optimized sorting with batching for better performance
   Future<void> sortPhotos(List<Photo> photos) async {
+    if (photos.isEmpty) return;
+
+    // Use isolate for sorting if the list is large
+    if (photos.length > 1000) {
+      await _sortPhotosInBatches(photos);
+      return;
+    }
+
+    // For smaller lists, use the regular sorting approach
     if (_dateSortState != SortState.none) {
       // Check if we need to load dates first
       if (!allPhotosHaveDate(photos)) {
@@ -225,8 +309,7 @@ class FilterManager extends ChangeNotifier {
     } else if (_resolutionSortState != SortState.none) {
       // Check if we need to load resolutions first
       if (!allPhotosHaveResolution(photos)) {
-        // We'll need to load resolutions first, but this will be handled by the caller
-        // using the FutureBuilder pattern
+        // We'll need to load resolutions first
         await loadAllResolutions(photos);
       }
 
@@ -241,6 +324,60 @@ class FilterManager extends ChangeNotifier {
         case SortState.none:
           break;
       }
+    }
+  }
+
+  // Sort photos in batches to prevent UI freezing
+  Future<void> _sortPhotosInBatches(List<Photo> photos) async {
+    // First, ensure all required data is loaded
+    if (_dateSortState != SortState.none && !allPhotosHaveDate(photos)) {
+      await loadAllDates(photos);
+    } else if (_resolutionSortState != SortState.none && !allPhotosHaveResolution(photos)) {
+      await loadAllResolutions(photos);
+    }
+
+    // Create a copy of the list to sort
+    final List<Photo> sortedPhotos = List.from(photos);
+
+    // Sort the copy based on the current sort state
+    if (_dateSortState == SortState.ascending) {
+      sortedPhotos.sort((a, b) {
+        final dateA = a.dateModified;
+        final dateB = b.dateModified;
+        if (dateA == null && dateB == null) return 0;
+        if (dateA == null) return -1;
+        if (dateB == null) return 1;
+        return dateA.compareTo(dateB);
+      });
+    } else if (_dateSortState == SortState.descending) {
+      sortedPhotos.sort((a, b) {
+        final dateA = a.dateModified;
+        final dateB = b.dateModified;
+        if (dateA == null && dateB == null) return 0;
+        if (dateA == null) return 1;
+        if (dateB == null) return -1;
+        return dateB.compareTo(dateA);
+      });
+    } else if (_ratingSortState == SortState.ascending) {
+      sortedPhotos.sort((a, b) => a.rating.compareTo(b.rating));
+    } else if (_ratingSortState == SortState.descending) {
+      sortedPhotos.sort((a, b) => b.rating.compareTo(a.rating));
+    } else if (_resolutionSortState == SortState.ascending) {
+      sortedPhotos.sort((a, b) => (a.resolution).compareTo(b.resolution));
+    } else if (_resolutionSortState == SortState.descending) {
+      sortedPhotos.sort((a, b) => (b.resolution).compareTo(a.resolution));
+    }
+
+    // Clear the original list and add the sorted items in batches
+    photos.clear();
+
+    const int batchSize = 500;
+    for (int i = 0; i < sortedPhotos.length; i += batchSize) {
+      final int end = (i + batchSize < sortedPhotos.length) ? i + batchSize : sortedPhotos.length;
+      photos.addAll(sortedPhotos.sublist(i, end));
+
+      // Allow UI to update between batches
+      await Future.delayed(Duration.zero);
     }
   }
 

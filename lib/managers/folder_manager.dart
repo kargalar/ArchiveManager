@@ -45,24 +45,37 @@ class FolderManager extends ChangeNotifier {
   bool get isAllFoldersSectionExpanded => _isAllFoldersSectionExpanded;
   String? get selectedSection => _selectedSection;
 
+  // Optimized folder loading
   void _loadFolders() {
+    // Create a map for faster lookups
+    final Map<String, Folder> folderMap = {};
+
+    // First pass: build the folder map for faster lookups
     for (var folder in _folderBox.values) {
-      _folders.add(folder.path);
-      _addToHierarchy(folder.path);
+      folderMap[folder.path] = folder;
+    }
+
+    // Second pass: process folders and build hierarchy
+    for (var folder in _folderBox.values) {
+      if (!_folders.contains(folder.path)) {
+        _folders.add(folder.path);
+        _addToHierarchy(folder.path);
+      }
 
       // Load favorite folders
       if (folder.isFavorite && !_favoriteFolders.contains(folder.path)) {
         _favoriteFolders.add(folder.path);
       }
 
+      // Process subfolders
       for (var subFolder in folder.subFolders) {
         if (!_folders.contains(subFolder)) {
           _folders.add(subFolder);
           _addToHierarchy(subFolder);
 
-          // Check if this subfolder is a favorite
-          final subFolderInBox = _folderBox.values.where((f) => f.path == subFolder).toList();
-          if (subFolderInBox.isNotEmpty && subFolderInBox.first.isFavorite && !_favoriteFolders.contains(subFolder)) {
+          // Check if this subfolder is a favorite using the map (faster)
+          final subFolderObj = folderMap[subFolder];
+          if (subFolderObj != null && subFolderObj.isFavorite && !_favoriteFolders.contains(subFolder)) {
             _favoriteFolders.add(subFolder);
           }
         }
@@ -110,19 +123,41 @@ class FolderManager extends ChangeNotifier {
 
   bool isFolderExpanded(String path) => _expandedFolders[path] ?? false;
 
-  void addFolder(String path) {
+  // Optimized folder addition with batching
+  Future<void> addFolder(String path) async {
     if (!_folders.contains(path)) {
       final folder = Folder(path: path);
       _folderBox.add(folder);
       _folders.add(path);
 
+      // Notify UI that we're starting to scan
+      notifyListeners();
+
       // Scan for subfolders
       try {
         final directory = Directory(path);
-        final entities = directory.listSync(recursive: true);
-        for (var entity in entities) {
-          if (entity is Directory) {
-            final subPath = entity.path;
+        final List<Directory> subDirectories = [];
+
+        // First pass: collect all subdirectories
+        try {
+          final entities = directory.listSync(recursive: true);
+          for (var entity in entities) {
+            if (entity is Directory) {
+              subDirectories.add(entity);
+            }
+          }
+        } catch (e) {
+          debugPrint('Error listing directory contents: $e');
+        }
+
+        // Process subdirectories in batches
+        const int batchSize = 50;
+        for (int i = 0; i < subDirectories.length; i += batchSize) {
+          final int end = (i + batchSize < subDirectories.length) ? i + batchSize : subDirectories.length;
+          final batch = subDirectories.sublist(i, end);
+
+          for (var subDir in batch) {
+            final subPath = subDir.path;
             if (!_folders.contains(subPath)) {
               folder.addSubFolder(subPath);
               _folders.add(subPath);
@@ -133,13 +168,21 @@ class FolderManager extends ChangeNotifier {
               _folderBox.add(subFolder);
             }
           }
+
+          // Allow UI to update between batches
+          if (i + batchSize < subDirectories.length) {
+            notifyListeners();
+            await Future.delayed(Duration.zero);
+          }
         }
+
         _addToHierarchy(path);
         selectFolder(path); // Automatically select the newly added folder
       } catch (e) {
         debugPrint('Error scanning directory: $e');
       }
     }
+
     notifyListeners();
   }
 

@@ -12,8 +12,11 @@ class HomeViewModel extends ChangeNotifier {
   Photo? get selectedPhoto => _selectedPhoto;
 
   void setSelectedPhoto(Photo? photo) {
-    _selectedPhoto = photo;
-    notifyListeners();
+    // Only notify listeners if the selected photo actually changed
+    if (_selectedPhoto != photo) {
+      _selectedPhoto = photo;
+      notifyListeners();
+    }
   }
 
   void handleKeyEvent(KeyEvent event, BuildContext context, FolderManager folderManager, PhotoManager photoManager, TagManager tagManager) {
