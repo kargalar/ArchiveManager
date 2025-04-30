@@ -119,12 +119,14 @@ class PhotoManager extends ChangeNotifier {
         existingPhotos[photo.path] = photo;
       }
 
-      // Process files in batches to prevent UI freezing
-      final files = directory.listSync(recursive: true);
-      final List<File> imageFiles = [];
+      // Tüm dosyaları bir seferde bul (recursive olarak)
+      debugPrint('Klasördeki tüm dosyalar taranıyor: $path');
+      final List<FileSystemEntity> allFiles = directory.listSync(recursive: true);
+      debugPrint('Toplam dosya sayısı: ${allFiles.length}');
 
-      // First filter out only image files (faster than checking each file individually)
-      for (var file in files) {
+      // Sadece resim dosyalarını filtrele
+      final List<File> imageFiles = [];
+      for (var file in allFiles) {
         if (file is File) {
           final extension = file.path.toLowerCase().split('.').last;
           if (imageExtensions.contains('.$extension')) {
@@ -137,37 +139,29 @@ class PhotoManager extends ChangeNotifier {
         }
       }
 
-      // Process image files in batches
-      const int batchSize = 100;
-      for (int i = 0; i < imageFiles.length; i += batchSize) {
-        final int end = (i + batchSize < imageFiles.length) ? i + batchSize : imageFiles.length;
-        final batch = imageFiles.sublist(i, end);
+      debugPrint('Toplam resim dosyası sayısı: ${imageFiles.length}');
 
-        for (var file in batch) {
-          // Use the map for faster lookup instead of firstWhere
-          final photo = existingPhotos[file.path] ??
-              Photo(
-                path: file.path,
-                dateModified: file.statSync().modified,
-              );
+      // Tüm resim dosyalarını bir seferde işle (batch olmadan)
+      for (var file in imageFiles) {
+        // Use the map for faster lookup instead of firstWhere
+        final photo = existingPhotos[file.path] ??
+            Photo(
+              path: file.path,
+              dateModified: file.statSync().modified,
+            );
 
-          // Add to Hive box if it's a new photo
-          if (!existingPhotos.containsKey(file.path)) {
-            _photoBox.add(photo);
-            existingPhotos[file.path] = photo; // Update the map
-          }
-
-          // Add to photos list and track the path if needed
-          _photos.add(photo);
-          addedPhotoPaths?.add(file.path);
+        // Add to Hive box if it's a new photo
+        if (!existingPhotos.containsKey(file.path)) {
+          _photoBox.add(photo);
+          existingPhotos[file.path] = photo; // Update the map
         }
 
-        // Allow UI to update between batches during initial loading
-        if (i + batchSize < imageFiles.length) {
-          // Only yield if we're not on the last batch
-          await Future.delayed(Duration.zero);
-        }
+        // Add to photos list and track the path if needed
+        _photos.add(photo);
+        addedPhotoPaths?.add(file.path);
       }
+
+      debugPrint('Tüm fotoğraflar yüklendi. Toplam: ${_photos.length}');
     } catch (e) {
       debugPrint('Error loading photos from folder $path: $e');
     }

@@ -368,17 +368,11 @@ class FilterManager extends ChangeNotifier {
       sortedPhotos.sort((a, b) => (b.resolution).compareTo(a.resolution));
     }
 
-    // Clear the original list and add the sorted items in batches
+    // Clear the original list and add all sorted items at once
     photos.clear();
+    photos.addAll(sortedPhotos);
 
-    const int batchSize = 500;
-    for (int i = 0; i < sortedPhotos.length; i += batchSize) {
-      final int end = (i + batchSize < sortedPhotos.length) ? i + batchSize : sortedPhotos.length;
-      photos.addAll(sortedPhotos.sublist(i, end));
-
-      // Allow UI to update between batches
-      await Future.delayed(Duration.zero);
-    }
+    debugPrint('Tüm fotoğraflar sıralandı ve eklendi: ${photos.length}');
   }
 
   // Filter methods
