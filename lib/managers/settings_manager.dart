@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:file_picker/file_picker.dart';
 // Use window_manager on desktop platforms, and a stub implementation on web
@@ -12,6 +13,9 @@ import '../models/settings.dart';
 import '../models/folder.dart';
 import '../models/photo.dart';
 import '../models/tag.dart';
+import '../models/color_adapter.dart';
+import '../models/keyboard_key_adapter.dart';
+import '../models/datetime_adapter.dart';
 
 class SettingsManager extends ChangeNotifier {
   Box<Settings>? _settingsBox;
@@ -495,11 +499,62 @@ class SettingsManager extends ChangeNotifier {
       final jsonString = await file.readAsString();
       final Map<String, dynamic> importData = json.decode(jsonString);
 
-      // Import settings
-      if (importData.containsKey('settings')) {
-        final settingsData = importData['settings'] as Map<String, dynamic>;
-        if (_settingsBox != null && _settingsBox!.isNotEmpty) {
-          final settings = _settingsBox!.getAt(0);
+      // Tüm Hive kutularını kapat
+      await Hive.close();
+
+      // Hive veritabanı dizinini al
+      final appDocDir = await getApplicationDocumentsDirectory();
+      final hivePath = '${appDocDir.path}/Archive Manager';
+
+      // Geçici bir dizine JSON dosyasını kopyala
+      final tempDir = await Directory('$hivePath/temp').create(recursive: true);
+      final tempFile = File('${tempDir.path}/import_data.json');
+      await tempFile.writeAsString(jsonString);
+
+      // Tüm Hive dosyalarını sil (settings hariç)
+      final directory = Directory(hivePath);
+      if (await directory.exists()) {
+        // Temp dizini hariç tüm dosya ve klasörleri sil
+        final entities = await directory.list().toList();
+        for (var entity in entities) {
+          if (entity.path != tempDir.path) {
+            await entity.delete(recursive: true);
+          }
+        }
+
+        debugPrint('Deleted Hive directories for import');
+
+        // Yeni bir dizin oluştur
+        await Directory(hivePath).create(recursive: true);
+        debugPrint('Created new Hive directory');
+
+        // Hive'ı yeniden başlat
+        await Hive.initFlutter(hivePath);
+
+        // Adapterleri kaydet
+        Hive.registerAdapter(ColorAdapter());
+        Hive.registerAdapter(DateTimeAdapter());
+        Hive.registerAdapter(PhotoAdapter());
+        Hive.registerAdapter(FolderAdapter());
+        Hive.registerAdapter(TagAdapter());
+        Hive.registerAdapter(LogicalKeyboardKeyAdapter());
+        Hive.registerAdapter(SettingsAdapter());
+
+        // Kutuları aç
+        final settingsBox = await Hive.openBox<Settings>('settings');
+        final folderBox = await Hive.openBox<Folder>('folders');
+        final tagBox = await Hive.openBox<Tag>('tags');
+        final photoBox = await Hive.openBox<Photo>('photos');
+
+        // Varsayılan ayarları oluştur
+        if (settingsBox.isEmpty) {
+          await settingsBox.add(Settings());
+        }
+
+        // Import settings
+        if (importData.containsKey('settings')) {
+          final settingsData = importData['settings'] as Map<String, dynamic>;
+          final settings = settingsBox.getAt(0);
           if (settings != null) {
             settings.photosPerRow = settingsData['photosPerRow'] ?? 4;
             settings.showImageInfo = settingsData['showImageInfo'] ?? true;
@@ -507,81 +562,57 @@ class SettingsManager extends ChangeNotifier {
             settings.dividerPosition = settingsData['dividerPosition'] ?? 0.3;
             settings.folderMenuWidth = settingsData['folderMenuWidth'] ?? 250;
             await settings.save();
-
-            // Update local variables
-            _photosPerRow = settings.photosPerRow;
-            _dividerPosition = settings.dividerPosition;
-            _folderMenuWidth = settings.folderMenuWidth;
           }
         }
-      }
 
-      // Import folders
-      if (importData.containsKey('folders')) {
-        final folderBox = Hive.box<Folder>('folders');
-        final foldersData = importData['folders'] as List<dynamic>;
+        // Import folders
+        if (importData.containsKey('folders')) {
+          final foldersData = importData['folders'] as List<dynamic>;
+          for (var folderData in foldersData) {
+            final data = folderData as Map<String, dynamic>;
+            final path = data['path'] as String;
+            final subFolders = (data['subFolders'] as List<dynamic>).cast<String>();
+            final isFavorite = data['isFavorite'] as bool;
 
-        // Clear existing folders
-        await folderBox.clear();
+            final folder = Folder(
+              path: path,
+              subFolders: subFolders,
+              isFavorite: isFavorite,
+            );
 
-        for (var folderData in foldersData) {
-          final data = folderData as Map<String, dynamic>;
-          final path = data['path'] as String;
-
-          final subFolders = (data['subFolders'] as List<dynamic>).cast<String>();
-          final isFavorite = data['isFavorite'] as bool;
-
-          final folder = Folder(
-            path: path,
-            subFolders: subFolders,
-            isFavorite: isFavorite,
-          );
-
-          await folderBox.add(folder);
+            await folderBox.add(folder);
+          }
         }
-      }
 
-      // Import tags
-      if (importData.containsKey('tags')) {
-        final tagBox = Hive.box<Tag>('tags');
-        final tagsData = importData['tags'] as List<dynamic>;
-
-        // Clear existing tags
-        await tagBox.clear();
-
-        // Map to store imported tags by ID for photo tag references
+        // Import tags
         final Map<String, Tag> importedTagsById = {};
+        if (importData.containsKey('tags')) {
+          final tagsData = importData['tags'] as List<dynamic>;
+          for (var tagData in tagsData) {
+            final data = tagData as Map<String, dynamic>;
+            final id = data['id'] as String;
+            final name = data['name'] as String;
+            final colorValue = data['colorValue'] as int;
+            final shortcutKeyId = data['shortcutKeyId'] as int;
 
-        for (var tagData in tagsData) {
-          final data = tagData as Map<String, dynamic>;
-          final id = data['id'] as String;
+            final tag = Tag(
+              name: name,
+              color: Color(colorValue),
+              shortcutKey: LogicalKeyboardKey(shortcutKeyId),
+              id: id,
+            );
 
-          final name = data['name'] as String;
-          final colorValue = data['colorValue'] as int;
-          final shortcutKeyId = data['shortcutKeyId'] as int;
-
-          final tag = Tag(
-            name: name,
-            color: Color(colorValue),
-            shortcutKey: LogicalKeyboardKey(shortcutKeyId),
-            id: id,
-          );
-
-          final tagKey = await tagBox.add(tag);
-          final addedTag = tagBox.get(tagKey);
-          if (addedTag != null) {
-            importedTagsById[id] = addedTag;
+            final tagKey = await tagBox.add(tag);
+            final addedTag = tagBox.get(tagKey);
+            if (addedTag != null) {
+              importedTagsById[id] = addedTag;
+            }
           }
         }
 
         // Import photos
         if (importData.containsKey('photos')) {
-          final photoBox = Hive.box<Photo>('photos');
           final photosData = importData['photos'] as List<dynamic>;
-
-          // Clear existing photos
-          await photoBox.clear();
-
           for (var photoData in photosData) {
             final data = photoData as Map<String, dynamic>;
             final path = data['path'] as String;
@@ -625,12 +656,15 @@ class SettingsManager extends ChangeNotifier {
             }
           }
         }
+
+        // Geçici dosyayı sil
+        await tempDir.delete(recursive: true);
+
+        return true;
       }
 
-      // Notify listeners that data has changed
-      notifyListeners();
-
-      return true;
+      debugPrint('Hive directory not found: $hivePath');
+      return false;
     } catch (e) {
       debugPrint('Error processing imported data: $e');
       return false;

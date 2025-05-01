@@ -179,10 +179,25 @@ class SettingsDialog extends StatelessWidget {
                                             Navigator.pop(context);
                                             final result = await settingsManager.importData();
                                             if (result && context.mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text('Data imported successfully'),
-                                                  backgroundColor: Colors.green,
+                                              // Show dialog informing user that app will restart
+                                              showDialog(
+                                                context: context,
+                                                barrierDismissible: false,
+                                                builder: (context) => AlertDialog(
+                                                  title: const Text('Import Successful'),
+                                                  content: const Text(
+                                                    'Data has been imported successfully. The application will now close. '
+                                                    'Please restart the application to see the changes.',
+                                                  ),
+                                                  actions: [
+                                                    ElevatedButton(
+                                                      onPressed: () {
+                                                        // Force close the application
+                                                        exit(0);
+                                                      },
+                                                      child: const Text('Close Application'),
+                                                    ),
+                                                  ],
                                                 ),
                                               );
                                             } else if (context.mounted) {
@@ -261,7 +276,7 @@ class SettingsDialog extends StatelessWidget {
                                                 actions: [
                                                   ElevatedButton(
                                                     onPressed: () {
-                                                      // Uygulamayı kapat
+                                                      // Force close the application
                                                       exit(0);
                                                     },
                                                     child: const Text('Close Application'),
