@@ -250,13 +250,21 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
             // Use Future.microtask to avoid setState during build
             Future.microtask(() {
               final currentIndex = filteredPhotos.indexOf(_currentPhoto);
+
+              // Fotoğrafı sil
               photoManager.deletePhoto(_currentPhoto);
+
+              // Silme işleminden sonra filteredPhotos listesini güncelle
+              // Silinen fotoğrafı listeden çıkar
+              filteredPhotos.removeWhere((photo) => photo.path == _currentPhoto.path);
+
               if (filteredPhotos.isEmpty) {
                 if (mounted) {
                   Navigator.of(context).pop();
                 }
               } else if (mounted) {
                 setState(() {
+                  // Aynı indeksi kullan, eğer son fotoğraf silindiyse bir öncekine geç
                   _currentPhoto = filteredPhotos[currentIndex < filteredPhotos.length ? currentIndex : filteredPhotos.length - 1];
                   _resetZoom();
                 });
