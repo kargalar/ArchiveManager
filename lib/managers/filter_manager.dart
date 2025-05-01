@@ -159,21 +159,25 @@ class FilterManager extends ChangeNotifier {
   Future<void> loadActualDimensions(Photo photo) async {
     try {
       final file = File(photo.path);
-      if (!file.existsSync()) return;
+      if (!file.existsSync()) {
+        // Dosya yoksa, boyutları yüklenmiş olarak işaretle
+        photo.width = 1;
+        photo.height = 1;
+        photo.dimensionsLoaded = true;
+        photo.save();
+        debugPrint('File does not exist, marking as loaded with default dimensions: ${photo.path}');
+        return;
+      }
 
       // Load date modified if not already loaded
       photo.dateModified ??= file.statSync().modified;
 
       // Skip if dimensions are already loaded and marked as such
       // This is critical to prevent repeated loading
-      if (photo.dimensionsLoaded && photo.width > 0 && photo.height > 0) return;
+      if (photo.dimensionsLoaded) return;
 
       // Create a limited scope for the image loading
       await _loadImageDimensions(file.path, photo);
-
-      // Mark dimensions as loaded to prevent future loading attempts
-      photo.dimensionsLoaded = true;
-      photo.save();
 
       // Explicitly call garbage collection to free memory
       // This is not normally recommended but helps in this specific case
@@ -197,7 +201,12 @@ class FilterManager extends ChangeNotifier {
         }
       });
     } catch (e) {
-      debugPrint('Error loading actual image dimensions: $e');
+      // Hata durumunda, boyutları yüklenmiş olarak işaretle
+      photo.width = 1;
+      photo.height = 1;
+      photo.dimensionsLoaded = true;
+      photo.save();
+      debugPrint('Error loading actual image dimensions, marking as loaded with default dimensions: $e');
     }
   }
 
@@ -205,11 +214,30 @@ class FilterManager extends ChangeNotifier {
   Future<void> _loadImageDimensions(String path, Photo photo) async {
     final completer = Completer<void>();
     final imageProvider = FileImage(File(path));
+    bool isCompleted = false;
+
+    // Set a timeout to handle images that can't be loaded
+    Timer? timeoutTimer = Timer(const Duration(seconds: 5), () {
+      if (!isCompleted) {
+        debugPrint('Timeout loading image dimensions for: $path');
+        // Mark as loaded with default dimensions to prevent future loading attempts
+        photo.width = 1;
+        photo.height = 1;
+        photo.dimensionsLoaded = true;
+        photo.save();
+        isCompleted = true;
+        completer.complete();
+      }
+    });
 
     // Use a more controlled approach to load the image
     final imageStream = imageProvider.resolve(const ImageConfiguration());
     final imageStreamListener = ImageStreamListener(
       (imageInfo, synchronousCall) {
+        // Cancel timeout timer
+        timeoutTimer?.cancel();
+        timeoutTimer = null;
+
         // Update dimensions and save to Hive
         photo.width = imageInfo.image.width;
         photo.height = imageInfo.image.height;
@@ -218,11 +246,28 @@ class FilterManager extends ChangeNotifier {
 
         // Release resources
         imageInfo.image.dispose();
-        completer.complete();
+        if (!isCompleted) {
+          isCompleted = true;
+          completer.complete();
+        }
       },
       onError: (exception, stackTrace) {
+        // Cancel timeout timer
+        timeoutTimer?.cancel();
+        timeoutTimer = null;
+
         debugPrint('Error loading image dimensions: $exception');
-        completer.completeError(exception);
+
+        // Mark as loaded with default dimensions to prevent future loading attempts
+        photo.width = 1;
+        photo.height = 1;
+        photo.dimensionsLoaded = true;
+        photo.save();
+
+        if (!isCompleted) {
+          isCompleted = true;
+          completer.complete(); // Complete normally instead of with error
+        }
       },
     );
 
@@ -235,12 +280,13 @@ class FilterManager extends ChangeNotifier {
       // Always remove the listener to prevent memory leaks
       imageStream.removeListener(imageStreamListener);
       imageProvider.evict();
+      timeoutTimer?.cancel();
     }
   }
 
   // Check if all photos have resolution data
   bool allPhotosHaveResolution(List<Photo> photos) {
-    return photos.every((photo) => photo.dimensionsLoaded && photo.width > 0 && photo.height > 0);
+    return photos.every((photo) => photo.dimensionsLoaded);
   }
 
   // Check if all photos have date modified data
@@ -264,7 +310,7 @@ class FilterManager extends ChangeNotifier {
 
     try {
       // Filter photos that need dimensions or dates
-      final List<Photo> photosNeedingData = photos.where((photo) => !photo.dimensionsLoaded || photo.width <= 0 || photo.height <= 0 || photo.dateModified == null).toList();
+      final List<Photo> photosNeedingData = photos.where((photo) => !photo.dimensionsLoaded || photo.dateModified == null).toList();
 
       if (photosNeedingData.isEmpty) {
         _loadingProgress = 1.0;

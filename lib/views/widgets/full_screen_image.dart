@@ -38,6 +38,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
   bool _isZooming = false;
   bool _isDragging = false;
   Offset? _lastDragPosition;
+  DateTime? _middleMouseDownTime;
 
   // Artık sıralama durumunu takip etmeye gerek yok
 
@@ -283,40 +284,60 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
         body: Stack(
           children: [
             MouseRegion(
-                cursor: _isDragging
-                    ? SystemMouseCursors.grabbing
-                    : _isZooming
-                        ? SystemMouseCursors.zoomIn
-                        : _currentScale > _minScale
-                            ? SystemMouseCursors.grab // Zoom yapılmışsa grab cursor göster (sürüklenebilir)
-                            : SystemMouseCursors.click, // Zoom yapılmamışsa normal cursor göster
+                cursor:
+                    // ! şimdilik böyle kalacak çünkü windows da varsayılanında grab ve grabbing
+                    _isDragging
+                        ? SystemMouseCursors.basic
+                        : _isZooming
+                            ? SystemMouseCursors.basic
+                            : _currentScale > _minScale
+                                ? SystemMouseCursors.basic // Zoom yapılmışsa grab cursor göster (sürüklenebilir)
+                                : SystemMouseCursors.basic, // Zoom yapılmamışsa normal cursor göster
                 child: Listener(
                   onPointerDown: (event) {
                     if (event.buttons == kMiddleMouseButton) {
-                      // Eğer zoom yapılmışsa sürükleme, değilse çıkış yap
-                      if (_currentScale > _minScale) {
-                        // Zoom yapılmışsa sürükleme başlat
-                        setState(() {
-                          _isDragging = true;
-                          _lastDragPosition = event.position;
-                        });
-                      } else {
-                        // Zoom yapılmamışsa çıkış yap (ESC gibi)
-                        Navigator.of(context).pop();
-                      }
-                    }
-                  },
-                  onPointerMove: (event) {
-                    if (_isDragging && _lastDragPosition != null) {
-                      // Sürükleme hareketi
-                      final delta = event.position - _lastDragPosition!;
-                      final Matrix4 matrix = Matrix4.copy(_transformationController.value);
-                      matrix.translate(delta.dx / _currentScale, delta.dy / _currentScale);
-                      _transformationController.value = matrix;
+                      // Orta tuş basıldığında zamanı kaydet
+                      _middleMouseDownTime = DateTime.now();
+
+                      // Başlangıç pozisyonunu kaydet
                       _lastDragPosition = event.position;
                     }
                   },
+                  onPointerMove: (event) {
+                    // Orta tuş basılı ve hareket varsa ve zoom yapılmışsa sürükleme başlat
+                    if (event.buttons == kMiddleMouseButton && _lastDragPosition != null && _currentScale > _minScale) {
+                      // Hareket mesafesini hesapla
+                      final moveDistance = (event.position - _lastDragPosition!).distance;
+
+                      // Belirli bir eşik değerini aşarsa sürükleme moduna geç
+                      if (moveDistance > 5.0) {
+                        setState(() {
+                          _isDragging = true;
+                        });
+                      }
+
+                      if (_isDragging) {
+                        // Sürükleme hareketi
+                        final delta = event.position - _lastDragPosition!;
+                        final Matrix4 matrix = Matrix4.copy(_transformationController.value);
+                        matrix.translate(delta.dx / _currentScale, delta.dy / _currentScale);
+                        _transformationController.value = matrix;
+                        _lastDragPosition = event.position;
+                      }
+                    }
+                  },
                   onPointerUp: (event) {
+                    // Orta tuş bırakıldığında
+                    if (_middleMouseDownTime != null) {
+                      // Sadece sürükleme yapmadıysa çıkış yap
+                      // Sürükleme başlamışsa, hızlı bırakılsa bile çıkış yapma
+                      if (!_isDragging) {
+                        Navigator.of(context).pop();
+                      }
+
+                      _middleMouseDownTime = null;
+                    }
+
                     if (_isDragging) {
                       setState(() {
                         _isDragging = false;
