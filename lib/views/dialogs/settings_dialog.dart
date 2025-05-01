@@ -120,6 +120,95 @@ class SettingsDialog extends StatelessWidget {
                       const SizedBox(height: 24),
                       const Divider(),
                       const SizedBox(height: 24),
+
+                      // Data Export Section
+                      const Text('Data Management', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      Consumer<SettingsManager>(
+                        builder: (context, settingsManager, child) {
+                          return Row(
+                            children: [
+                              ElevatedButton.icon(
+                                icon: const Icon(Icons.file_download),
+                                label: const Text('Export Data'),
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                ),
+                                onPressed: () async {
+                                  final result = await settingsManager.exportData();
+                                  if (result && context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Data exported successfully'),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                  } else if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Failed to export data'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
+                              const SizedBox(width: 16),
+                              ElevatedButton.icon(
+                                icon: const Icon(Icons.file_upload),
+                                label: const Text('Import Data'),
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                ),
+                                onPressed: () async {
+                                  // Show confirmation dialog first
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      title: const Text('Import Data'),
+                                      content: const Text(
+                                        'This will replace all your existing data with the imported data. Continue?',
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(context),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () async {
+                                            Navigator.pop(context);
+                                            final result = await settingsManager.importData();
+                                            if (result && context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text('Data imported successfully'),
+                                                  backgroundColor: Colors.green,
+                                                ),
+                                              );
+                                            } else if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text('Failed to import data or import cancelled'),
+                                                  backgroundColor: Colors.red,
+                                                ),
+                                              );
+                                            }
+                                          },
+                                          child: const Text('Import'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 24),
+                      const Divider(),
+                      const SizedBox(height: 24),
                       const Text('Reset Application', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red)),
                       const SizedBox(height: 12),
                       const Text(

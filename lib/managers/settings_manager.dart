@@ -1,11 +1,17 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:file_picker/file_picker.dart';
 // Use window_manager on desktop platforms, and a stub implementation on web
 import 'package:window_manager/window_manager.dart' if (dart.library.html) '../utils/web_window_manager.dart';
 import '../models/settings.dart';
+import '../models/folder.dart';
+import '../models/photo.dart';
+import '../models/tag.dart';
 
 class SettingsManager extends ChangeNotifier {
   Box<Settings>? _settingsBox;
@@ -327,6 +333,306 @@ class SettingsManager extends ChangeNotifier {
       return false;
     } catch (e) {
       debugPrint('Error resetting data: $e');
+      return false;
+    }
+  }
+
+  // Export application data to a JSON file
+  Future<bool> exportData() async {
+    try {
+      debugPrint('Exporting application data...');
+
+      // Create a map to hold all data
+      final Map<String, dynamic> exportData = {};
+
+      // Export settings
+      if (_settingsBox != null && _settingsBox!.isNotEmpty) {
+        final settings = _settingsBox!.getAt(0);
+        if (settings != null) {
+          exportData['settings'] = {
+            'photosPerRow': settings.photosPerRow,
+            'showImageInfo': settings.showImageInfo,
+            'fullscreenAutoNext': settings.fullscreenAutoNext,
+            'dividerPosition': settings.dividerPosition,
+            'folderMenuWidth': settings.folderMenuWidth,
+          };
+        }
+      }
+
+      // Export folders
+      final folderBox = Hive.box<Folder>('folders');
+      if (folderBox.isNotEmpty) {
+        final List<Map<String, dynamic>> folders = [];
+        for (var i = 0; i < folderBox.length; i++) {
+          final folder = folderBox.getAt(i);
+          if (folder != null) {
+            folders.add({
+              'path': folder.path,
+              'subFolders': folder.subFolders,
+              'isFavorite': folder.isFavorite,
+            });
+          }
+        }
+        exportData['folders'] = folders;
+      }
+
+      // Export tags
+      final tagBox = Hive.box<Tag>('tags');
+      if (tagBox.isNotEmpty) {
+        final List<Map<String, dynamic>> tags = [];
+        for (var i = 0; i < tagBox.length; i++) {
+          final tag = tagBox.getAt(i);
+          if (tag != null) {
+            tags.add({
+              'name': tag.name,
+              'colorValue': tag.colorValue,
+              'shortcutKeyId': tag.shortcutKeyId,
+              'id': tag.id,
+            });
+          }
+        }
+        exportData['tags'] = tags;
+      }
+
+      // Export photos (basic info only to keep file size manageable)
+      final photoBox = Hive.box<Photo>('photos');
+      if (photoBox.isNotEmpty) {
+        final List<Map<String, dynamic>> photos = [];
+        for (var i = 0; i < photoBox.length; i++) {
+          final photo = photoBox.getAt(i);
+          if (photo != null) {
+            final photoTags = photo.tags.map((tag) => tag.id).toList();
+            photos.add({
+              'path': photo.path,
+              'isFavorite': photo.isFavorite,
+              'rating': photo.rating,
+              'isRecycled': photo.isRecycled,
+              'tags': photoTags,
+              'width': photo.width,
+              'height': photo.height,
+              'dateModified': photo.dateModified?.millisecondsSinceEpoch,
+              'dimensionsLoaded': photo.dimensionsLoaded,
+            });
+          }
+        }
+        exportData['photos'] = photos;
+      }
+
+      // Convert to JSON
+      final jsonData = json.encode(exportData);
+
+      // Get save location from user
+      final saveLocation = await FilePicker.platform.saveFile(
+        dialogTitle: 'Save Archive Manager Data',
+        fileName: 'archive_manager_export.json',
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+
+      if (saveLocation != null) {
+        // Write to file
+        final file = File(saveLocation);
+        await file.writeAsString(jsonData);
+        debugPrint('Data exported to: $saveLocation');
+        return true;
+      } else {
+        debugPrint('Export cancelled by user');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Error exporting data: $e');
+      return false;
+    }
+  }
+
+  // Import application data from a JSON file
+  Future<bool> importData() async {
+    try {
+      debugPrint('Importing application data...');
+
+      // Get file location from user
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        dialogTitle: 'Import Archive Manager Data',
+      );
+
+      if (result == null || result.files.isEmpty) {
+        debugPrint('Import cancelled by user');
+        return false;
+      }
+
+      final filePath = result.files.first.path;
+      if (filePath == null) {
+        debugPrint('Invalid file path');
+        return false;
+      }
+
+      // Read file
+      final file = File(filePath);
+      if (!await file.exists()) {
+        debugPrint('File does not exist: $filePath');
+        return false;
+      }
+
+      // Just check if the file is valid JSON
+      final jsonString = await file.readAsString();
+      json.decode(jsonString); // Validate JSON format
+
+      // Process the imported data
+      return await processImportedData(filePath);
+    } catch (e) {
+      debugPrint('Error importing data: $e');
+      return false;
+    }
+  }
+
+  // Process the imported data
+  Future<bool> processImportedData(String filePath) async {
+    try {
+      // Read file
+      final file = File(filePath);
+      final jsonString = await file.readAsString();
+      final Map<String, dynamic> importData = json.decode(jsonString);
+
+      // Import settings
+      if (importData.containsKey('settings')) {
+        final settingsData = importData['settings'] as Map<String, dynamic>;
+        if (_settingsBox != null && _settingsBox!.isNotEmpty) {
+          final settings = _settingsBox!.getAt(0);
+          if (settings != null) {
+            settings.photosPerRow = settingsData['photosPerRow'] ?? 4;
+            settings.showImageInfo = settingsData['showImageInfo'] ?? true;
+            settings.fullscreenAutoNext = settingsData['fullscreenAutoNext'] ?? false;
+            settings.dividerPosition = settingsData['dividerPosition'] ?? 0.3;
+            settings.folderMenuWidth = settingsData['folderMenuWidth'] ?? 250;
+            await settings.save();
+
+            // Update local variables
+            _photosPerRow = settings.photosPerRow;
+            _dividerPosition = settings.dividerPosition;
+            _folderMenuWidth = settings.folderMenuWidth;
+          }
+        }
+      }
+
+      // Import folders
+      if (importData.containsKey('folders')) {
+        final folderBox = Hive.box<Folder>('folders');
+        final foldersData = importData['folders'] as List<dynamic>;
+
+        // Clear existing folders
+        await folderBox.clear();
+
+        for (var folderData in foldersData) {
+          final data = folderData as Map<String, dynamic>;
+          final path = data['path'] as String;
+
+          final subFolders = (data['subFolders'] as List<dynamic>).cast<String>();
+          final isFavorite = data['isFavorite'] as bool;
+
+          final folder = Folder(
+            path: path,
+            subFolders: subFolders,
+            isFavorite: isFavorite,
+          );
+
+          await folderBox.add(folder);
+        }
+      }
+
+      // Import tags
+      if (importData.containsKey('tags')) {
+        final tagBox = Hive.box<Tag>('tags');
+        final tagsData = importData['tags'] as List<dynamic>;
+
+        // Clear existing tags
+        await tagBox.clear();
+
+        // Map to store imported tags by ID for photo tag references
+        final Map<String, Tag> importedTagsById = {};
+
+        for (var tagData in tagsData) {
+          final data = tagData as Map<String, dynamic>;
+          final id = data['id'] as String;
+
+          final name = data['name'] as String;
+          final colorValue = data['colorValue'] as int;
+          final shortcutKeyId = data['shortcutKeyId'] as int;
+
+          final tag = Tag(
+            name: name,
+            color: Color(colorValue),
+            shortcutKey: LogicalKeyboardKey(shortcutKeyId),
+            id: id,
+          );
+
+          final tagKey = await tagBox.add(tag);
+          final addedTag = tagBox.get(tagKey);
+          if (addedTag != null) {
+            importedTagsById[id] = addedTag;
+          }
+        }
+
+        // Import photos
+        if (importData.containsKey('photos')) {
+          final photoBox = Hive.box<Photo>('photos');
+          final photosData = importData['photos'] as List<dynamic>;
+
+          // Clear existing photos
+          await photoBox.clear();
+
+          for (var photoData in photosData) {
+            final data = photoData as Map<String, dynamic>;
+            final path = data['path'] as String;
+
+            // Check if file exists
+            final photoFile = File(path);
+            if (!await photoFile.exists()) {
+              debugPrint('Photo file does not exist, skipping: $path');
+              continue;
+            }
+
+            // Create new photo
+            final photo = Photo(
+              path: path,
+              isFavorite: data['isFavorite'] as bool,
+              rating: data['rating'] as int,
+              isRecycled: data['isRecycled'] as bool,
+              width: data['width'] as int,
+              height: data['height'] as int,
+              dimensionsLoaded: data['dimensionsLoaded'] as bool,
+            );
+
+            // Set date modified if available
+            if (data['dateModified'] != null) {
+              photo.dateModified = DateTime.fromMillisecondsSinceEpoch(data['dateModified'] as int);
+            }
+
+            await photoBox.add(photo);
+
+            // Add tags to photo
+            if (data.containsKey('tags')) {
+              final tagIds = (data['tags'] as List<dynamic>).cast<String>();
+              for (var tagId in tagIds) {
+                if (importedTagsById.containsKey(tagId)) {
+                  if (!photo.tags.contains(importedTagsById[tagId])) {
+                    photo.tags.add(importedTagsById[tagId]!);
+                  }
+                }
+              }
+              await photo.save();
+            }
+          }
+        }
+      }
+
+      // Notify listeners that data has changed
+      notifyListeners();
+
+      return true;
+    } catch (e) {
+      debugPrint('Error processing imported data: $e');
       return false;
     }
   }
