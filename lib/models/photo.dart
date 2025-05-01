@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'tag.dart';
 
@@ -38,6 +39,9 @@ class Photo extends HiveObject {
   @HiveField(7)
   DateTime? dateModified;
 
+  @HiveField(8, defaultValue: false)
+  bool dimensionsLoaded;
+
   Photo({
     required this.path,
     this.isFavorite = false,
@@ -47,6 +51,7 @@ class Photo extends HiveObject {
     this.width = 0,
     this.height = 0,
     this.dateModified,
+    this.dimensionsLoaded = false,
   });
 
   // Calculate resolution (total pixels)
@@ -54,13 +59,25 @@ class Photo extends HiveObject {
 
   void toggleFavorite() {
     isFavorite = !isFavorite;
-    save();
+    try {
+      save();
+      debugPrint('Photo.toggleFavorite: Favorite toggled to $isFavorite for photo: $path');
+    } catch (e) {
+      debugPrint('Photo.toggleFavorite ERROR: $e');
+    }
   }
 
   void setRating(int value) {
     if (value >= 0 && value <= 9) {
       rating = value;
-      save();
+      try {
+        save();
+        debugPrint('Photo.setRating: Rating set to $rating for photo: $path');
+      } catch (e) {
+        debugPrint('Photo.setRating ERROR: $e');
+      }
+    } else {
+      debugPrint('Photo.setRating: Invalid rating value: $value (must be 0-9)');
     }
   }
 }

@@ -1,9 +1,12 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../models/photo.dart';
 import '../models/sort_state.dart';
 import '../models/tag.dart';
+import 'photo_manager.dart';
+import '../main.dart';
 
 class FilterManager extends ChangeNotifier {
   // Sorting
@@ -19,6 +22,12 @@ class FilterManager extends ChangeNotifier {
   double _minRatingFilter = 0;
   double _maxRatingFilter = 9;
 
+  // Loading state tracking
+  bool _isLoadingDimensions = false;
+  bool _isSorting = false;
+  double _loadingProgress = 0.0; // 0.0 to 1.0
+  Completer<void>? _dimensionsLoadingCompleter;
+
   // Getters
   SortState get dateSortState => _dateSortState;
   SortState get ratingSortState => _ratingSortState;
@@ -29,6 +38,11 @@ class FilterManager extends ChangeNotifier {
   bool get showUntaggedOnly => _showUntaggedOnly;
   double get minRatingFilter => _minRatingFilter;
   double get maxRatingFilter => _maxRatingFilter;
+
+  // Loading state getters
+  bool get isLoadingDimensions => _isLoadingDimensions;
+  bool get isSorting => _isSorting;
+  double get loadingProgress => _loadingProgress;
 
   // Sorting methods
   void resetDateSort() {
@@ -85,6 +99,20 @@ class FilterManager extends ChangeNotifier {
   }
 
   void toggleResolutionSort() {
+    // Check if indexing is in progress
+    if (_photoManager != null && _photoManager!.isIndexing) {
+      // Don't allow resolution sorting during indexing
+      debugPrint('Cannot sort by resolution while indexing is in progress');
+
+      // Show warning dialog
+      _showIndexingWarningDialog();
+
+      // Reset resolution sort state
+      _resolutionSortState = SortState.none;
+      notifyListeners();
+      return;
+    }
+
     switch (_resolutionSortState) {
       case SortState.none:
         _resolutionSortState = SortState.descending;
@@ -103,6 +131,29 @@ class FilterManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Show warning dialog when trying to sort by resolution during indexing
+  void _showIndexingWarningDialog() {
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('İndeksleme Devam Ediyor'),
+          content: const Text(
+            'Fotoğrafların boyutları şu anda indeksleniyor. İndeksleme tamamlanana kadar çözünürlüğe göre sıralama yapılamaz. '
+            'Lütfen indeksleme işleminin tamamlanmasını bekleyin.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Tamam'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   // Load actual dimensions and date modified, and update Photo object
   // Optimized to prevent memory leaks
   Future<void> loadActualDimensions(Photo photo) async {
@@ -113,11 +164,16 @@ class FilterManager extends ChangeNotifier {
       // Load date modified if not already loaded
       photo.dateModified ??= file.statSync().modified;
 
-      // Skip if dimensions are already loaded - this is critical to prevent repeated loading
-      if (photo.width > 0 && photo.height > 0) return;
+      // Skip if dimensions are already loaded and marked as such
+      // This is critical to prevent repeated loading
+      if (photo.dimensionsLoaded && photo.width > 0 && photo.height > 0) return;
 
       // Create a limited scope for the image loading
       await _loadImageDimensions(file.path, photo);
+
+      // Mark dimensions as loaded to prevent future loading attempts
+      photo.dimensionsLoaded = true;
+      photo.save();
 
       // Explicitly call garbage collection to free memory
       // This is not normally recommended but helps in this specific case
@@ -134,6 +190,8 @@ class FilterManager extends ChangeNotifier {
             PaintingBinding.instance.imageCache.clear();
             PaintingBinding.instance.imageCache.clearLiveImages();
           }
+
+          debugPrint('Image cache cleared to prevent memory leaks');
         } catch (e) {
           debugPrint('Error clearing image cache: $e');
         }
@@ -155,6 +213,7 @@ class FilterManager extends ChangeNotifier {
         // Update dimensions and save to Hive
         photo.width = imageInfo.image.width;
         photo.height = imageInfo.image.height;
+        photo.dimensionsLoaded = true;
         photo.save();
 
         // Release resources
@@ -181,7 +240,7 @@ class FilterManager extends ChangeNotifier {
 
   // Check if all photos have resolution data
   bool allPhotosHaveResolution(List<Photo> photos) {
-    return photos.every((photo) => photo.width > 0 && photo.height > 0);
+    return photos.every((photo) => photo.dimensionsLoaded && photo.width > 0 && photo.height > 0);
   }
 
   // Check if all photos have date modified data
@@ -190,29 +249,76 @@ class FilterManager extends ChangeNotifier {
   }
 
   // Load resolutions and dates for all photos that don't have it yet
-  // Optimized to prevent memory leaks
+  // Optimized to prevent memory leaks and duplicate loading
   Future<void> loadAllResolutions(List<Photo> photos) async {
-    // Filter photos that need dimensions
-    final List<Photo> photosNeedingData = photos.where((photo) => photo.width <= 0 || photo.height <= 0 || photo.dateModified == null).toList();
-
-    if (photosNeedingData.isEmpty) {
-      return; // No photos need processing
+    // If already loading, return the existing completer
+    if (_isLoadingDimensions && _dimensionsLoadingCompleter != null) {
+      return _dimensionsLoadingCompleter!.future;
     }
 
-    // Process in small batches to prevent memory buildup
-    const int batchSize = 10;
-    for (int i = 0; i < photosNeedingData.length; i += batchSize) {
-      final int end = (i + batchSize < photosNeedingData.length) ? i + batchSize : photosNeedingData.length;
+    // Create a new completer and mark as loading
+    _dimensionsLoadingCompleter = Completer<void>();
+    _isLoadingDimensions = true;
+    _loadingProgress = 0.0;
+    notifyListeners();
 
-      final batch = photosNeedingData.sublist(i, end);
+    try {
+      // Filter photos that need dimensions or dates
+      final List<Photo> photosNeedingData = photos.where((photo) => !photo.dimensionsLoaded || photo.width <= 0 || photo.height <= 0 || photo.dateModified == null).toList();
 
-      // Process each photo in the batch
-      for (var photo in batch) {
-        await loadActualDimensions(photo);
+      if (photosNeedingData.isEmpty) {
+        _loadingProgress = 1.0;
+        _isLoadingDimensions = false;
+        _dimensionsLoadingCompleter!.complete();
+        notifyListeners();
+        return; // No photos need processing
       }
 
-      // Allow UI to update and GC to run between batches
-      await Future.delayed(const Duration(milliseconds: 50));
+      // Calculate total photos to process for progress tracking
+      final int totalPhotos = photosNeedingData.length;
+      int processedCount = 0;
+
+      debugPrint('Loading dimensions for $totalPhotos photos');
+
+      // Process in small batches to prevent memory buildup
+      const int batchSize = 10;
+      for (int i = 0; i < photosNeedingData.length; i += batchSize) {
+        final int end = (i + batchSize < photosNeedingData.length) ? i + batchSize : photosNeedingData.length;
+
+        final batch = photosNeedingData.sublist(i, end);
+
+        // Process each photo in the batch
+        for (var photo in batch) {
+          await loadActualDimensions(photo);
+          processedCount++;
+
+          // Update progress
+          _loadingProgress = processedCount / totalPhotos;
+          if (processedCount % 10 == 0) {
+            notifyListeners();
+          }
+        }
+
+        // Log progress periodically
+        if (processedCount % 50 == 0 || processedCount == totalPhotos) {
+          final percentage = (processedCount / totalPhotos * 100).toStringAsFixed(1);
+          debugPrint('Processed $processedCount/$totalPhotos photos ($percentage%)');
+        }
+
+        // Allow UI to update and GC to run between batches
+        await Future.delayed(const Duration(milliseconds: 50));
+      }
+
+      debugPrint('Finished loading dimensions for all photos');
+      _loadingProgress = 1.0;
+      _isLoadingDimensions = false;
+      _dimensionsLoadingCompleter!.complete();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading dimensions: $e');
+      _isLoadingDimensions = false;
+      _dimensionsLoadingCompleter!.completeError(e);
+      notifyListeners();
     }
   }
 
@@ -253,94 +359,174 @@ class FilterManager extends ChangeNotifier {
     }
   }
 
+  // Reference to PhotoManager for checking indexing state
+  PhotoManager? _photoManager;
+
+  void setPhotoManager(PhotoManager photoManager) {
+    _photoManager = photoManager;
+  }
+
   // Optimized sorting with batching for better performance
   Future<void> sortPhotos(List<Photo> photos) async {
-    if (photos.isEmpty) return;
-
-    // Use isolate for sorting if the list is large
-    if (photos.length > 1000) {
-      await _sortPhotosInBatches(photos);
+    if (photos.isEmpty) {
+      debugPrint('No photos to sort, returning early');
       return;
     }
 
-    // For smaller lists, use the regular sorting approach
-    if (_dateSortState != SortState.none) {
-      // Check if we need to load dates first
-      if (!allPhotosHaveDate(photos)) {
-        // We'll need to load dates first
-        await loadAllDates(photos);
+    // If already sorting, don't start another sort
+    if (_isSorting) {
+      debugPrint('Already sorting, returning early');
+      return;
+    }
+
+    // Check if indexing is in progress for resolution sorting
+    if (_resolutionSortState != SortState.none && _photoManager != null && _photoManager!.isIndexing) {
+      // Don't allow resolution sorting during indexing
+      debugPrint('Cannot sort by resolution while indexing is in progress');
+      _resolutionSortState = SortState.none;
+      notifyListeners();
+      return;
+    }
+
+    _isSorting = true;
+    notifyListeners();
+
+    debugPrint('Starting sort operation with ${photos.length} photos');
+    debugPrint('Sort states: Resolution=$_resolutionSortState, Date=$_dateSortState, Rating=$_ratingSortState');
+
+    try {
+      // Use isolate for sorting if the list is large
+      if (photos.length > 1000) {
+        debugPrint('Large photo collection (${photos.length}), using batch sorting');
+        await _sortPhotosInBatches(photos);
+        _isSorting = false;
+        notifyListeners();
+        return;
       }
 
-      switch (_dateSortState) {
-        case SortState.ascending:
-          photos.sort((a, b) {
-            final dateA = a.dateModified;
-            final dateB = b.dateModified;
-            if (dateA == null && dateB == null) return 0;
-            if (dateA == null) return -1;
-            if (dateB == null) return 1;
-            return dateA.compareTo(dateB);
-          });
-          break;
-        case SortState.descending:
-          photos.sort((a, b) {
-            final dateA = a.dateModified;
-            final dateB = b.dateModified;
-            if (dateA == null && dateB == null) return 0;
-            if (dateA == null) return 1;
-            if (dateB == null) return -1;
-            return dateB.compareTo(dateA);
-          });
-          break;
-        case SortState.none:
-          break;
-      }
-    } else if (_ratingSortState != SortState.none) {
-      switch (_ratingSortState) {
-        case SortState.ascending:
-          photos.sort((a, b) => a.rating.compareTo(b.rating));
-          break;
-        case SortState.descending:
-          photos.sort((a, b) => b.rating.compareTo(a.rating));
-          break;
-        case SortState.none:
-          break;
-      }
-    } else if (_resolutionSortState != SortState.none) {
-      // Check if we need to load resolutions first
-      if (!allPhotosHaveResolution(photos)) {
-        // We'll need to load resolutions first
-        await loadAllResolutions(photos);
+      // For smaller lists, use the regular sorting approach
+      if (_dateSortState != SortState.none) {
+        debugPrint('Sorting by date: $_dateSortState');
+        // Check if we need to load dates first
+        if (!allPhotosHaveDate(photos)) {
+          debugPrint('Loading dates for photos first');
+          // We'll need to load dates first
+          await loadAllDates(photos);
+        }
+
+        switch (_dateSortState) {
+          case SortState.ascending:
+            debugPrint('Sorting dates ascending');
+            photos.sort((a, b) {
+              final dateA = a.dateModified;
+              final dateB = b.dateModified;
+              if (dateA == null && dateB == null) return 0;
+              if (dateA == null) return -1;
+              if (dateB == null) return 1;
+              return dateA.compareTo(dateB);
+            });
+            break;
+          case SortState.descending:
+            debugPrint('Sorting dates descending');
+            photos.sort((a, b) {
+              final dateA = a.dateModified;
+              final dateB = b.dateModified;
+              if (dateA == null && dateB == null) return 0;
+              if (dateA == null) return 1;
+              if (dateB == null) return -1;
+              return dateB.compareTo(dateA);
+            });
+            break;
+          case SortState.none:
+            break;
+        }
+      } else if (_ratingSortState != SortState.none) {
+        debugPrint('Sorting by rating: $_ratingSortState');
+
+        // Log some ratings to verify data
+        if (photos.isNotEmpty) {
+          debugPrint('Sample ratings before sort:');
+          for (int i = 0; i < math.min(5, photos.length); i++) {
+            debugPrint('Photo ${i + 1}: rating=${photos[i].rating}, path=${photos[i].path}');
+          }
+        }
+
+        switch (_ratingSortState) {
+          case SortState.ascending:
+            debugPrint('Sorting ratings ascending');
+            photos.sort((a, b) => a.rating.compareTo(b.rating));
+            break;
+          case SortState.descending:
+            debugPrint('Sorting ratings descending');
+            photos.sort((a, b) => b.rating.compareTo(a.rating));
+            break;
+          case SortState.none:
+            break;
+        }
+
+        // Log some ratings after sort to verify it worked
+        if (photos.isNotEmpty) {
+          debugPrint('Sample ratings after sort:');
+          for (int i = 0; i < math.min(5, photos.length); i++) {
+            debugPrint('Photo ${i + 1}: rating=${photos[i].rating}, path=${photos[i].path}');
+          }
+        }
+      } else if (_resolutionSortState != SortState.none) {
+        debugPrint('Sorting by resolution: $_resolutionSortState');
+        // Check if we need to load resolutions first
+        if (!allPhotosHaveResolution(photos)) {
+          debugPrint('Loading resolutions for photos first');
+          // We'll need to load resolutions first
+          await loadAllResolutions(photos);
+        }
+
+        // Now sort by resolution
+        switch (_resolutionSortState) {
+          case SortState.ascending:
+            debugPrint('Sorting resolutions ascending');
+            photos.sort((a, b) => (a.resolution).compareTo(b.resolution));
+            break;
+          case SortState.descending:
+            debugPrint('Sorting resolutions descending');
+            photos.sort((a, b) => (b.resolution).compareTo(a.resolution));
+            break;
+          case SortState.none:
+            break;
+        }
       }
 
-      // Now sort by resolution
-      switch (_resolutionSortState) {
-        case SortState.ascending:
-          photos.sort((a, b) => (a.resolution).compareTo(b.resolution));
-          break;
-        case SortState.descending:
-          photos.sort((a, b) => (b.resolution).compareTo(a.resolution));
-          break;
-        case SortState.none:
-          break;
-      }
+      debugPrint('Sorting completed successfully');
+      _isSorting = false;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error during sorting: $e');
+      _isSorting = false;
+      notifyListeners();
     }
   }
 
   // Sort photos in batches to prevent UI freezing
   Future<void> _sortPhotosInBatches(List<Photo> photos) async {
+    debugPrint('Starting batch sorting for ${photos.length} photos');
+
     // First, ensure all required data is loaded
     if (_dateSortState != SortState.none && !allPhotosHaveDate(photos)) {
+      debugPrint('Loading dates for batch sorting');
       await loadAllDates(photos);
     } else if (_resolutionSortState != SortState.none && !allPhotosHaveResolution(photos)) {
+      debugPrint('Loading resolutions for batch sorting');
       await loadAllResolutions(photos);
     }
 
     // Create a copy of the list to sort
     final List<Photo> sortedPhotos = List.from(photos);
 
+    debugPrint('Sorting ${sortedPhotos.length} photos in batch mode');
+    debugPrint('Sort states: Resolution=$_resolutionSortState, Date=$_dateSortState, Rating=$_ratingSortState');
+
     // Sort the copy based on the current sort state
     if (_dateSortState == SortState.ascending) {
+      debugPrint('Batch sorting dates ascending');
       sortedPhotos.sort((a, b) {
         final dateA = a.dateModified;
         final dateB = b.dateModified;
@@ -350,6 +536,7 @@ class FilterManager extends ChangeNotifier {
         return dateA.compareTo(dateB);
       });
     } else if (_dateSortState == SortState.descending) {
+      debugPrint('Batch sorting dates descending');
       sortedPhotos.sort((a, b) {
         final dateA = a.dateModified;
         final dateB = b.dateModified;
@@ -359,12 +546,50 @@ class FilterManager extends ChangeNotifier {
         return dateB.compareTo(dateA);
       });
     } else if (_ratingSortState == SortState.ascending) {
+      debugPrint('Batch sorting ratings ascending');
+
+      // Log some ratings to verify data
+      if (sortedPhotos.isNotEmpty) {
+        debugPrint('Sample ratings before batch sort:');
+        for (int i = 0; i < math.min(5, sortedPhotos.length); i++) {
+          debugPrint('Photo ${i + 1}: rating=${sortedPhotos[i].rating}, path=${sortedPhotos[i].path}');
+        }
+      }
+
       sortedPhotos.sort((a, b) => a.rating.compareTo(b.rating));
+
+      // Log some ratings after sort to verify it worked
+      if (sortedPhotos.isNotEmpty) {
+        debugPrint('Sample ratings after batch sort:');
+        for (int i = 0; i < math.min(5, sortedPhotos.length); i++) {
+          debugPrint('Photo ${i + 1}: rating=${sortedPhotos[i].rating}, path=${sortedPhotos[i].path}');
+        }
+      }
     } else if (_ratingSortState == SortState.descending) {
+      debugPrint('Batch sorting ratings descending');
+
+      // Log some ratings to verify data
+      if (sortedPhotos.isNotEmpty) {
+        debugPrint('Sample ratings before batch sort:');
+        for (int i = 0; i < math.min(5, sortedPhotos.length); i++) {
+          debugPrint('Photo ${i + 1}: rating=${sortedPhotos[i].rating}, path=${sortedPhotos[i].path}');
+        }
+      }
+
       sortedPhotos.sort((a, b) => b.rating.compareTo(a.rating));
+
+      // Log some ratings after sort to verify it worked
+      if (sortedPhotos.isNotEmpty) {
+        debugPrint('Sample ratings after batch sort:');
+        for (int i = 0; i < math.min(5, sortedPhotos.length); i++) {
+          debugPrint('Photo ${i + 1}: rating=${sortedPhotos[i].rating}, path=${sortedPhotos[i].path}');
+        }
+      }
     } else if (_resolutionSortState == SortState.ascending) {
+      debugPrint('Batch sorting resolutions ascending');
       sortedPhotos.sort((a, b) => (a.resolution).compareTo(b.resolution));
     } else if (_resolutionSortState == SortState.descending) {
+      debugPrint('Batch sorting resolutions descending');
       sortedPhotos.sort((a, b) => (b.resolution).compareTo(a.resolution));
     }
 
@@ -372,7 +597,7 @@ class FilterManager extends ChangeNotifier {
     photos.clear();
     photos.addAll(sortedPhotos);
 
-    debugPrint('Tüm fotoğraflar sıralandı ve eklendi: ${photos.length}');
+    debugPrint('Batch sorting completed: ${photos.length} photos sorted and updated');
   }
 
   // Filter methods
@@ -471,5 +696,12 @@ class FilterManager extends ChangeNotifier {
       if (photo.rating < _minRatingFilter || photo.rating > _maxRatingFilter) return false;
       return true;
     }).toList();
+  }
+
+  @override
+  void dispose() {
+    // Clean up resources
+    _dimensionsLoadingCompleter = null;
+    super.dispose();
   }
 }

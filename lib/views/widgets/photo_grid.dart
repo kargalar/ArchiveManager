@@ -1,6 +1,8 @@
-import 'dart:io';
 import 'dart:async';
-import 'package:archive_manager_v3/views/widgets/full_screen_image.dart';
+import 'dart:io';
+import 'dart:math' as math;
+import 'package:archive_manager_v3/models/sort_state.dart';
+import 'package:archive_manager_v3/viewmodels/home_view_model.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,11 +13,8 @@ import '../../managers/photo_manager.dart';
 import '../../managers/tag_manager.dart';
 import '../../managers/settings_manager.dart';
 import '../../managers/filter_manager.dart';
-import '../../models/sort_state.dart';
-import '../../viewmodels/home_view_model.dart';
+import 'full_screen_image.dart';
 
-// Fotoğrafları grid (ızgara) şeklinde gösteren widget.
-// Seçim, etiketleme, puanlama ve bağlam menüsü içerir.
 class PhotoGrid extends StatefulWidget {
   const PhotoGrid({super.key});
 
@@ -25,9 +24,9 @@ class PhotoGrid extends StatefulWidget {
 
 class _PhotoGridState extends State<PhotoGrid> {
   // Sorting durumunu yönetmek için
-  bool _isLoading = false;
-  bool _isSorted = false;
   SortState? _lastResolutionSortState;
+  SortState? _lastDateSortState;
+  SortState? _lastRatingSortState;
 
   // Timer for periodic memory cleanup
   Timer? _cleanupTimer;
@@ -42,6 +41,18 @@ class _PhotoGridState extends State<PhotoGrid> {
       _cleanupTimer = Timer.periodic(const Duration(seconds: 30), (_) {
         _cleanupImageCache();
       });
+
+      // Initialize sort state tracking
+      final filterManager = Provider.of<FilterManager>(context, listen: false);
+      _lastResolutionSortState = filterManager.resolutionSortState;
+      _lastDateSortState = filterManager.dateSortState;
+      _lastRatingSortState = filterManager.ratingSortState;
+
+      // Force a sort on initial load if needed
+      if (filterManager.resolutionSortState != SortState.none || filterManager.dateSortState != SortState.none || filterManager.ratingSortState != SortState.none) {
+        debugPrint('Initial sort state detected, will trigger sort on first build');
+        setState(() {}); // Trigger a rebuild to apply sorting
+      }
     });
   }
 
@@ -52,20 +63,16 @@ class _PhotoGridState extends State<PhotoGrid> {
     super.dispose();
   }
 
-  // Method to clean up image cache to prevent memory leaks
+  // Periodically clean up image cache to prevent memory leaks
   void _cleanupImageCache() {
     try {
       // Clear Flutter's image cache
       PaintingBinding.instance.imageCache.clear();
       PaintingBinding.instance.imageCache.clearLiveImages();
-
-      // Set a smaller image cache size limit
-      PaintingBinding.instance.imageCache.maximumSize = 100;
-      PaintingBinding.instance.imageCache.maximumSizeBytes = 50 * 1024 * 1024; // 50 MB
-
-      debugPrint('Image cache cleared to prevent memory leaks');
+      ImageCache().clear();
+      ImageCache().clearLiveImages();
     } catch (e) {
-      debugPrint('Error clearing image cache: $e');
+      debugPrint('Error cleaning up image cache: $e');
     }
   }
 
@@ -74,10 +81,40 @@ class _PhotoGridState extends State<PhotoGrid> {
     super.didChangeDependencies();
     final filterManager = Provider.of<FilterManager>(context);
 
-    // Sıralama türü değiştiğinde _isSorted değişkenini sıfırla
+    // Herhangi bir sıralama türü değiştiğinde yeniden render et
+    bool sortStateChanged = false;
+
+    // Çözünürlük sıralaması değişti mi?
     if (_lastResolutionSortState != filterManager.resolutionSortState) {
       _lastResolutionSortState = filterManager.resolutionSortState;
-      _isSorted = false;
+      sortStateChanged = true;
+      debugPrint('Resolution sort state changed to: ${filterManager.resolutionSortState}');
+    }
+
+    // Tarih sıralaması değişti mi?
+    if (_lastDateSortState != filterManager.dateSortState) {
+      _lastDateSortState = filterManager.dateSortState;
+      sortStateChanged = true;
+      debugPrint('Date sort state changed to: ${filterManager.dateSortState}');
+    }
+
+    // Puan sıralaması değişti mi?
+    if (_lastRatingSortState != filterManager.ratingSortState) {
+      _lastRatingSortState = filterManager.ratingSortState;
+      sortStateChanged = true;
+      debugPrint('Rating sort state changed to: ${filterManager.ratingSortState}');
+    }
+
+    // Herhangi bir sıralama değiştiyse, yeniden render et
+    if (sortStateChanged) {
+      // Use Future.microtask to avoid setState during build
+      Future.microtask(() {
+        if (mounted) {
+          setState(() {
+            debugPrint('Sort state changed, triggering rebuild to apply new sort');
+          });
+        }
+      });
     }
   }
 
@@ -90,76 +127,160 @@ class _PhotoGridState extends State<PhotoGrid> {
     final homeViewModel = Provider.of<HomeViewModel>(context);
     final filterManager = Provider.of<FilterManager>(context);
 
-    return FocusScope(
-      child: Focus(
-        autofocus: true,
-        onKeyEvent: (node, event) {
-          if (event is KeyDownEvent) {
-            if (event.logicalKey == LogicalKeyboardKey.keyF) {
-              if (homeViewModel.selectedPhoto != null) {
+    return KeyboardListener(
+      focusNode: FocusNode(),
+      autofocus: true,
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent) {
+          if (homeViewModel.selectedPhoto != null) {
+            if (event.logicalKey == LogicalKeyboardKey.delete) {
+              // Use Future.microtask to avoid setState during build
+              Future.microtask(() {
+                photoManager.deletePhoto(homeViewModel.selectedPhoto!);
+              });
+            } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
+              // Use Future.microtask to avoid setState during build
+              Future.microtask(() {
                 photoManager.toggleFavorite(homeViewModel.selectedPhoto!);
-                return KeyEventResult.handled;
+              });
+            } else {
+              final key = event.logicalKey.keyLabel;
+              if (key.length == 1 && RegExp(r'[1-9]').hasMatch(key)) {
+                // Use Future.microtask to avoid setState during build
+                Future.microtask(() {
+                  photoManager.setRating(homeViewModel.selectedPhoto!, int.parse(key));
+                });
               }
-            } else if (event.logicalKey == LogicalKeyboardKey.digit1 ||
-                event.logicalKey == LogicalKeyboardKey.digit2 ||
-                event.logicalKey == LogicalKeyboardKey.digit3 ||
-                event.logicalKey == LogicalKeyboardKey.digit4 ||
-                event.logicalKey == LogicalKeyboardKey.digit5 ||
-                event.logicalKey == LogicalKeyboardKey.digit6 ||
-                event.logicalKey == LogicalKeyboardKey.digit7 ||
-                event.logicalKey == LogicalKeyboardKey.digit8 ||
-                event.logicalKey == LogicalKeyboardKey.digit9) {
-              if (homeViewModel.selectedPhoto != null) {
-                final rating = int.parse(event.logicalKey.keyLabel);
-                photoManager.setRating(homeViewModel.selectedPhoto!, rating);
-                return KeyEventResult.handled;
-              }
-            }
-            final tags = tagManager.tags;
-            for (var tag in tags) {
-              if (event.logicalKey == tag.shortcutKey && homeViewModel.selectedPhoto != null) {
-                tagManager.toggleTag(homeViewModel.selectedPhoto!, tag);
-                break;
+
+              final tags = tagManager.tags;
+              for (var tag in tags) {
+                if (event.logicalKey == tag.shortcutKey) {
+                  // Use Future.microtask to avoid setState during build
+                  Future.microtask(() {
+                    tagManager.toggleTag(homeViewModel.selectedPhoto!, tag);
+                  });
+                  break;
+                }
               }
             }
           }
-          return KeyEventResult.ignored;
-        },
-        child: Builder(
-          builder: (context) {
-            if (folderManager.selectedFolder == null && folderManager.selectedSection == null) {
-              return const Center(
-                child: Text('Select a folder to view images'),
-              );
-            }
+        }
+      },
+      child: Builder(
+        builder: (context) {
+          if (folderManager.selectedFolder == null && folderManager.selectedSection == null) {
+            return const Center(
+              child: Text('Select a folder to view images'),
+            );
+          }
 
-            return _buildGrid(context, folderManager, photoManager, tagManager, settingsManager, filterManager, homeViewModel);
-          },
-        ),
+          return _buildGrid(context, folderManager, photoManager, tagManager, settingsManager, filterManager, homeViewModel);
+        },
       ),
     );
   }
 
+  Widget _buildGrid(BuildContext context, FolderManager folderManager, PhotoManager photoManager, TagManager tagManager, SettingsManager settingsManager, FilterManager filterManager, HomeViewModel homeViewModel) {
+    // Get filtered photos
+    List<Photo> filteredPhotos = filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags);
+
+    // Create a copy of the filtered photos to sort
+    List<Photo> sortedPhotos = List.from(filteredPhotos);
+
+    // Sort photos directly here instead of using FilterManager
+    if (filterManager.ratingSortState != SortState.none) {
+      debugPrint('Sorting by rating: ${filterManager.ratingSortState}');
+
+      // Log some ratings before sort
+      if (sortedPhotos.isNotEmpty) {
+        debugPrint('Sample ratings before sort:');
+        for (int i = 0; i < math.min(5, sortedPhotos.length); i++) {
+          debugPrint('Photo ${i + 1}: rating=${sortedPhotos[i].rating}, path=${sortedPhotos[i].path}');
+        }
+      }
+
+      if (filterManager.ratingSortState == SortState.ascending) {
+        debugPrint('Sorting ratings ascending');
+        sortedPhotos.sort((a, b) => a.rating.compareTo(b.rating));
+      } else {
+        debugPrint('Sorting ratings descending');
+        sortedPhotos.sort((a, b) => b.rating.compareTo(a.rating));
+      }
+
+      // Log some ratings after sort
+      if (sortedPhotos.isNotEmpty) {
+        debugPrint('Sample ratings after sort:');
+        for (int i = 0; i < math.min(5, sortedPhotos.length); i++) {
+          debugPrint('Photo ${i + 1}: rating=${sortedPhotos[i].rating}, path=${sortedPhotos[i].path}');
+        }
+      }
+    } else if (filterManager.dateSortState != SortState.none) {
+      debugPrint('Sorting by date: ${filterManager.dateSortState}');
+
+      if (filterManager.dateSortState == SortState.ascending) {
+        debugPrint('Sorting dates ascending');
+        sortedPhotos.sort((a, b) {
+          final dateA = a.dateModified;
+          final dateB = b.dateModified;
+          if (dateA == null && dateB == null) return 0;
+          if (dateA == null) return -1;
+          if (dateB == null) return 1;
+          return dateA.compareTo(dateB);
+        });
+      } else {
+        debugPrint('Sorting dates descending');
+        sortedPhotos.sort((a, b) {
+          final dateA = a.dateModified;
+          final dateB = b.dateModified;
+          if (dateA == null && dateB == null) return 0;
+          if (dateA == null) return 1;
+          if (dateB == null) return -1;
+          return dateB.compareTo(dateA);
+        });
+      }
+    } else if (filterManager.resolutionSortState != SortState.none) {
+      debugPrint('Sorting by resolution: ${filterManager.resolutionSortState}');
+
+      if (filterManager.resolutionSortState == SortState.ascending) {
+        debugPrint('Sorting resolutions ascending');
+        sortedPhotos.sort((a, b) => a.resolution.compareTo(b.resolution));
+      } else {
+        debugPrint('Sorting resolutions descending');
+        sortedPhotos.sort((a, b) => b.resolution.compareTo(a.resolution));
+      }
+    } else {
+      debugPrint('No sorting applied, using default order');
+    }
+
+    return Column(
+      children: [
+        Expanded(
+          child: _buildGridView(sortedPhotos, settingsManager, homeViewModel, photoManager, tagManager, context),
+        ),
+      ],
+    );
+  }
+
   // Helper method to build the grid view - optimized version
-  Widget _buildGridView(List<Photo> photos, SettingsManager settingsManager, HomeViewModel homeViewModel, PhotoManager photoManager, TagManager tagManager, BuildContext context) {
+  Widget _buildGridView(List<Photo> sortedPhotos, SettingsManager settingsManager, HomeViewModel homeViewModel, PhotoManager photoManager, TagManager tagManager, BuildContext context) {
     return GridView.builder(
       padding: const EdgeInsets.all(8),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: settingsManager.photosPerRow,
         // Add some spacing between grid items
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
+        crossAxisSpacing: 0,
+        mainAxisSpacing: 0,
       ),
       // Use caching for better performance
       cacheExtent: 500, // Cache more items for smoother scrolling
       // Optimize for large lists
-      itemCount: photos.length,
+      itemCount: sortedPhotos.length,
       // Use addAutomaticKeepAlives: false for better memory usage
       addAutomaticKeepAlives: false,
       // Use addRepaintBoundaries: true for better rendering performance
       addRepaintBoundaries: true,
       itemBuilder: (context, index) {
-        final photo = photos[index];
+        final photo = sortedPhotos[index];
         return RepaintBoundary(
           child: MouseRegion(
             cursor: SystemMouseCursors.click,
@@ -193,93 +314,6 @@ class _PhotoGridState extends State<PhotoGrid> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildGrid(BuildContext context, FolderManager folderManager, PhotoManager photoManager, TagManager tagManager, SettingsManager settingsManager, FilterManager filterManager, HomeViewModel homeViewModel) {
-    final filteredPhotos = filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags);
-
-    // Check if we need to sort by resolution
-    if (filterManager.resolutionSortState != SortState.none && !_isSorted) {
-      // Start sorting in the background if not already loading
-      if (!_isLoading) {
-        _isLoading = true;
-        _isSorted = false;
-
-        // Add a timeout to prevent getting stuck in loading state
-        Future.delayed(const Duration(seconds: 10), () {
-          if (_isLoading && mounted) {
-            setState(() {
-              _isLoading = false;
-              _isSorted = true;
-              debugPrint('Sorting timed out after 10 seconds, showing photos anyway');
-            });
-          }
-        });
-
-        // Sort photos in the background
-        filterManager.sortPhotos(filteredPhotos).then((_) {
-          // When sorting is complete, update the UI
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-              _isSorted = true;
-              debugPrint('Sorting completed successfully');
-            });
-          }
-        }).catchError((error) {
-          // Handle errors during sorting
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-              _isSorted = true;
-              debugPrint('Error during sorting: $error');
-            });
-          }
-        });
-      }
-
-      // Show loading indicator while sorting is in progress
-      if (_isLoading) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              const Text('Fotoğraflar sıralanıyor...', style: TextStyle(color: Colors.white70)),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    _isLoading = false;
-                    _isSorted = true;
-                  });
-                },
-                child: const Text('İptal Et', style: TextStyle(color: Colors.blue)),
-              ),
-            ],
-          ),
-        );
-      }
-    } else {
-      // For date and rating sorting, we can do it synchronously
-      try {
-        filterManager.sortPhotos(filteredPhotos);
-        _isSorted = true;
-      } catch (e) {
-        debugPrint('Error during synchronous sorting: $e');
-        // Continue showing photos even if sorting fails
-        _isSorted = true;
-      }
-    }
-
-    return Column(
-      children: [
-        Expanded(
-          child: _buildGridView(filteredPhotos, settingsManager, homeViewModel, photoManager, tagManager, context),
-        ),
-      ],
     );
   }
 

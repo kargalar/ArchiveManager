@@ -54,6 +54,29 @@ class HomeViewModel extends ChangeNotifier {
         setSelectedPhoto(null);
       }
       return;
+    } else if (event.logicalKey == LogicalKeyboardKey.keyF && _selectedPhoto != null) {
+      // Toggle favorite with F key
+      debugPrint('F key pressed, toggling favorite for ${_selectedPhoto!.path}');
+      photoManager.toggleFavorite(_selectedPhoto!);
+      return;
+    } else {
+      // Handle number keys for rating (1-9)
+      final key = event.logicalKey.keyLabel;
+      if (key.length == 1 && RegExp(r'[1-9]').hasMatch(key) && _selectedPhoto != null) {
+        debugPrint('Number key $key pressed, setting rating for ${_selectedPhoto!.path}');
+        photoManager.setRating(_selectedPhoto!, int.parse(key));
+        return;
+      }
+
+      // Handle tag shortcuts
+      final tags = tagManager.tags;
+      for (var tag in tags) {
+        if (event.logicalKey == tag.shortcutKey && _selectedPhoto != null) {
+          debugPrint('Tag shortcut pressed for ${tag.name}, toggling tag for ${_selectedPhoto!.path}');
+          tagManager.toggleTag(_selectedPhoto!, tag);
+          return;
+        }
+      }
     }
 
     if (newIndex != currentIndex) {

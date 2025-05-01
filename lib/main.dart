@@ -175,14 +175,19 @@ class _MyAppState extends State<MyApp> with WindowListener {
         ChangeNotifierProvider(
           create: (context) => FolderManager(widget.folderBox, widget.photoBox),
         ),
-        ChangeNotifierProvider(
+        // Create FilterManager and PhotoManager directly as ChangeNotifierProvider
+        ChangeNotifierProvider<FilterManager>(
           create: (context) => FilterManager(),
         ),
-        // PhotoManager needs FilterManager, so we connect them with ProxyProvider
-        ChangeNotifierProxyProvider<FilterManager, PhotoManager>(
-          create: (context) => PhotoManager(widget.photoBox),
-          update: (context, filterManager, photoManager) {
-            photoManager!.setFilterManager(filterManager);
+        ChangeNotifierProvider<PhotoManager>(
+          create: (context) {
+            final photoManager = PhotoManager(widget.photoBox);
+            final filterManager = Provider.of<FilterManager>(context, listen: false);
+
+            // Set up the circular reference
+            photoManager.setFilterManager(filterManager);
+            filterManager.setPhotoManager(photoManager);
+
             return photoManager;
           },
         ),

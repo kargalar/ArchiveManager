@@ -188,12 +188,10 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
           Expanded(
-            child: _buildPhotoGrid(),
+            child: const PhotoGrid(),
           ),
         ],
       ),
     );
   }
-
-  Widget _buildPhotoGrid() => const PhotoGrid();
 }

@@ -12,7 +12,6 @@ import '../../managers/photo_manager.dart';
 import '../../managers/tag_manager.dart';
 import '../../managers/settings_manager.dart';
 import '../../managers/filter_manager.dart';
-import '../../models/sort_state.dart';
 
 // Fotoğrafı tam ekranda gösteren widget.
 // Klavye ve mouse ile gezinme, etiketleme, puanlama ve bilgi gösterimi içerir.
@@ -40,22 +39,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
   bool _isDragging = false;
   Offset? _lastDragPosition;
 
-  // Sorting durumunu yönetmek için
-  bool _isLoading = false;
-  bool _isSorted = false;
-  SortState? _lastResolutionSortState;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final filterManager = Provider.of<FilterManager>(context);
-
-    // Sıralama türü değiştiğinde _isSorted değişkenini sıfırla
-    if (_lastResolutionSortState != filterManager.resolutionSortState) {
-      _lastResolutionSortState = filterManager.resolutionSortState;
-      _isSorted = false;
-    }
-  }
+  // Artık sıralama durumunu takip etmeye gerek yok
 
   List<Tag> get tags => _tagBox.values.toList();
 
@@ -185,51 +169,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
     final tagManager = Provider.of<TagManager>(context);
     final filterManager = Provider.of<FilterManager>(context);
 
+    // Filtrelenmiş fotoğrafları al - sıralama PhotoGrid'de yapılıyor
     final filteredPhotos = filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags);
-
-    // Check if we need to sort by resolution
-    if (filterManager.resolutionSortState != SortState.none && !_isSorted) {
-      // Start sorting in the background if not already loading
-      if (!_isLoading) {
-        _isLoading = true;
-        _isSorted = false;
-
-        // Show loading indicator while sorting
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          // Sort photos in the background
-          filterManager.sortPhotos(filteredPhotos).then((_) {
-            // When sorting is complete, update the UI
-            if (mounted) {
-              setState(() {
-                _isLoading = false;
-                _isSorted = true;
-              });
-            }
-          });
-        });
-      }
-
-      // Show loading indicator while sorting is in progress
-      if (_isLoading) {
-        return Scaffold(
-          backgroundColor: Colors.black,
-          body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Fotoğraflar sıralanıyor...', style: TextStyle(color: Colors.white70)),
-              ],
-            ),
-          ),
-        );
-      }
-    } else {
-      // For date and rating sorting, we can do it synchronously
-      filterManager.sortPhotos(filteredPhotos);
-      _isSorted = true;
-    }
 
     return _buildFullScreenView(filteredPhotos);
   }
@@ -258,21 +199,36 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
               _resetZoom();
             });
           } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
-            photoManager.toggleFavorite(_currentPhoto);
-            setState(() {});
+            // Use Future.microtask to avoid setState during build
+            Future.microtask(() {
+              photoManager.toggleFavorite(_currentPhoto);
+              if (mounted) {
+                setState(() {});
+              }
+            });
           } else if (event.logicalKey == LogicalKeyboardKey.delete) {
-            final currentIndex = filteredPhotos.indexOf(_currentPhoto);
-            photoManager.deletePhoto(_currentPhoto);
-            if (filteredPhotos.isEmpty) {
-              Navigator.of(context).pop();
-            } else {
-              setState(() {
-                _currentPhoto = filteredPhotos[currentIndex < filteredPhotos.length ? currentIndex : filteredPhotos.length - 1];
-                _resetZoom();
-              });
-            }
+            // Use Future.microtask to avoid setState during build
+            Future.microtask(() {
+              final currentIndex = filteredPhotos.indexOf(_currentPhoto);
+              photoManager.deletePhoto(_currentPhoto);
+              if (filteredPhotos.isEmpty) {
+                if (mounted) {
+                  Navigator.of(context).pop();
+                }
+              } else if (mounted) {
+                setState(() {
+                  _currentPhoto = filteredPhotos[currentIndex < filteredPhotos.length ? currentIndex : filteredPhotos.length - 1];
+                  _resetZoom();
+                });
+              }
+            });
           } else if (event.logicalKey == LogicalKeyboardKey.escape) {
-            Navigator.of(context).pop();
+            // Use Future.microtask to avoid setState during build
+            Future.microtask(() {
+              if (mounted) {
+                Navigator.of(context).pop();
+              }
+            });
           } else if (event.logicalKey == LogicalKeyboardKey.controlLeft) {
             setState(() {
               _showInfo = !_showInfo;
@@ -293,21 +249,31 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
           } else {
             for (var tag in tags) {
               if (event.logicalKey == tag.shortcutKey) {
-                tagManager.toggleTag(_currentPhoto, tag);
-                setState(() {});
+                // Use Future.microtask to avoid setState during build
+                Future.microtask(() {
+                  tagManager.toggleTag(_currentPhoto, tag);
+                  if (mounted) {
+                    setState(() {});
+                  }
+                });
                 break;
               }
             }
             final key = event.logicalKey.keyLabel;
             if (key.length == 1 && RegExp(r'[1-9]').hasMatch(key)) {
-              photoManager.setRating(_currentPhoto, int.parse(key));
-              setState(() {});
-              if (_autoNext && currentIndex < filteredPhotos.length - 1) {
-                setState(() {
-                  _currentPhoto = filteredPhotos[currentIndex + 1];
-                  _resetZoom();
-                });
-              }
+              // Use Future.microtask to avoid setState during build
+              Future.microtask(() {
+                photoManager.setRating(_currentPhoto, int.parse(key));
+                if (mounted) {
+                  setState(() {});
+                  if (_autoNext && currentIndex < filteredPhotos.length - 1) {
+                    setState(() {
+                      _currentPhoto = filteredPhotos[currentIndex + 1];
+                      _resetZoom();
+                    });
+                  }
+                }
+              });
             }
           }
         }

@@ -1,13 +1,38 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../models/photo.dart';
+import '../models/indexing_state.dart';
 import 'filter_manager.dart';
 
 class PhotoManager extends ChangeNotifier {
   final Box<Photo> _photoBox;
   final List<Photo> _photos = [];
   FilterManager? _filterManager;
+
+  // Indexing state tracking
+  bool _isIndexing = false;
+  double _indexingProgress = 0.0;
+  int _totalPhotosToIndex = 0;
+  int _indexedPhotosCount = 0;
+
+  // Stream controller for indexing updates
+  final _indexingController = StreamController<IndexingState>.broadcast();
+  Stream<IndexingState> get indexingStream => _indexingController.stream;
+
+  // Getters for indexing state
+  bool get isIndexing => _isIndexing;
+  double get indexingProgress => _indexingProgress;
+  String get indexingStatus => _isIndexing ? 'İndeksleniyor: ${(_indexingProgress * 100).toStringAsFixed(1)}% ($_indexedPhotosCount/$_totalPhotosToIndex)' : '';
+
+  // Method to get current indexing state
+  IndexingState get currentIndexingState => IndexingState(
+        isIndexing: _isIndexing,
+        progress: _indexingProgress,
+        processedCount: _indexedPhotosCount,
+        totalCount: _totalPhotosToIndex,
+      );
 
   PhotoManager(this._photoBox);
 
@@ -30,9 +55,9 @@ class PhotoManager extends ChangeNotifier {
     // Notify listeners that photos are loaded
     notifyListeners();
 
-    // Then start loading actual dimensions in batches
+    // Then start indexing dimensions in the background
     if (_filterManager != null) {
-      _loadDimensionsInBatches(_photos);
+      _startIndexing(_photos);
     }
   }
 
@@ -54,38 +79,72 @@ class PhotoManager extends ChangeNotifier {
       notifyListeners();
     }
 
-    // Then start loading actual dimensions in batches
+    // Then start indexing dimensions in the background
     if (_filterManager != null) {
-      _loadDimensionsInBatches(_photos);
+      _startIndexing(_photos);
     }
+  }
+
+  // Start the indexing process in the background
+  void _startIndexing(List<Photo> photos) {
+    // First filter out photos that already have dimensions loaded
+    final List<Photo> photosNeedingDimensions = photos.where((photo) => !photo.dimensionsLoaded || photo.width <= 0 || photo.height <= 0).toList();
+
+    // If no photos need dimensions, return early
+    if (photosNeedingDimensions.isEmpty) {
+      debugPrint('No photos need dimensions, skipping indexing');
+      _isIndexing = false;
+      _indexingProgress = 1.0;
+
+      // Update the stream with completed state
+      _indexingController.add(currentIndexingState);
+
+      // Also notify listeners for other UI elements
+      notifyListeners();
+      return;
+    }
+
+    // Set indexing state
+    _isIndexing = true;
+    _indexingProgress = 0.0;
+    _totalPhotosToIndex = photosNeedingDimensions.length;
+    _indexedPhotosCount = 0;
+
+    // Update the stream with initial state
+    _indexingController.add(currentIndexingState);
+
+    // Also notify listeners for other UI elements
+    notifyListeners();
+
+    debugPrint('Starting indexing for ${photosNeedingDimensions.length} photos');
+
+    // Process in batches to prevent UI freezing
+    _loadDimensionsInBatches(photosNeedingDimensions);
   }
 
   // Load dimensions in batches to prevent UI freezing and memory leaks
   void _loadDimensionsInBatches(List<Photo> photos) {
-    // First filter out photos that already have dimensions
-    final List<Photo> photosNeedingDimensions = photos.where((photo) => photo.width <= 0 || photo.height <= 0).toList();
-
-    // If no photos need dimensions, return early
-    if (photosNeedingDimensions.isEmpty) {
-      debugPrint('No photos need dimensions, skipping batch processing');
-      return;
-    }
-
-    debugPrint('Loading dimensions for ${photosNeedingDimensions.length} photos');
-
     const int batchSize = 10; // Process fewer photos at a time to reduce memory pressure
-    int totalPhotos = photosNeedingDimensions.length;
+    int totalPhotos = photos.length;
     int processedCount = 0;
 
     Future<void> processBatch() async {
       if (processedCount >= totalPhotos) {
-        debugPrint('Finished loading dimensions for all photos');
+        debugPrint('Finished indexing for all photos');
+        _isIndexing = false;
+        _indexingProgress = 1.0;
+
+        // Update the stream with completed state
+        _indexingController.add(currentIndexingState);
+
+        // Also notify listeners for other UI elements that might need to know indexing is complete
+        notifyListeners();
         return;
       }
 
       int endIndex = (processedCount + batchSize < totalPhotos) ? processedCount + batchSize : totalPhotos;
 
-      List<Photo> batch = photosNeedingDimensions.sublist(processedCount, endIndex);
+      List<Photo> batch = photos.sublist(processedCount, endIndex);
 
       // Process this batch
       for (var photo in batch) {
@@ -95,6 +154,20 @@ class PhotoManager extends ChangeNotifier {
       }
 
       processedCount = endIndex;
+      _indexedPhotosCount = processedCount;
+      _indexingProgress = processedCount / totalPhotos;
+
+      // Log progress periodically
+      if (processedCount % 50 == 0 || processedCount == totalPhotos) {
+        final percentage = (_indexingProgress * 100).toStringAsFixed(1);
+        debugPrint('Indexed $processedCount/$totalPhotos photos ($percentage%)');
+      }
+
+      // Update the stream with current progress
+      _indexingController.add(currentIndexingState);
+
+      // Don't notify all listeners to prevent grid rebuilding
+      // Only update the app bar through the stream
 
       // Allow UI to update between batches and give more time for GC
       await Future.delayed(const Duration(milliseconds: 50));
@@ -168,37 +241,31 @@ class PhotoManager extends ChangeNotifier {
   }
 
   void toggleFavorite(Photo photo) {
-    // Save previous state
-    final bool wasFavorite = photo.isFavorite;
+    debugPrint('Toggling favorite for photo: ${photo.path}, current state: ${photo.isFavorite}');
 
     // Toggle favorite
     photo.toggleFavorite();
 
-    // Only notify if the state actually changed
-    // This is redundant since toggleFavorite always changes state,
-    // but it's a good practice for consistency
-    if (wasFavorite != photo.isFavorite) {
-      // Use microtask to prevent UI freezing during state update
-      Future.microtask(() => notifyListeners());
-    }
+    debugPrint('Favorite toggled to: ${photo.isFavorite}');
+
+    // Notify listeners immediately
+    notifyListeners();
   }
 
   void setRating(Photo photo, int rating) {
-    // Save previous rating
-    final int oldRating = photo.rating;
+    debugPrint('Setting rating for photo: ${photo.path}, current rating: ${photo.rating}, new rating: $rating');
 
     // Set new rating
     if (photo.rating == rating) {
       photo.setRating(0);
+      debugPrint('Rating cleared to 0');
     } else {
       photo.setRating(rating);
+      debugPrint('Rating set to $rating');
     }
 
-    // Only notify if the rating actually changed
-    if (oldRating != photo.rating) {
-      // Use microtask to prevent UI freezing during state update
-      Future.microtask(() => notifyListeners());
-    }
+    // Notify listeners immediately
+    notifyListeners();
   }
 
   void deletePhoto(Photo photo) {
@@ -271,5 +338,11 @@ class PhotoManager extends ChangeNotifier {
   void clearPhotos() {
     _photos.clear();
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _indexingController.close();
+    super.dispose();
   }
 }

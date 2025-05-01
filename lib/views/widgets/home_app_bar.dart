@@ -7,6 +7,8 @@ import 'package:window_manager/window_manager.dart';
 import '../../managers/folder_manager.dart';
 import '../../managers/tag_manager.dart';
 import '../../managers/filter_manager.dart';
+import '../../managers/photo_manager.dart';
+import '../../models/indexing_state.dart';
 import '../dialogs/settings_dialog.dart';
 
 class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -60,10 +62,41 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       flexibleSpace: DragToMoveArea(child: Container()),
       actions: [
-        Consumer3<FolderManager, TagManager, FilterManager>(
-          builder: (context, folderManager, tagManager, filterManager, child) {
+        Consumer4<FolderManager, TagManager, FilterManager, PhotoManager>(
+          builder: (context, folderManager, tagManager, filterManager, photoManager, child) {
             return Row(
               children: [
+                // Show indexing progress using StreamBuilder
+                StreamBuilder<IndexingState>(
+                  stream: photoManager.indexingStream,
+                  initialData: photoManager.currentIndexingState,
+                  builder: (context, snapshot) {
+                    final indexingState = snapshot.data;
+                    if (indexingState != null && indexingState.isIndexing) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 100,
+                              child: LinearProgressIndicator(
+                                value: indexingState.progress,
+                                backgroundColor: Colors.grey[800],
+                                valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              indexingState.statusText,
+                              style: const TextStyle(fontSize: 12, color: Colors.white70),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink(); // Empty widget when not indexing
+                  },
+                ),
                 if (folderManager.missingFolders.isNotEmpty)
                   IconButton(
                     icon: const Icon(Icons.warning, color: Colors.orange, size: 24),

@@ -25,13 +25,14 @@ class PhotoAdapter extends TypeAdapter<Photo> {
       width: fields[5] == null ? 0 : fields[5] as int,
       height: fields[6] == null ? 0 : fields[6] as int,
       dateModified: fields[7] as DateTime?,
+      dimensionsLoaded: fields[8] == null ? false : fields[8] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, Photo obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.path)
       ..writeByte(1)
@@ -47,16 +48,14 @@ class PhotoAdapter extends TypeAdapter<Photo> {
       ..writeByte(6)
       ..write(obj.height)
       ..writeByte(7)
-      ..write(obj.dateModified);
+      ..write(obj.dateModified)
+      ..writeByte(8)
+      ..write(obj.dimensionsLoaded);
   }
 
   @override
   int get hashCode => typeId.hashCode;
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is PhotoAdapter &&
-          runtimeType == other.runtimeType &&
-          typeId == other.typeId;
+  bool operator ==(Object other) => identical(this, other) || other is PhotoAdapter && runtimeType == other.runtimeType && typeId == other.typeId;
 }
