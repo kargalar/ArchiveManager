@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/photo.dart';
+import '../models/sort_state.dart';
 import '../managers/folder_manager.dart';
 import '../managers/photo_manager.dart';
 import '../managers/tag_manager.dart';
 import '../managers/settings_manager.dart';
+import '../managers/filter_manager.dart';
 
 class HomeViewModel extends ChangeNotifier {
   Photo? _selectedPhoto;
@@ -21,35 +23,122 @@ class HomeViewModel extends ChangeNotifier {
 
   void handleKeyEvent(KeyEvent event, BuildContext context, FolderManager folderManager, PhotoManager photoManager, TagManager tagManager) {
     if (event is! KeyDownEvent) return;
-    final photos = photoManager.photos;
-    if (photos.isEmpty) return;
+
+    // Get the filter manager to access sorting state
+    final filterManager = Provider.of<FilterManager>(context, listen: false);
+
+    // Get filtered photos
+    List<Photo> filteredPhotos = filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags);
+
+    // Create a copy of the filtered photos to sort
+    List<Photo> sortedPhotos = List.from(filteredPhotos);
+
+    // Apply the same sorting as in the photo grid
+    if (filterManager.ratingSortState != SortState.none) {
+      if (filterManager.ratingSortState == SortState.ascending) {
+        sortedPhotos.sort((a, b) => a.rating.compareTo(b.rating));
+      } else {
+        sortedPhotos.sort((a, b) => b.rating.compareTo(a.rating));
+      }
+    } else if (filterManager.dateSortState != SortState.none) {
+      if (filterManager.dateSortState == SortState.ascending) {
+        sortedPhotos.sort((a, b) {
+          final dateA = a.dateModified;
+          final dateB = b.dateModified;
+          if (dateA == null && dateB == null) return 0;
+          if (dateA == null) return -1;
+          if (dateB == null) return 1;
+          return dateA.compareTo(dateB);
+        });
+      } else {
+        sortedPhotos.sort((a, b) {
+          final dateA = a.dateModified;
+          final dateB = b.dateModified;
+          if (dateA == null && dateB == null) return 0;
+          if (dateA == null) return 1;
+          if (dateB == null) return -1;
+          return dateB.compareTo(dateA);
+        });
+      }
+    } else if (filterManager.resolutionSortState != SortState.none) {
+      if (filterManager.resolutionSortState == SortState.ascending) {
+        sortedPhotos.sort((a, b) => a.resolution.compareTo(b.resolution));
+      } else {
+        sortedPhotos.sort((a, b) => b.resolution.compareTo(a.resolution));
+      }
+    }
+
+    if (sortedPhotos.isEmpty) return;
 
     if (_selectedPhoto == null) {
-      setSelectedPhoto(photos[0]);
+      setSelectedPhoto(sortedPhotos[0]);
       return;
     }
 
-    final currentIndex = photos.indexOf(_selectedPhoto!);
+    final currentIndex = sortedPhotos.indexOf(_selectedPhoto!);
+    if (currentIndex == -1) {
+      // If the selected photo is not in the sorted list, select the first photo
+      setSelectedPhoto(sortedPhotos[0]);
+      return;
+    }
+
     final settingsManager = Provider.of<SettingsManager>(context, listen: false);
     final photosPerRow = settingsManager.photosPerRow;
     int newIndex = currentIndex;
 
     if (event.logicalKey == LogicalKeyboardKey.arrowLeft && currentIndex > 0) {
       newIndex = currentIndex - 1;
-    } else if (event.logicalKey == LogicalKeyboardKey.arrowRight && currentIndex < photos.length - 1) {
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowRight && currentIndex < sortedPhotos.length - 1) {
       newIndex = currentIndex + 1;
     } else if (event.logicalKey == LogicalKeyboardKey.arrowUp && currentIndex >= photosPerRow) {
       newIndex = currentIndex - photosPerRow;
-    } else if (event.logicalKey == LogicalKeyboardKey.arrowDown && currentIndex + photosPerRow < photos.length) {
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowDown && currentIndex + photosPerRow < sortedPhotos.length) {
       newIndex = currentIndex + photosPerRow;
     } else if (event.logicalKey == LogicalKeyboardKey.delete && _selectedPhoto != null) {
-      final currentIndex = photos.indexOf(_selectedPhoto!);
       photoManager.deletePhoto(_selectedPhoto!);
 
       // Select next photo after deletion
-      if (photos.isNotEmpty) {
-        final nextIndex = currentIndex < photos.length ? currentIndex : photos.length - 1;
-        setSelectedPhoto(photos[nextIndex]);
+      if (sortedPhotos.isNotEmpty) {
+        // Refresh the sorted photos list after deletion
+        sortedPhotos = List.from(filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags));
+
+        // Apply the same sorting again
+        if (filterManager.ratingSortState != SortState.none) {
+          if (filterManager.ratingSortState == SortState.ascending) {
+            sortedPhotos.sort((a, b) => a.rating.compareTo(b.rating));
+          } else {
+            sortedPhotos.sort((a, b) => b.rating.compareTo(a.rating));
+          }
+        } else if (filterManager.dateSortState != SortState.none) {
+          if (filterManager.dateSortState == SortState.ascending) {
+            sortedPhotos.sort((a, b) {
+              final dateA = a.dateModified;
+              final dateB = b.dateModified;
+              if (dateA == null && dateB == null) return 0;
+              if (dateA == null) return -1;
+              if (dateB == null) return 1;
+              return dateA.compareTo(dateB);
+            });
+          } else {
+            sortedPhotos.sort((a, b) {
+              final dateA = a.dateModified;
+              final dateB = b.dateModified;
+              if (dateA == null && dateB == null) return 0;
+              if (dateA == null) return 1;
+              if (dateB == null) return -1;
+              return dateB.compareTo(dateA);
+            });
+          }
+        } else if (filterManager.resolutionSortState != SortState.none) {
+          if (filterManager.resolutionSortState == SortState.ascending) {
+            sortedPhotos.sort((a, b) => a.resolution.compareTo(b.resolution));
+          } else {
+            sortedPhotos.sort((a, b) => b.resolution.compareTo(a.resolution));
+          }
+        }
+
+        final nextIndex = currentIndex < sortedPhotos.length ? currentIndex : sortedPhotos.length - 1;
+        setSelectedPhoto(sortedPhotos[nextIndex]);
       } else {
         setSelectedPhoto(null);
       }
@@ -80,7 +169,7 @@ class HomeViewModel extends ChangeNotifier {
     }
 
     if (newIndex != currentIndex) {
-      setSelectedPhoto(photos[newIndex]);
+      setSelectedPhoto(sortedPhotos[newIndex]);
     }
   }
 

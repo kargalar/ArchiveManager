@@ -8,6 +8,7 @@ import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import 'package:vector_math/vector_math_64.dart' hide Colors;
 import '../../models/photo.dart';
+import '../../models/sort_state.dart';
 import '../../managers/photo_manager.dart';
 import '../../managers/tag_manager.dart';
 import '../../managers/settings_manager.dart';
@@ -170,10 +171,48 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
     final tagManager = Provider.of<TagManager>(context);
     final filterManager = Provider.of<FilterManager>(context);
 
-    // Filtrelenmiş fotoğrafları al - sıralama PhotoGrid'de yapılıyor
-    final filteredPhotos = filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags);
+    // Filtrelenmiş fotoğrafları al
+    List<Photo> filteredPhotos = filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags);
 
-    return _buildFullScreenView(filteredPhotos);
+    // Sıralama uygula - PhotoGrid ile aynı sıralamayı kullan
+    List<Photo> sortedPhotos = List.from(filteredPhotos);
+
+    // Aktif sıralamaya göre fotoğrafları sırala
+    if (filterManager.ratingSortState != SortState.none) {
+      if (filterManager.ratingSortState == SortState.ascending) {
+        sortedPhotos.sort((a, b) => a.rating.compareTo(b.rating));
+      } else {
+        sortedPhotos.sort((a, b) => b.rating.compareTo(a.rating));
+      }
+    } else if (filterManager.dateSortState != SortState.none) {
+      if (filterManager.dateSortState == SortState.ascending) {
+        sortedPhotos.sort((a, b) {
+          final dateA = a.dateModified;
+          final dateB = b.dateModified;
+          if (dateA == null && dateB == null) return 0;
+          if (dateA == null) return -1;
+          if (dateB == null) return 1;
+          return dateA.compareTo(dateB);
+        });
+      } else {
+        sortedPhotos.sort((a, b) {
+          final dateA = a.dateModified;
+          final dateB = b.dateModified;
+          if (dateA == null && dateB == null) return 0;
+          if (dateA == null) return 1;
+          if (dateB == null) return -1;
+          return dateB.compareTo(dateA);
+        });
+      }
+    } else if (filterManager.resolutionSortState != SortState.none) {
+      if (filterManager.resolutionSortState == SortState.ascending) {
+        sortedPhotos.sort((a, b) => a.resolution.compareTo(b.resolution));
+      } else {
+        sortedPhotos.sort((a, b) => b.resolution.compareTo(a.resolution));
+      }
+    }
+
+    return _buildFullScreenView(sortedPhotos);
   }
 
   Widget _buildFullScreenView(List<Photo> filteredPhotos) {
