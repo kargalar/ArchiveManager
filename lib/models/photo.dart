@@ -47,12 +47,12 @@ class Photo extends HiveObject {
     this.isFavorite = false,
     this.rating = 0,
     this.isRecycled = false,
-    this.tags = const [],
+    List<Tag>? tags,
     this.width = 0,
     this.height = 0,
     this.dateModified,
     this.dimensionsLoaded = false,
-  });
+  }) : tags = tags ?? [];
 
   // Calculate resolution (total pixels)
   int get resolution => width * height;

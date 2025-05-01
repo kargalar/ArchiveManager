@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../models/folder.dart';
 import '../models/photo.dart';
+import 'photo_manager.dart';
 
 class FolderManager extends ChangeNotifier {
   final Box<Folder> _folderBox;
@@ -14,6 +15,7 @@ class FolderManager extends ChangeNotifier {
   List<String> _missingFolders = [];
   String? _selectedFolder;
   final List<String> _favoriteFolders = [];
+  PhotoManager? _photoManager;
 
   // Folder filtering
   String _searchQuery = '';
@@ -31,6 +33,10 @@ class FolderManager extends ChangeNotifier {
     _loadFolders();
     checkFoldersExistence();
     _updateFilteredFolders();
+  }
+
+  void setPhotoManager(PhotoManager photoManager) {
+    _photoManager = photoManager;
   }
 
   // Getters
@@ -178,6 +184,12 @@ class FolderManager extends ChangeNotifier {
 
         _addToHierarchy(path);
         selectFolder(path); // Automatically select the newly added folder
+
+        // Yeni eklenen klasördeki fotoğrafları otomatik olarak indeksle
+        if (_photoManager != null) {
+          debugPrint('Starting indexing for newly added folder: $path');
+          _photoManager!.indexFolderPhotos(path);
+        }
       } catch (e) {
         debugPrint('Error scanning directory: $e');
       }

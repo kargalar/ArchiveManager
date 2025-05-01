@@ -183,10 +183,17 @@ class _MyAppState extends State<MyApp> with WindowListener {
           create: (context) {
             final photoManager = PhotoManager(widget.photoBox);
             final filterManager = Provider.of<FilterManager>(context, listen: false);
+            final folderManager = Provider.of<FolderManager>(context, listen: false);
 
-            // Set up the circular reference
+            // Set up the circular references
             photoManager.setFilterManager(filterManager);
             filterManager.setPhotoManager(photoManager);
+            folderManager.setPhotoManager(photoManager);
+
+            // Uygulama başlangıcında indexlenmemiş fotoğrafları indexlemeye devam et
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              photoManager.startGlobalIndexing();
+            });
 
             return photoManager;
           },

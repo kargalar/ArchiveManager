@@ -84,13 +84,48 @@ class TagManager extends ChangeNotifier {
   }
 
   void toggleTag(Photo photo, Tag tag) {
-    if (photo.tags.any((t) => t.id == tag.id)) {
-      photo.tags.removeWhere((t) => t.id == tag.id);
-    } else {
-      photo.tags.add(tag);
+    try {
+      // Ensure tags list is initialized
+      // Note: This should not be needed anymore with the constructor change,
+      // but keeping it as a safety check
+
+      // Check if photo already has this tag
+      if (photo.tags.any((t) => t.id == tag.id)) {
+        // Remove tag
+        photo.tags.removeWhere((t) => t.id == tag.id);
+        debugPrint('Removed tag ${tag.name} from photo ${photo.path}');
+      } else {
+        // Add tag
+        photo.tags.add(tag);
+        debugPrint('Added tag ${tag.name} to photo ${photo.path}');
+      }
+
+      // Save changes to Hive
+      try {
+        photo.save();
+        debugPrint('Saved photo with updated tags');
+      } catch (e) {
+        debugPrint('Error saving photo after tag toggle: $e');
+
+        // Try to update the photo in the box directly
+        final photoBox = Hive.box<Photo>('photos');
+        final boxPhoto = photoBox.values.firstWhere(
+          (p) => p.path == photo.path,
+          orElse: () => photo,
+        );
+
+        if (boxPhoto != photo) {
+          // Update the box photo's tags
+          boxPhoto.tags = List.from(photo.tags);
+          boxPhoto.save();
+          debugPrint('Updated tags via box photo instead');
+        }
+      }
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error in toggleTag: $e');
     }
-    photo.save();
-    notifyListeners();
   }
 
   void toggleTagFilter(Tag tag) {

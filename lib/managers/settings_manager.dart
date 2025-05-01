@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hive/hive.dart';
+import 'package:path_provider/path_provider.dart';
 // Use window_manager on desktop platforms, and a stub implementation on web
 import 'package:window_manager/window_manager.dart' if (dart.library.html) '../utils/web_window_manager.dart';
 import '../models/settings.dart';
@@ -295,5 +296,38 @@ class SettingsManager extends ChangeNotifier {
 
     debugPrint('No saved window position found');
     return false;
+  }
+
+  // Tüm verileri sıfırla
+  Future<bool> resetAllData() async {
+    try {
+      debugPrint('Resetting all data...');
+
+      // Tüm Hive kutularını kapat
+      await Hive.close();
+
+      // Hive veritabanı dizinini al
+      final appDocDir = await getApplicationDocumentsDirectory();
+      final hivePath = '${appDocDir.path}/Archive Manager';
+
+      // Tüm Hive dosyalarını sil
+      final directory = Directory(hivePath);
+      if (await directory.exists()) {
+        await directory.delete(recursive: true);
+        debugPrint('Deleted Hive directory: $hivePath');
+
+        // Yeni bir dizin oluştur
+        await directory.create(recursive: true);
+        debugPrint('Created new Hive directory');
+
+        return true;
+      }
+
+      debugPrint('Hive directory not found: $hivePath');
+      return false;
+    } catch (e) {
+      debugPrint('Error resetting data: $e');
+      return false;
+    }
   }
 }

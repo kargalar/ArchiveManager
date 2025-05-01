@@ -55,10 +55,8 @@ class PhotoManager extends ChangeNotifier {
     // Notify listeners that photos are loaded
     notifyListeners();
 
-    // Then start indexing dimensions in the background
-    if (_filterManager != null) {
-      _startIndexing(_photos);
-    }
+    // Klasör seçildiğinde indeksleme başlatmıyoruz
+    // İndeksleme sadece yeni klasör eklendiğinde otomatik olarak başlatılacak
   }
 
   // Load photos from multiple folders
@@ -75,14 +73,17 @@ class PhotoManager extends ChangeNotifier {
     for (var path in paths) {
       await _loadPhotosFromSingleFolder(path, addedPhotoPaths);
 
-      // Notify after each folder to show progress
-      notifyListeners();
+      // Notify after each folder to show progress - only if not indexing
+      if (!_isIndexing) {
+        notifyListeners();
+      }
     }
 
-    // Then start indexing dimensions in the background
-    if (_filterManager != null) {
-      _startIndexing(_photos);
-    }
+    // Final notification after all photos are loaded
+    notifyListeners();
+
+    // Klasör seçildiğinde indeksleme başlatmıyoruz
+    // İndeksleme sadece yeni klasör eklendiğinde otomatik olarak başlatılacak
   }
 
   // Start the indexing process in the background
@@ -99,8 +100,7 @@ class PhotoManager extends ChangeNotifier {
       // Update the stream with completed state
       _indexingController.add(currentIndexingState);
 
-      // Also notify listeners for other UI elements
-      notifyListeners();
+      // İndeksleme tamamlandığında sadece stream'i güncelle, notifyListeners() çağırma
       return;
     }
 
@@ -113,22 +113,22 @@ class PhotoManager extends ChangeNotifier {
     // Update the stream with initial state
     _indexingController.add(currentIndexingState);
 
-    // Also notify listeners for other UI elements
-    notifyListeners();
+    // İndeksleme başladığında sadece stream'i güncelle, notifyListeners() çağırma
 
     debugPrint('Starting indexing for ${photosNeedingDimensions.length} photos');
 
-    // Process in batches to prevent UI freezing
-    _loadDimensionsInBatches(photosNeedingDimensions);
+    // Process photos one by one
+    _processPhotosOneByOne(photosNeedingDimensions);
   }
 
-  // Load dimensions in batches to prevent UI freezing and memory leaks
-  void _loadDimensionsInBatches(List<Photo> photos) {
-    const int batchSize = 10; // Process fewer photos at a time to reduce memory pressure
+  // Load dimensions one by one to prevent UI freezing and memory leaks
+  void _processPhotosOneByOne(List<Photo> photos) {
+    // Process one photo at a time
     int totalPhotos = photos.length;
     int processedCount = 0;
+    int cacheCleanupCounter = 0;
 
-    Future<void> processBatch() async {
+    Future<void> processOneByOne() async {
       if (processedCount >= totalPhotos) {
         debugPrint('Finished indexing for all photos');
         _isIndexing = false;
@@ -137,51 +137,69 @@ class PhotoManager extends ChangeNotifier {
         // Update the stream with completed state
         _indexingController.add(currentIndexingState);
 
-        // Also notify listeners for other UI elements that might need to know indexing is complete
-        notifyListeners();
+        // İndeksleme tamamlandığında sadece stream'i güncelle, notifyListeners() çağırma
+        // Bu sayede UI gereksiz yere yeniden render edilmeyecek
         return;
       }
 
-      int endIndex = (processedCount + batchSize < totalPhotos) ? processedCount + batchSize : totalPhotos;
+      // Process just one photo
+      Photo photo = photos[processedCount];
 
-      List<Photo> batch = photos.sublist(processedCount, endIndex);
+      // Process this photo
+      if (_filterManager != null) {
+        await _filterManager!.loadActualDimensions(photo);
+      }
 
-      // Process this batch
-      for (var photo in batch) {
-        if (_filterManager != null) {
-          await _filterManager!.loadActualDimensions(photo);
+      // Increment cache cleanup counter
+      cacheCleanupCounter++;
+
+      // Clear image cache every 5 photos to prevent memory buildup
+      if (cacheCleanupCounter >= 5) {
+        cacheCleanupCounter = 0;
+
+        // Clear image cache to prevent memory leaks
+        try {
+          ImageCache().clear();
+          ImageCache().clearLiveImages();
+
+          // Only clear PaintingBinding if it's available
+          if (WidgetsBinding.instance is PaintingBinding) {
+            PaintingBinding.instance.imageCache.clear();
+            PaintingBinding.instance.imageCache.clearLiveImages();
+          }
+        } catch (e) {
+          // Ignore errors during cache clearing
         }
       }
 
-      processedCount = endIndex;
+      processedCount++;
       _indexedPhotosCount = processedCount;
       _indexingProgress = processedCount / totalPhotos;
 
-      // Log progress periodically
-      if (processedCount % 50 == 0 || processedCount == totalPhotos) {
+      // Update the stream with current progress after each photo
+      // Sadece stream'i güncelle, notifyListeners() çağırma
+      _indexingController.add(currentIndexingState);
+
+      // Log progress more frequently since we're processing one by one
+      if (processedCount % 20 == 0 || processedCount == totalPhotos) {
         final percentage = (_indexingProgress * 100).toStringAsFixed(1);
         debugPrint('Indexed $processedCount/$totalPhotos photos ($percentage%)');
       }
 
-      // Update the stream with current progress
-      _indexingController.add(currentIndexingState);
+      // Allow UI to update between photos and give more time for GC
+      // Shorter delay since we're only processing one photo at a time
+      await Future.delayed(const Duration(milliseconds: 20));
 
-      // Don't notify all listeners to prevent grid rebuilding
-      // Only update the app bar through the stream
-
-      // Allow UI to update between batches and give more time for GC
-      await Future.delayed(const Duration(milliseconds: 50));
-
-      // Process next batch
-      await processBatch();
+      // Process next photo
+      await processOneByOne();
     }
 
-    // Start processing batches
-    Future.microtask(processBatch);
+    // Start processing one by one
+    Future.microtask(processOneByOne);
   }
 
   // Helper method to load photos from a single folder - optimized version
-  Future<void> _loadPhotosFromSingleFolder(String path, [Set<String>? addedPhotoPaths]) async {
+  Future<void> _loadPhotosFromSingleFolder(String path, [Set<String>? addedPhotoPaths, List<Photo>? targetList]) async {
     final directory = Directory(path);
     final imageExtensions = ['.jpg', '.jpeg', '.png', '.gif'];
 
@@ -230,11 +248,15 @@ class PhotoManager extends ChangeNotifier {
         }
 
         // Add to photos list and track the path if needed
-        _photos.add(photo);
+        if (targetList != null) {
+          targetList.add(photo);
+        } else {
+          _photos.add(photo);
+        }
         addedPhotoPaths?.add(file.path);
       }
 
-      debugPrint('Tüm fotoğraflar yüklendi. Toplam: ${_photos.length}');
+      debugPrint('Tüm fotoğraflar yüklendi. Toplam: ${targetList?.length ?? _photos.length}');
     } catch (e) {
       debugPrint('Error loading photos from folder $path: $e');
     }
@@ -248,8 +270,21 @@ class PhotoManager extends ChangeNotifier {
 
     debugPrint('Favorite toggled to: ${photo.isFavorite}');
 
-    // Notify listeners immediately
-    notifyListeners();
+    // İndeksleme sırasında sadece ilgili fotoğrafı güncellemek için özel bir notifyListeners çağrısı yapıyoruz
+    // Bu sayede tüm grid yeniden render edilmeyecek
+    if (_isIndexing) {
+      // Stream'i güncelle
+      _indexingController.add(currentIndexingState);
+
+      // Sadece ilgili fotoğrafı güncellemek için özel bir notifyListeners çağrısı yapıyoruz
+      // Bu sayede tüm grid yeniden render edilmeyecek
+      // Ancak bu değişikliği yapmak için HomeViewModel'i değiştirmemiz gerekiyor
+      // Şimdilik normal notifyListeners çağrısı yapıyoruz
+      notifyListeners();
+    } else {
+      // İndeksleme yoksa normal notifyListeners çağrısı yapıyoruz
+      notifyListeners();
+    }
   }
 
   void setRating(Photo photo, int rating) {
@@ -264,8 +299,21 @@ class PhotoManager extends ChangeNotifier {
       debugPrint('Rating set to $rating');
     }
 
-    // Notify listeners immediately
-    notifyListeners();
+    // İndeksleme sırasında sadece ilgili fotoğrafı güncellemek için özel bir notifyListeners çağrısı yapıyoruz
+    // Bu sayede tüm grid yeniden render edilmeyecek
+    if (_isIndexing) {
+      // Stream'i güncelle
+      _indexingController.add(currentIndexingState);
+
+      // Sadece ilgili fotoğrafı güncellemek için özel bir notifyListeners çağrısı yapıyoruz
+      // Bu sayede tüm grid yeniden render edilmeyecek
+      // Ancak bu değişikliği yapmak için HomeViewModel'i değiştirmemiz gerekiyor
+      // Şimdilik normal notifyListeners çağrısı yapıyoruz
+      notifyListeners();
+    } else {
+      // İndeksleme yoksa normal notifyListeners çağrısı yapıyoruz
+      notifyListeners();
+    }
   }
 
   void deletePhoto(Photo photo) {
@@ -306,7 +354,13 @@ class PhotoManager extends ChangeNotifier {
       boxPhoto.isRecycled = true;
       boxPhoto.save();
 
+      // Her durumda notifyListeners çağır
       notifyListeners();
+
+      // Eğer indexleme devam ediyorsa, stream'i de güncelle
+      if (_isIndexing) {
+        _indexingController.add(currentIndexingState);
+      }
     } catch (e) {
       debugPrint('Error moving photo to recycle bin: $e');
     }
@@ -316,7 +370,14 @@ class PhotoManager extends ChangeNotifier {
     try {
       photo.isRecycled = false;
       photo.save();
+
+      // Her durumda notifyListeners çağır
       notifyListeners();
+
+      // Eğer indexleme devam ediyorsa, stream'i de güncelle
+      if (_isIndexing) {
+        _indexingController.add(currentIndexingState);
+      }
     } catch (e) {
       debugPrint('Error restoring photo: $e');
     }
@@ -329,7 +390,14 @@ class PhotoManager extends ChangeNotifier {
         file.deleteSync();
       }
       photo.delete();
+
+      // Her durumda notifyListeners çağır
       notifyListeners();
+
+      // Eğer indexleme devam ediyorsa, stream'i de güncelle
+      if (_isIndexing) {
+        _indexingController.add(currentIndexingState);
+      }
     } catch (e) {
       debugPrint('Error permanently deleting photo: $e');
     }
@@ -337,7 +405,56 @@ class PhotoManager extends ChangeNotifier {
 
   void clearPhotos() {
     _photos.clear();
+
+    // Her durumda notifyListeners çağır
     notifyListeners();
+
+    // Eğer indexleme devam ediyorsa, stream'i de güncelle
+    if (_isIndexing) {
+      _indexingController.add(currentIndexingState);
+    }
+  }
+
+  // Tüm fotoğrafları bir kez indeksle - uygulama başlangıcında çağrılır
+  void startGlobalIndexing() {
+    if (!_isIndexing) {
+      debugPrint('Starting global indexing for all photos in the database');
+
+      // Sadece indexlenmemiş fotoğrafları al
+      final unindexedPhotos = _photoBox.values.where((photo) => !photo.dimensionsLoaded || photo.width <= 0 || photo.height <= 0).toList();
+
+      if (unindexedPhotos.isNotEmpty) {
+        debugPrint('Found ${unindexedPhotos.length} unindexed photos, starting indexing');
+        // İndeksleme işlemini başlat
+        _startIndexing(unindexedPhotos);
+      } else {
+        debugPrint('No unindexed photos found, skipping global indexing');
+      }
+    } else {
+      debugPrint('Indexing already in progress, skipping global indexing');
+    }
+  }
+
+  // Belirli bir klasördeki fotoğrafları indeksle - yeni klasör eklendiğinde çağrılır
+  Future<void> indexFolderPhotos(String folderPath) async {
+    if (_isIndexing) {
+      debugPrint('Indexing already in progress, will index folder $folderPath later');
+      return;
+    }
+
+    debugPrint('Indexing photos in folder: $folderPath');
+
+    // Klasördeki fotoğrafları yükle
+    final List<Photo> folderPhotos = [];
+    await _loadPhotosFromSingleFolder(folderPath, null, folderPhotos);
+
+    // İndeksleme işlemini başlat
+    if (_filterManager != null && folderPhotos.isNotEmpty) {
+      debugPrint('Starting indexing for ${folderPhotos.length} photos in folder: $folderPath');
+      _startIndexing(folderPhotos);
+    } else {
+      debugPrint('No photos to index in folder: $folderPath');
+    }
   }
 
   @override

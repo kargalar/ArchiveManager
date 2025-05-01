@@ -174,6 +174,11 @@ class HomeViewModel extends ChangeNotifier {
   }
 
   void handlePhotoTap(Photo photo) {
-    setSelectedPhoto(photo);
+    // İndeksleme sırasında bile fotoğraf seçiminin düzgün çalışması için
+    // Sadece seçilen fotoğraf değiştiğinde notifyListeners çağırıyoruz
+    if (_selectedPhoto != photo) {
+      _selectedPhoto = photo;
+      notifyListeners();
+    }
   }
 }

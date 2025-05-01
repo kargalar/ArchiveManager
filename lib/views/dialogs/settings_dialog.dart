@@ -1,4 +1,5 @@
 // Widget that displays the settings dialog
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../managers/settings_manager.dart';
@@ -40,6 +41,7 @@ class SettingsDialog extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const KeyboardShortcutsGuide(),
+                      const SizedBox(height: 24),
                       const Text('Photos per Row', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 12),
                       Consumer<SettingsManager>(
@@ -113,6 +115,92 @@ class SettingsDialog extends StatelessWidget {
                                       )
                                       .toList(),
                                 );
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      const Divider(),
+                      const SizedBox(height: 24),
+                      const Text('Reset Application', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red)),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Warning: This will delete all your data including folders, photos, tags, and settings. This action cannot be undone.',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                      const SizedBox(height: 12),
+                      Consumer<SettingsManager>(
+                        builder: (context, settingsManager, child) {
+                          return ElevatedButton.icon(
+                            icon: const Icon(Icons.delete_forever, color: Colors.white),
+                            label: const Text('Reset All Data', style: TextStyle(color: Colors.white)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            ),
+                            onPressed: () {
+                              // Onay dialog'u göster
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Reset All Data?'),
+                                  content: const Text(
+                                    'This will delete all your data including folders, photos, tags, and settings. '
+                                    'The application will close after reset and you will need to restart it. '
+                                    'This action cannot be undone.',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                      onPressed: () async {
+                                        // Tüm verileri sıfırla
+                                        final result = await settingsManager.resetAllData();
+                                        if (result) {
+                                          // Uygulamayı kapat
+                                          if (context.mounted) {
+                                            showDialog(
+                                              context: context,
+                                              barrierDismissible: false,
+                                              builder: (context) => AlertDialog(
+                                                title: const Text('Reset Complete'),
+                                                content: const Text(
+                                                  'All data has been reset. The application will now close. '
+                                                  'Please restart the application.',
+                                                ),
+                                                actions: [
+                                                  ElevatedButton(
+                                                    onPressed: () {
+                                                      // Uygulamayı kapat
+                                                      exit(0);
+                                                    },
+                                                    child: const Text('Close Application'),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          }
+                                        } else {
+                                          // Hata mesajı göster
+                                          if (context.mounted) {
+                                            Navigator.pop(context);
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(
+                                                content: Text('Failed to reset data. Please try again.'),
+                                                backgroundColor: Colors.red,
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      },
+                                      child: const Text('Reset', style: TextStyle(color: Colors.white)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
                         },
                       ),
                     ],

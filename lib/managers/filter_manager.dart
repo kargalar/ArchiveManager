@@ -158,6 +158,10 @@ class FilterManager extends ChangeNotifier {
   // Optimized to prevent memory leaks
   Future<void> loadActualDimensions(Photo photo) async {
     try {
+      // Skip if dimensions are already loaded and marked as such
+      // This is critical to prevent repeated loading - check first for performance
+      if (photo.dimensionsLoaded) return;
+
       final file = File(photo.path);
       if (!file.existsSync()) {
         // Dosya yoksa, boyutları yüklenmiş olarak işaretle
@@ -165,48 +169,25 @@ class FilterManager extends ChangeNotifier {
         photo.height = 1;
         photo.dimensionsLoaded = true;
         photo.save();
-        debugPrint('File does not exist, marking as loaded with default dimensions: ${photo.path}');
+        // Reduce logging for better performance
         return;
       }
 
       // Load date modified if not already loaded
       photo.dateModified ??= file.statSync().modified;
 
-      // Skip if dimensions are already loaded and marked as such
-      // This is critical to prevent repeated loading
-      if (photo.dimensionsLoaded) return;
-
       // Create a limited scope for the image loading
       await _loadImageDimensions(file.path, photo);
 
-      // Explicitly call garbage collection to free memory
-      // This is not normally recommended but helps in this specific case
-      // to prevent memory buildup during batch processing
-      Future.microtask(() {
-        try {
-          // Force a GC cycle after processing each image
-          // This is a workaround for Flutter's image caching behavior
-          ImageCache().clear();
-          ImageCache().clearLiveImages();
-
-          // Only clear PaintingBinding if it's available
-          if (WidgetsBinding.instance is PaintingBinding) {
-            PaintingBinding.instance.imageCache.clear();
-            PaintingBinding.instance.imageCache.clearLiveImages();
-          }
-
-          debugPrint('Image cache cleared to prevent memory leaks');
-        } catch (e) {
-          debugPrint('Error clearing image cache: $e');
-        }
-      });
+      // Clear image cache less frequently - only every 10 images
+      // This is controlled by the batch processor in PhotoManager
     } catch (e) {
       // Hata durumunda, boyutları yüklenmiş olarak işaretle
       photo.width = 1;
       photo.height = 1;
       photo.dimensionsLoaded = true;
       photo.save();
-      debugPrint('Error loading actual image dimensions, marking as loaded with default dimensions: $e');
+      // Reduce logging for better performance
     }
   }
 
@@ -217,9 +198,8 @@ class FilterManager extends ChangeNotifier {
     bool isCompleted = false;
 
     // Set a timeout to handle images that can't be loaded
-    Timer? timeoutTimer = Timer(const Duration(seconds: 5), () {
+    Timer? timeoutTimer = Timer(const Duration(seconds: 3), () {
       if (!isCompleted) {
-        debugPrint('Timeout loading image dimensions for: $path');
         // Mark as loaded with default dimensions to prevent future loading attempts
         photo.width = 1;
         photo.height = 1;
@@ -255,8 +235,6 @@ class FilterManager extends ChangeNotifier {
         // Cancel timeout timer
         timeoutTimer?.cancel();
         timeoutTimer = null;
-
-        debugPrint('Error loading image dimensions: $exception');
 
         // Mark as loaded with default dimensions to prevent future loading attempts
         photo.width = 1;

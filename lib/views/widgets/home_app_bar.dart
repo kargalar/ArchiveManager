@@ -66,12 +66,13 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
           builder: (context, folderManager, tagManager, filterManager, photoManager, child) {
             return Row(
               children: [
-                // Show indexing progress using StreamBuilder
+                // Show indexing progress using StreamBuilder - always show regardless of selected folder
                 StreamBuilder<IndexingState>(
                   stream: photoManager.indexingStream,
                   initialData: photoManager.currentIndexingState,
                   builder: (context, snapshot) {
                     final indexingState = snapshot.data;
+                    // Always show indexing progress if any indexing is happening
                     if (indexingState != null && indexingState.isIndexing) {
                       return Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
