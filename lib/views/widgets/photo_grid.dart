@@ -282,33 +282,30 @@ class _PhotoGridState extends State<PhotoGrid> {
       itemBuilder: (context, index) {
         final photo = sortedPhotos[index];
         return RepaintBoundary(
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: Listener(
-              onPointerDown: (event) {
-                if (event.buttons == kMiddleMouseButton) {
-                  homeViewModel.handlePhotoTap(photo);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => FullScreenImage(photo: photo),
-                    ),
-                  );
-                }
+          child: Listener(
+            onPointerDown: (event) {
+              if (event.buttons == kMiddleMouseButton) {
+                homeViewModel.handlePhotoTap(photo);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FullScreenImage(photo: photo),
+                  ),
+                );
+              }
+            },
+            child: GestureDetector(
+              onTap: () => homeViewModel.handlePhotoTap(photo),
+              onSecondaryTapDown: (details) {
+                homeViewModel.handlePhotoTap(photo);
+                _showPhotoContextMenu(context, photo, photoManager, tagManager, details.globalPosition);
               },
-              child: GestureDetector(
-                onTap: () => homeViewModel.handlePhotoTap(photo),
-                onSecondaryTapDown: (details) {
-                  homeViewModel.handlePhotoTap(photo);
-                  _showPhotoContextMenu(context, photo, photoManager, tagManager, details.globalPosition);
-                },
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    _buildPhotoContainer(photo, homeViewModel, context, settingsManager),
-                    _buildPhotoOverlay(photo, tagManager),
-                  ],
-                ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _buildPhotoContainer(photo, homeViewModel, context, settingsManager),
+                  _buildPhotoOverlay(photo, tagManager),
+                ],
               ),
             ),
           ),
@@ -333,11 +330,14 @@ class _PhotoGridState extends State<PhotoGrid> {
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(6),
-        child: _optimizedImage(
-          photo: photo,
-          photosPerRow: settingsManager.photosPerRow,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: _optimizedImage(
+            photo: photo,
+            photosPerRow: settingsManager.photosPerRow,
+          ),
         ),
       ),
     );
