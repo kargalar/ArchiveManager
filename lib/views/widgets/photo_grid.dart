@@ -383,11 +383,14 @@ class _PhotoGridState extends State<PhotoGrid> {
           child: Listener(
             onPointerDown: (event) {
               if (event.buttons == kMiddleMouseButton) {
-                // Orta tuşa basıldığında tam ekran görünümüne geç
-                // Seçim durumunu korumak için handlePhotoTap'i çağırmıyoruz
+                // Tıklanan fotoğrafı seçili fotoğraf olarak ayarla
+                homeViewModel.setSelectedPhoto(photo);
+
+                // Tam ekran görünümüne geç
                 Navigator.push(
                   context,
                   MaterialPageRoute(
+                    settings: const RouteSettings(name: 'fullscreen_image'),
                     builder: (context) => FullScreenImage(photo: photo),
                   ),
                 );

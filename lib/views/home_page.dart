@@ -120,9 +120,12 @@ class _HomePageState extends State<HomePage> {
       }
 
       _homeViewModel.handleKeyEvent(event, context, folderManager, photoManager, tagManager);
+
+      // Only open fullscreen view if we're not already in one
       if (event.logicalKey == LogicalKeyboardKey.enter && _homeViewModel.selectedPhoto != null) {
         Navigator.of(context).push(
           MaterialPageRoute(
+            settings: const RouteSettings(name: 'fullscreen_image'),
             builder: (context) => FullScreenImage(photo: _homeViewModel.selectedPhoto!),
           ),
         );

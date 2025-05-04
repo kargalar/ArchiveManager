@@ -227,6 +227,7 @@ class HomeViewModel extends ChangeNotifier {
       return;
     } else if (event.logicalKey == LogicalKeyboardKey.escape) {
       // Clear all selections with Escape key
+      // !!!!! esc ye basınca seçim gridde ise temizlenecek. yani full screen image de değilse.
       if (hasSelectedPhotos) {
         clearPhotoSelections();
         return;
