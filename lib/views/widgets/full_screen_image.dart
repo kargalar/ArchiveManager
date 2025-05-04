@@ -228,6 +228,42 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
     return _buildFullScreenView(sortedPhotos, homeViewModel);
   }
 
+  // Sonraki fotoğrafa geçme işlemini gerçekleştirir
+  void _moveToNextPhoto(List<Photo> filteredPhotos) {
+    final currentIndex = filteredPhotos.indexOf(_currentPhoto);
+    if (currentIndex < filteredPhotos.length - 1) {
+      final nextPhoto = filteredPhotos[currentIndex + 1];
+
+      // HomeViewModel'deki seçili fotoğrafı güncelle
+      final homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
+      homeViewModel.setSelectedPhoto(nextPhoto);
+
+      setState(() {
+        _currentPhoto = nextPhoto;
+        _resetZoom();
+      });
+    }
+  }
+
+  // Puan verme işlemini gerçekleştirir ve gerekirse sonraki fotoğrafa geçer
+  void _handleRating(List<Photo> filteredPhotos, PhotoManager photoManager, int rating) {
+    // Mevcut fotoğrafa puan ver (toggle davranışı olmadan)
+    photoManager.setRating(_currentPhoto, rating, allowToggle: false);
+
+    // Eğer otomatik geçiş açıksa ve son fotoğraf değilse sonraki fotoğrafa geç
+    if (_autoNext) {
+      final currentIndex = filteredPhotos.indexOf(_currentPhoto);
+      if (currentIndex < filteredPhotos.length - 1) {
+        // Kısa bir gecikme ekleyerek kullanıcının puanı görmesini sağla
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (mounted) {
+            _moveToNextPhoto(filteredPhotos);
+          }
+        });
+      }
+    }
+  }
+
   Widget _buildFullScreenView(List<Photo> filteredPhotos, HomeViewModel homeViewModel) {
     final photoManager = Provider.of<PhotoManager>(context);
     final settingsManager = Provider.of<SettingsManager>(context);
@@ -240,13 +276,19 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
           final currentIndex = filteredPhotos.indexOf(_currentPhoto);
 
           if (event.logicalKey == LogicalKeyboardKey.arrowLeft && currentIndex > 0) {
+            final prevPhoto = filteredPhotos[currentIndex - 1];
+            // HomeViewModel'deki seçili fotoğrafı güncelle
+            homeViewModel.setSelectedPhoto(prevPhoto);
             setState(() {
-              _currentPhoto = filteredPhotos[currentIndex - 1];
+              _currentPhoto = prevPhoto;
               _resetZoom();
             });
           } else if (event.logicalKey == LogicalKeyboardKey.arrowRight && currentIndex < filteredPhotos.length - 1) {
+            final nextPhoto = filteredPhotos[currentIndex + 1];
+            // HomeViewModel'deki seçili fotoğrafı güncelle
+            homeViewModel.setSelectedPhoto(nextPhoto);
             setState(() {
-              _currentPhoto = filteredPhotos[currentIndex + 1];
+              _currentPhoto = nextPhoto;
               _resetZoom();
             });
           } else if (event.logicalKey == LogicalKeyboardKey.delete) {
@@ -266,9 +308,12 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                   Navigator.of(context).pop();
                 }
               } else if (mounted) {
+                // Aynı indeksi kullan, eğer son fotoğraf silindiyse bir öncekine geç
+                final nextPhoto = filteredPhotos[currentIndex < filteredPhotos.length ? currentIndex : filteredPhotos.length - 1];
+                // HomeViewModel'deki seçili fotoğrafı güncelle
+                homeViewModel.setSelectedPhoto(nextPhoto);
                 setState(() {
-                  // Aynı indeksi kullan, eğer son fotoğraf silindiyse bir öncekine geç
-                  _currentPhoto = filteredPhotos[currentIndex < filteredPhotos.length ? currentIndex : filteredPhotos.length - 1];
+                  _currentPhoto = nextPhoto;
                   _resetZoom();
                 });
               }
@@ -300,6 +345,34 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
           } else if (event.logicalKey == LogicalKeyboardKey.space || event.logicalKey == LogicalKeyboardKey.enter) {
             // Boşluk veya Enter tuşuna basıldığında seçim durumunu değiştir
             homeViewModel.togglePhotoSelection(_currentPhoto);
+          } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
+            // F tuşuna basıldığında favori durumunu değiştir
+            Future.microtask(() {
+              photoManager.toggleFavorite(_currentPhoto);
+
+              // Eğer otomatik geçiş açıksa, sonraki fotoğrafa geç
+              if (_autoNext) {
+                final currentIndex = filteredPhotos.indexOf(_currentPhoto);
+                if (currentIndex < filteredPhotos.length - 1) {
+                  // Kısa bir gecikme ekleyerek kullanıcının favoriye eklediğini görmesini sağla
+                  Future.delayed(const Duration(milliseconds: 200), () {
+                    if (mounted) {
+                      _moveToNextPhoto(filteredPhotos);
+                    }
+                  });
+                }
+              }
+            });
+          } else {
+            // Handle number keys for rating (1-9)
+            final key = event.logicalKey.keyLabel;
+            if (key.length == 1 && RegExp(r'[1-9]').hasMatch(key)) {
+              final rating = int.parse(key);
+              // Use Future.microtask to avoid setState during build
+              Future.microtask(() {
+                _handleRating(filteredPhotos, photoManager, rating);
+              });
+            }
           }
         }
       },
@@ -493,6 +566,22 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                             },
                             tooltip: 'Auto Next (Shift)',
                           ),
+                          if (_autoNext)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withAlpha(51), // 0.2 opacity
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'Auto Next ON',
+                                style: TextStyle(
+                                  color: Colors.blue,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                       Row(
@@ -554,7 +643,23 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                               _currentPhoto.isFavorite ? Icons.favorite : Icons.favorite_border,
                               color: _currentPhoto.isFavorite ? Colors.red : Colors.white70,
                             ),
-                            onPressed: () => Provider.of<PhotoManager>(context, listen: false).toggleFavorite(_currentPhoto),
+                            onPressed: () {
+                              final photoManager = Provider.of<PhotoManager>(context, listen: false);
+                              photoManager.toggleFavorite(_currentPhoto);
+
+                              // Eğer otomatik geçiş açıksa, sonraki fotoğrafa geç
+                              if (_autoNext) {
+                                final currentIndex = filteredPhotos.indexOf(_currentPhoto);
+                                if (currentIndex < filteredPhotos.length - 1) {
+                                  // Kısa bir gecikme ekleyerek kullanıcının favoriye eklediğini görmesini sağla
+                                  Future.delayed(const Duration(milliseconds: 200), () {
+                                    if (mounted) {
+                                      _moveToNextPhoto(filteredPhotos);
+                                    }
+                                  });
+                                }
+                              }
+                            },
                             tooltip: 'Toggle Favorite (F)',
                           ),
                           IconButton(

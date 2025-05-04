@@ -287,11 +287,11 @@ class PhotoManager extends ChangeNotifier {
     }
   }
 
-  void setRating(Photo photo, int rating) {
+  void setRating(Photo photo, int rating, {bool allowToggle = true}) {
     debugPrint('Setting rating for photo: ${photo.path}, current rating: ${photo.rating}, new rating: $rating');
 
     // Set new rating
-    if (photo.rating == rating) {
+    if (allowToggle && photo.rating == rating) {
       photo.setRating(0);
       debugPrint('Rating cleared to 0');
     } else {
