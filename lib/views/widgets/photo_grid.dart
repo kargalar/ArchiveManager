@@ -389,9 +389,9 @@ class _PhotoGridState extends State<PhotoGrid> {
                 // Tam ekran görünümüne geç
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
+                  PageRouteBuilder(
                     settings: const RouteSettings(name: 'fullscreen_image'),
-                    builder: (context) => FullScreenImage(photo: photo),
+                    pageBuilder: (context, animation, secondaryAnimation) => FullScreenImage(photo: photo),
                   ),
                 );
               }

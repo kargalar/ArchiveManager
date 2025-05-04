@@ -1,3 +1,4 @@
+import 'package:archive_manager_v3/views/widgets/full_screen_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
@@ -226,9 +227,12 @@ class HomeViewModel extends ChangeNotifier {
       }
       return;
     } else if (event.logicalKey == LogicalKeyboardKey.escape) {
-      // Clear all selections with Escape key
-      // !!!!! esc ye basınca seçim gridde ise temizlenecek. yani full screen image de değilse.
-      if (hasSelectedPhotos) {
+      // Clear all selections with Escape key only if we're in grid view (not in fullscreen)
+      // Check if we're in fullscreen mode using the static flag
+
+      // Only clear selections if we're not in fullscreen mode
+      if (hasSelectedPhotos && !FullScreenImage.isActive) {
+        debugPrint('Escape pressed in grid view, clearing selections');
         clearPhotoSelections();
         return;
       }
