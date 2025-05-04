@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:archive_manager_v3/models/tag.dart';
+import 'package:archive_manager_v3/viewmodels/home_view_model.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -170,6 +171,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
     final photoManager = Provider.of<PhotoManager>(context);
     final tagManager = Provider.of<TagManager>(context);
     final filterManager = Provider.of<FilterManager>(context);
+    final homeViewModel = Provider.of<HomeViewModel>(context);
 
     // Filtrelenmiş fotoğrafları al
     List<Photo> filteredPhotos = filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags);
@@ -212,10 +214,10 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
       }
     }
 
-    return _buildFullScreenView(sortedPhotos);
+    return _buildFullScreenView(sortedPhotos, homeViewModel);
   }
 
-  Widget _buildFullScreenView(List<Photo> filteredPhotos) {
+  Widget _buildFullScreenView(List<Photo> filteredPhotos, HomeViewModel homeViewModel) {
     final photoManager = Provider.of<PhotoManager>(context);
     final settingsManager = Provider.of<SettingsManager>(context);
 
@@ -284,6 +286,31 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
           } else if (event.logicalKey == LogicalKeyboardKey.f11) {
             // F11 tuşuna basıldığında tam ekran modunu aç/kapat
             settingsManager.toggleFullscreen();
+          } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
+            // F tuşuna basıldığında favori durumunu değiştir
+            if (homeViewModel.hasSelectedPhotos) {
+              // Seçili tüm fotoğraflar için favori durumunu değiştir
+              homeViewModel.toggleFavoriteForSelectedPhotos(photoManager);
+            } else {
+              // Sadece mevcut fotoğraf için favori durumunu değiştir
+              photoManager.toggleFavorite(_currentPhoto);
+            }
+          } else if (event.logicalKey == LogicalKeyboardKey.space) {
+            // Boşluk tuşuna basıldığında seçim durumunu değiştir
+            homeViewModel.togglePhotoSelection(_currentPhoto);
+          } else {
+            // Sayı tuşları ile puan verme (0-9)
+            final key = event.logicalKey.keyLabel;
+            if (key.length == 1 && RegExp(r'[0-9]').hasMatch(key)) {
+              final rating = int.parse(key);
+              if (homeViewModel.hasSelectedPhotos) {
+                // Seçili tüm fotoğraflara puan ver
+                homeViewModel.setRatingForSelectedPhotos(photoManager, rating);
+              } else {
+                // Sadece mevcut fotoğrafa puan ver
+                photoManager.setRating(_currentPhoto, rating);
+              }
+            }
           }
         }
       },
@@ -523,6 +550,16 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                                 ),
                               ],
                             ),
+                          // Selection status icon
+                          IconButton(
+                            icon: Icon(
+                              _currentPhoto.isSelected ? Icons.check_circle : Icons.check_circle_outline,
+                              color: _currentPhoto.isSelected ? Colors.blue : Colors.white70,
+                            ),
+                            onPressed: () => homeViewModel.togglePhotoSelection(_currentPhoto),
+                            tooltip: _currentPhoto.isSelected ? 'Seçimi Kaldır' : 'Seç',
+                          ),
+                          // Favorite icon
                           IconButton(
                             icon: Icon(
                               _currentPhoto.isFavorite ? Icons.favorite : Icons.favorite_border,

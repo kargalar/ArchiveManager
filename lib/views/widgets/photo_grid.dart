@@ -383,7 +383,8 @@ class _PhotoGridState extends State<PhotoGrid> {
           child: Listener(
             onPointerDown: (event) {
               if (event.buttons == kMiddleMouseButton) {
-                homeViewModel.handlePhotoTap(photo);
+                // Orta tuşa basıldığında tam ekran görünümüne geç
+                // Seçim durumunu korumak için handlePhotoTap'i çağırmıyoruz
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -396,7 +397,17 @@ class _PhotoGridState extends State<PhotoGrid> {
               onTap: () {
                 // Get keyboard modifiers using HardwareKeyboard
                 final bool isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
-                homeViewModel.handlePhotoTap(photo, isCtrlPressed: isCtrlPressed);
+
+                // Check if selection mode is active (any photos are selected)
+                final bool selectionModeActive = homeViewModel.hasSelectedPhotos;
+
+                // If Ctrl is pressed or selection mode is active, toggle selection
+                if (isCtrlPressed || selectionModeActive) {
+                  homeViewModel.togglePhotoSelection(photo);
+                } else {
+                  // Normal tap behavior when no selection is active
+                  homeViewModel.handlePhotoTap(photo, isCtrlPressed: isCtrlPressed);
+                }
               },
               onSecondaryTapDown: (details) {
                 homeViewModel.handlePhotoTap(photo);
@@ -427,10 +438,10 @@ class _PhotoGridState extends State<PhotoGrid> {
     return StatefulBuilder(builder: (context, setState) {
       return Container(
         decoration: BoxDecoration(
-          border: isCurrentlySelected
-              ? Border.all(color: const Color.fromARGB(255, 179, 179, 179), width: 2)
-              : isMultiSelected
-                  ? Border.all(color: Colors.blue, width: 2)
+          border: isMultiSelected
+              ? Border.all(color: Colors.blue, width: 2)
+              : isCurrentlySelected
+                  ? Border.all(color: const Color.fromARGB(255, 179, 179, 179), width: 2)
                   : Border.all(color: Colors.transparent, width: 4),
           borderRadius: BorderRadius.circular(8),
           boxShadow: [
@@ -460,26 +471,32 @@ class _PhotoGridState extends State<PhotoGrid> {
               // Selection icon (visible on hover or when selected)
               if (isHovered || isMultiSelected)
                 Positioned(
-                  top: 8,
-                  left: 8,
+                  top: 0,
+                  left: 0,
                   child: GestureDetector(
                     onTap: () {
                       // Toggle selection without affecting the current selected photo
                       homeViewModel.togglePhotoSelection(photo);
                     },
                     child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: isMultiSelected ? Colors.blue : Colors.black54,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white24, width: 1),
-                      ),
-                      child: Center(
-                        child: Icon(
-                          isMultiSelected ? Icons.check : Icons.add,
-                          size: 16,
-                          color: Colors.white,
+                      color: Colors.transparent,
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: isMultiSelected ? Colors.blue : Colors.black54,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white24, width: 1),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              Icons.check,
+                              size: 20,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
                       ),
                     ),
