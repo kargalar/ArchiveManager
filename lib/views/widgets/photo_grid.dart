@@ -7,7 +7,9 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/foundation.dart';
 import '../../models/photo.dart';
+import '../../models/tag.dart';
 import '../../managers/folder_manager.dart';
 import '../../managers/photo_manager.dart';
 import '../../managers/tag_manager.dart';
@@ -254,6 +256,102 @@ class _PhotoGridState extends State<PhotoGrid> {
 
     return Column(
       children: [
+        // Selection status bar - only visible when photos are selected
+        if (homeViewModel.hasSelectedPhotos)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: Colors.blue.shade800,
+            child: Row(
+              children: [
+                Text(
+                  '${homeViewModel.selectedPhotos.length} fotoğraf seçildi',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                // Delete button
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.white),
+                  tooltip: 'Seçili Fotoğrafları Sil',
+                  onPressed: () {
+                    // Show confirmation dialog
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Fotoğrafları Sil'),
+                        content: Text('${homeViewModel.selectedPhotos.length} fotoğrafı silmek istediğinize emin misiniz?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('İptal'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              // Delete all selected photos
+                              List<Photo> photosToDelete = List.from(homeViewModel.selectedPhotos);
+                              for (var photo in photosToDelete) {
+                                photoManager.deletePhoto(photo);
+                              }
+                              homeViewModel.clearPhotoSelections();
+                            },
+                            child: const Text('Sil'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                // Favorite button
+                IconButton(
+                  icon: const Icon(Icons.favorite, color: Colors.white),
+                  tooltip: 'Favorilere Ekle/Çıkar',
+                  onPressed: () => homeViewModel.toggleFavoriteForSelectedPhotos(photoManager),
+                ),
+                // Rating buttons
+                for (int i = 1; i <= 5; i++)
+                  IconButton(
+                    icon: Icon(Icons.star, color: Colors.amber),
+                    tooltip: '$i Puan Ver',
+                    onPressed: () => homeViewModel.setRatingForSelectedPhotos(photoManager, i),
+                  ),
+                const SizedBox(width: 8),
+
+                // Tag dropdown menu
+                if (tagManager.tags.isNotEmpty)
+                  PopupMenuButton<Tag>(
+                    tooltip: 'Etiket Ekle/Çıkar',
+                    icon: const Icon(Icons.label, color: Colors.white),
+                    itemBuilder: (context) => tagManager.tags
+                        .map((tag) => PopupMenuItem<Tag>(
+                              value: tag,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      color: tag.color,
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(tag.name),
+                                ],
+                              ),
+                            ))
+                        .toList(),
+                    onSelected: (tag) => homeViewModel.toggleTagForSelectedPhotos(tagManager, tag),
+                  ),
+                const SizedBox(width: 16),
+                // Clear selection button
+                TextButton.icon(
+                  icon: const Icon(Icons.clear, color: Colors.white),
+                  label: const Text('Seçimi Temizle', style: TextStyle(color: Colors.white)),
+                  onPressed: () => homeViewModel.clearPhotoSelections(),
+                ),
+              ],
+            ),
+          ),
         Expanded(
           child: _buildGridView(sortedPhotos, settingsManager, homeViewModel, photoManager, tagManager, context),
         ),
@@ -295,7 +393,11 @@ class _PhotoGridState extends State<PhotoGrid> {
               }
             },
             child: GestureDetector(
-              onTap: () => homeViewModel.handlePhotoTap(photo),
+              onTap: () {
+                // Get keyboard modifiers using HardwareKeyboard
+                final bool isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
+                homeViewModel.handlePhotoTap(photo, isCtrlPressed: isCtrlPressed);
+              },
               onSecondaryTapDown: (details) {
                 homeViewModel.handlePhotoTap(photo);
                 _showPhotoContextMenu(context, photo, photoManager, tagManager, details.globalPosition);
@@ -315,32 +417,79 @@ class _PhotoGridState extends State<PhotoGrid> {
   }
 
   Widget _buildPhotoContainer(Photo photo, HomeViewModel homeViewModel, BuildContext context, SettingsManager settingsManager) {
-    // Use a more efficient approach with conditional widgets instead of AnimatedContainer
-    final bool isSelected = homeViewModel.selectedPhoto == photo;
+    // Check if this photo is the currently selected photo or is in the selected photos list
+    final bool isCurrentlySelected = homeViewModel.selectedPhoto == photo;
+    final bool isMultiSelected = photo.isSelected;
 
-    return Container(
-      decoration: BoxDecoration(
-        border: isSelected ? Border.all(color: const Color.fromARGB(255, 179, 179, 179), width: 2) : Border.all(color: Colors.transparent, width: 4),
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(51), // 0.2 opacity
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: _optimizedImage(
-            photo: photo,
-            photosPerRow: settingsManager.photosPerRow,
+    // Track hover state for showing selection icon
+    bool isHovered = false;
+
+    return StatefulBuilder(builder: (context, setState) {
+      return Container(
+        decoration: BoxDecoration(
+          border: isCurrentlySelected
+              ? Border.all(color: const Color.fromARGB(255, 179, 179, 179), width: 2)
+              : isMultiSelected
+                  ? Border.all(color: Colors.blue, width: 2)
+                  : Border.all(color: Colors.transparent, width: 4),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(51), // 0.2 opacity
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) => setState(() => isHovered = true),
+          onExit: (_) => setState(() => isHovered = false),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Photo image
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: _optimizedImage(
+                  photo: photo,
+                  photosPerRow: settingsManager.photosPerRow,
+                ),
+              ),
+
+              // Selection icon (visible on hover or when selected)
+              if (isHovered || isMultiSelected)
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: GestureDetector(
+                    onTap: () {
+                      // Toggle selection without affecting the current selected photo
+                      homeViewModel.togglePhotoSelection(photo);
+                    },
+                    child: Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: isMultiSelected ? Colors.blue : Colors.black54,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white24, width: 1),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          isMultiSelected ? Icons.check : Icons.add,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   // Optimized image widget with memory caching and memory leak prevention
@@ -413,6 +562,9 @@ class _PhotoGridState extends State<PhotoGrid> {
   }
 
   void _showPhotoContextMenu(BuildContext context, Photo photo, PhotoManager photoManager, TagManager tagManager, Offset tapPosition) {
+    final homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
+    final bool hasSelectedPhotos = homeViewModel.hasSelectedPhotos;
+
     final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     showMenu(
       context: context,
@@ -424,14 +576,86 @@ class _PhotoGridState extends State<PhotoGrid> {
         Offset.zero & overlay.size,
       ),
       items: [
-        PopupMenuItem(
-          child: const Text('Favorilere Ekle/Çıkar'),
-          onTap: () => photoManager.toggleFavorite(photo),
-        ),
-        PopupMenuItem(
-          child: const Text('Sil'),
-          onTap: () => photoManager.deletePhoto(photo),
-        ),
+        if (hasSelectedPhotos)
+          PopupMenuItem(
+            child: const Text('Seçili Fotoğrafları Favorilere Ekle/Çıkar'),
+            onTap: () => homeViewModel.toggleFavoriteForSelectedPhotos(photoManager),
+          )
+        else
+          PopupMenuItem(
+            child: const Text('Favorilere Ekle/Çıkar'),
+            onTap: () => photoManager.toggleFavorite(photo),
+          ),
+
+        if (hasSelectedPhotos)
+          PopupMenuItem(
+            child: const Text('Seçili Fotoğrafları Sil'),
+            onTap: () {
+              List<Photo> photosToDelete = List.from(homeViewModel.selectedPhotos);
+              for (var selectedPhoto in photosToDelete) {
+                photoManager.deletePhoto(selectedPhoto);
+              }
+              homeViewModel.clearPhotoSelections();
+            },
+          )
+        else
+          PopupMenuItem(
+            child: const Text('Sil'),
+            onTap: () => photoManager.deletePhoto(photo),
+          ),
+
+        if (hasSelectedPhotos)
+          PopupMenuItem(
+            child: const Text('Seçimi Temizle'),
+            onTap: () => homeViewModel.clearPhotoSelections(),
+          )
+        else
+          PopupMenuItem(
+            child: const Text('Seç'),
+            onTap: () => homeViewModel.togglePhotoSelection(photo),
+          ),
+
+        // Rating options for selected photos
+        if (hasSelectedPhotos)
+          for (int rating = 1; rating <= 5; rating++)
+            PopupMenuItem(
+              child: Row(
+                children: [
+                  Icon(Icons.star, color: Colors.amber, size: 16),
+                  const SizedBox(width: 8),
+                  Text('Seçili Fotoğraflara $rating Puan Ver'),
+                ],
+              ),
+              onTap: () => homeViewModel.setRatingForSelectedPhotos(photoManager, rating),
+            ),
+
+        // Tag options for selected photos
+        if (hasSelectedPhotos && tagManager.tags.isNotEmpty)
+          PopupMenuItem(
+            onTap: null,
+            child: const Text('Seçili Fotoğraflara Etiket Ekle/Çıkar'),
+          ),
+
+        // Show all available tags for selected photos
+        if (hasSelectedPhotos)
+          for (var tag in tagManager.tags)
+            PopupMenuItem(
+              child: Row(
+                children: [
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: tag.color,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(tag.name),
+                ],
+              ),
+              onTap: () => homeViewModel.toggleTagForSelectedPhotos(tagManager, tag),
+            ),
       ],
     );
   }

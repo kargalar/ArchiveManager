@@ -42,6 +42,9 @@ class Photo extends HiveObject {
   @HiveField(8, defaultValue: false)
   bool dimensionsLoaded;
 
+  // isSelected is a transient property (not stored in Hive)
+  bool isSelected = false;
+
   Photo({
     required this.path,
     this.isFavorite = false,
@@ -52,6 +55,7 @@ class Photo extends HiveObject {
     this.height = 0,
     this.dateModified,
     this.dimensionsLoaded = false,
+    this.isSelected = false,
   }) : tags = tags ?? [];
 
   // Calculate resolution (total pixels)

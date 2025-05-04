@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../models/photo.dart';
 import '../models/sort_state.dart';
+import '../models/tag.dart';
 import '../managers/folder_manager.dart';
 import '../managers/photo_manager.dart';
 import '../managers/tag_manager.dart';
@@ -13,11 +15,68 @@ class HomeViewModel extends ChangeNotifier {
   Photo? _selectedPhoto;
   Photo? get selectedPhoto => _selectedPhoto;
 
+  // List to track selected photos
+  final List<Photo> _selectedPhotos = [];
+  List<Photo> get selectedPhotos => _selectedPhotos;
+
+  // Check if any photos are selected
+  bool get hasSelectedPhotos => _selectedPhotos.isNotEmpty;
+
   void setSelectedPhoto(Photo? photo) {
     // Only notify listeners if the selected photo actually changed
     if (_selectedPhoto != photo) {
       _selectedPhoto = photo;
       notifyListeners();
+    }
+  }
+
+  // Toggle selection for a photo
+  void togglePhotoSelection(Photo photo) {
+    if (photo.isSelected) {
+      // Deselect the photo
+      photo.isSelected = false;
+      _selectedPhotos.remove(photo);
+    } else {
+      // Select the photo
+      photo.isSelected = true;
+      _selectedPhotos.add(photo);
+    }
+    notifyListeners();
+  }
+
+  // Clear all selections
+  void clearPhotoSelections() {
+    for (var photo in _selectedPhotos) {
+      photo.isSelected = false;
+    }
+    _selectedPhotos.clear();
+    notifyListeners();
+  }
+
+  // Apply favorite toggle to all selected photos
+  void toggleFavoriteForSelectedPhotos(PhotoManager photoManager) {
+    if (_selectedPhotos.isEmpty) return;
+
+    for (var photo in _selectedPhotos) {
+      photoManager.toggleFavorite(photo);
+    }
+  }
+
+  // Apply rating to all selected photos
+  void setRatingForSelectedPhotos(PhotoManager photoManager, int rating) {
+    if (_selectedPhotos.isEmpty) return;
+
+    for (var photo in _selectedPhotos) {
+      photoManager.setRating(photo, rating);
+    }
+  }
+
+  // Apply tag toggle to all selected photos
+  void toggleTagForSelectedPhotos(TagManager tagManager, Tag tag) {
+    if (_selectedPhotos.isEmpty) return;
+
+    for (var photo in _selectedPhotos) {
+      tagManager.toggleTag(photo, tag);
     }
   }
 
@@ -94,75 +153,128 @@ class HomeViewModel extends ChangeNotifier {
       newIndex = currentIndex - photosPerRow;
     } else if (event.logicalKey == LogicalKeyboardKey.arrowDown && currentIndex + photosPerRow < sortedPhotos.length) {
       newIndex = currentIndex + photosPerRow;
-    } else if (event.logicalKey == LogicalKeyboardKey.delete && _selectedPhoto != null) {
-      photoManager.deletePhoto(_selectedPhoto!);
-
-      // Select next photo after deletion
-      if (sortedPhotos.isNotEmpty) {
-        // Refresh the sorted photos list after deletion
-        sortedPhotos = List.from(filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags));
-
-        // Apply the same sorting again
-        if (filterManager.ratingSortState != SortState.none) {
-          if (filterManager.ratingSortState == SortState.ascending) {
-            sortedPhotos.sort((a, b) => a.rating.compareTo(b.rating));
-          } else {
-            sortedPhotos.sort((a, b) => b.rating.compareTo(a.rating));
-          }
-        } else if (filterManager.dateSortState != SortState.none) {
-          if (filterManager.dateSortState == SortState.ascending) {
-            sortedPhotos.sort((a, b) {
-              final dateA = a.dateModified;
-              final dateB = b.dateModified;
-              if (dateA == null && dateB == null) return 0;
-              if (dateA == null) return -1;
-              if (dateB == null) return 1;
-              return dateA.compareTo(dateB);
-            });
-          } else {
-            sortedPhotos.sort((a, b) {
-              final dateA = a.dateModified;
-              final dateB = b.dateModified;
-              if (dateA == null && dateB == null) return 0;
-              if (dateA == null) return 1;
-              if (dateB == null) return -1;
-              return dateB.compareTo(dateA);
-            });
-          }
-        } else if (filterManager.resolutionSortState != SortState.none) {
-          if (filterManager.resolutionSortState == SortState.ascending) {
-            sortedPhotos.sort((a, b) => a.resolution.compareTo(b.resolution));
-          } else {
-            sortedPhotos.sort((a, b) => b.resolution.compareTo(a.resolution));
-          }
+    } else if (event.logicalKey == LogicalKeyboardKey.delete) {
+      // Check if we have selected photos
+      if (hasSelectedPhotos) {
+        // Delete all selected photos
+        List<Photo> photosToDelete = List.from(_selectedPhotos);
+        for (var photo in photosToDelete) {
+          photoManager.deletePhoto(photo);
         }
+        // Clear selections after deletion
+        clearPhotoSelections();
+      } else if (_selectedPhoto != null) {
+        // Delete the single selected photo
+        photoManager.deletePhoto(_selectedPhoto!);
 
-        final nextIndex = currentIndex < sortedPhotos.length ? currentIndex : sortedPhotos.length - 1;
-        setSelectedPhoto(sortedPhotos[nextIndex]);
-      } else {
-        setSelectedPhoto(null);
+        // Select next photo after deletion
+        if (sortedPhotos.isNotEmpty) {
+          // Refresh the sorted photos list after deletion
+          sortedPhotos = List.from(filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags));
+
+          // Apply the same sorting again
+          if (filterManager.ratingSortState != SortState.none) {
+            if (filterManager.ratingSortState == SortState.ascending) {
+              sortedPhotos.sort((a, b) => a.rating.compareTo(b.rating));
+            } else {
+              sortedPhotos.sort((a, b) => b.rating.compareTo(a.rating));
+            }
+          } else if (filterManager.dateSortState != SortState.none) {
+            if (filterManager.dateSortState == SortState.ascending) {
+              sortedPhotos.sort((a, b) {
+                final dateA = a.dateModified;
+                final dateB = b.dateModified;
+                if (dateA == null && dateB == null) return 0;
+                if (dateA == null) return -1;
+                if (dateB == null) return 1;
+                return dateA.compareTo(dateB);
+              });
+            } else {
+              sortedPhotos.sort((a, b) {
+                final dateA = a.dateModified;
+                final dateB = b.dateModified;
+                if (dateA == null && dateB == null) return 0;
+                if (dateA == null) return 1;
+                if (dateB == null) return -1;
+                return dateB.compareTo(dateA);
+              });
+            }
+          } else if (filterManager.resolutionSortState != SortState.none) {
+            if (filterManager.resolutionSortState == SortState.ascending) {
+              sortedPhotos.sort((a, b) => a.resolution.compareTo(b.resolution));
+            } else {
+              sortedPhotos.sort((a, b) => b.resolution.compareTo(a.resolution));
+            }
+          }
+
+          final nextIndex = currentIndex < sortedPhotos.length ? currentIndex : sortedPhotos.length - 1;
+          setSelectedPhoto(sortedPhotos[nextIndex]);
+        } else {
+          setSelectedPhoto(null);
+        }
       }
       return;
-    } else if (event.logicalKey == LogicalKeyboardKey.keyF && _selectedPhoto != null) {
+    } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
       // Toggle favorite with F key
-      debugPrint('F key pressed, toggling favorite for ${_selectedPhoto!.path}');
-      photoManager.toggleFavorite(_selectedPhoto!);
+      if (hasSelectedPhotos) {
+        // Toggle favorite for all selected photos
+        toggleFavoriteForSelectedPhotos(photoManager);
+      } else if (_selectedPhoto != null) {
+        // Toggle favorite for the single selected photo
+        debugPrint('F key pressed, toggling favorite for ${_selectedPhoto!.path}');
+        photoManager.toggleFavorite(_selectedPhoto!);
+      }
+      return;
+    } else if (event.logicalKey == LogicalKeyboardKey.escape) {
+      // Clear all selections with Escape key
+      if (hasSelectedPhotos) {
+        clearPhotoSelections();
+        return;
+      }
+    } else if (event.logicalKey == LogicalKeyboardKey.keyA && (HardwareKeyboard.instance.isControlPressed || HardwareKeyboard.instance.isMetaPressed)) {
+      // Select all photos with Ctrl+A
+      final filterManager = Provider.of<FilterManager>(context, listen: false);
+      final List<Photo> allPhotos = filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags);
+
+      // Clear current selections first
+      clearPhotoSelections();
+
+      // Select all photos
+      for (var photo in allPhotos) {
+        photo.isSelected = true;
+        _selectedPhotos.add(photo);
+      }
+
+      notifyListeners();
       return;
     } else {
       // Handle number keys for rating (1-9)
       final key = event.logicalKey.keyLabel;
-      if (key.length == 1 && RegExp(r'[1-9]').hasMatch(key) && _selectedPhoto != null) {
-        debugPrint('Number key $key pressed, setting rating for ${_selectedPhoto!.path}');
-        photoManager.setRating(_selectedPhoto!, int.parse(key));
+      if (key.length == 1 && RegExp(r'[1-9]').hasMatch(key)) {
+        final rating = int.parse(key);
+        if (hasSelectedPhotos) {
+          // Set rating for all selected photos
+          setRatingForSelectedPhotos(photoManager, rating);
+        } else if (_selectedPhoto != null) {
+          // Set rating for the single selected photo
+          debugPrint('Number key $key pressed, setting rating for ${_selectedPhoto!.path}');
+          photoManager.setRating(_selectedPhoto!, rating);
+        }
         return;
       }
 
       // Handle tag shortcuts
       final tags = tagManager.tags;
       for (var tag in tags) {
-        if (event.logicalKey == tag.shortcutKey && _selectedPhoto != null) {
-          debugPrint('Tag shortcut pressed for ${tag.name}, toggling tag for ${_selectedPhoto!.path}');
-          tagManager.toggleTag(_selectedPhoto!, tag);
+        if (event.logicalKey == tag.shortcutKey) {
+          if (hasSelectedPhotos) {
+            // Toggle tag for all selected photos
+            toggleTagForSelectedPhotos(tagManager, tag);
+          } else if (_selectedPhoto != null) {
+            // Toggle tag for the single selected photo
+            debugPrint('Tag shortcut pressed for ${tag.name}, toggling tag for ${_selectedPhoto!.path}');
+            tagManager.toggleTag(_selectedPhoto!, tag);
+          }
           return;
         }
       }
@@ -173,7 +285,19 @@ class HomeViewModel extends ChangeNotifier {
     }
   }
 
-  void handlePhotoTap(Photo photo) {
+  void handlePhotoTap(Photo photo, {bool isCtrlPressed = false}) {
+    // If Ctrl key is pressed, don't change the selected photo
+    // This allows selecting multiple photos without changing the current selection
+    if (isCtrlPressed) {
+      // Do nothing with the current selection
+      return;
+    }
+
+    // Clear all selections when clicking on a photo without Ctrl
+    if (hasSelectedPhotos) {
+      clearPhotoSelections();
+    }
+
     // İndeksleme sırasında bile fotoğraf seçiminin düzgün çalışması için
     // Sadece seçilen fotoğraf değiştiğinde notifyListeners çağırıyoruz
     if (_selectedPhoto != photo) {
