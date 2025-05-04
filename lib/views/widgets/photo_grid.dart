@@ -146,7 +146,7 @@ class _PhotoGridState extends State<PhotoGrid> {
               });
             } else {
               final key = event.logicalKey.keyLabel;
-              if (key.length == 1 && RegExp(r'[1-9]').hasMatch(key)) {
+              if (key.length == 1 && RegExp(r'[0-9]').hasMatch(key)) {
                 // Use Future.microtask to avoid setState during build
                 Future.microtask(() {
                   photoManager.setRating(homeViewModel.selectedPhoto!, int.parse(key));

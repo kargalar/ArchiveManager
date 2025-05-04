@@ -252,9 +252,9 @@ class HomeViewModel extends ChangeNotifier {
       notifyListeners();
       return;
     } else {
-      // Handle number keys for rating (1-9)
+      // Handle number keys for rating (0-9)
       final key = event.logicalKey.keyLabel;
-      if (key.length == 1 && RegExp(r'[1-9]').hasMatch(key)) {
+      if (key.length == 1 && RegExp(r'[0-9]').hasMatch(key)) {
         final rating = int.parse(key);
         if (hasSelectedPhotos) {
           // Set rating for all selected photos
