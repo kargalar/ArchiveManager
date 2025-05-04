@@ -217,9 +217,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
 
   Widget _buildFullScreenView(List<Photo> filteredPhotos) {
     final photoManager = Provider.of<PhotoManager>(context);
-    final tagManager = Provider.of<TagManager>(context);
     final settingsManager = Provider.of<SettingsManager>(context);
-    final tags = tagManager.tags;
 
     return KeyboardListener(
       focusNode: _focusNode,
@@ -237,14 +235,6 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
             setState(() {
               _currentPhoto = filteredPhotos[currentIndex + 1];
               _resetZoom();
-            });
-          } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
-            // Use Future.microtask to avoid setState during build
-            Future.microtask(() {
-              photoManager.toggleFavorite(_currentPhoto);
-              if (mounted) {
-                setState(() {});
-              }
             });
           } else if (event.logicalKey == LogicalKeyboardKey.delete) {
             // Use Future.microtask to avoid setState during build
@@ -294,35 +284,6 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
           } else if (event.logicalKey == LogicalKeyboardKey.f11) {
             // F11 tuşuna basıldığında tam ekran modunu aç/kapat
             settingsManager.toggleFullscreen();
-          } else {
-            for (var tag in tags) {
-              if (event.logicalKey == tag.shortcutKey) {
-                // Use Future.microtask to avoid setState during build
-                Future.microtask(() {
-                  tagManager.toggleTag(_currentPhoto, tag);
-                  if (mounted) {
-                    setState(() {});
-                  }
-                });
-                break;
-              }
-            }
-            final key = event.logicalKey.keyLabel;
-            if (key.length == 1 && RegExp(r'[1-9]').hasMatch(key)) {
-              // Use Future.microtask to avoid setState during build
-              Future.microtask(() {
-                photoManager.setRating(_currentPhoto, int.parse(key));
-                if (mounted) {
-                  setState(() {});
-                  if (_autoNext && currentIndex < filteredPhotos.length - 1) {
-                    setState(() {
-                      _currentPhoto = filteredPhotos[currentIndex + 1];
-                      _resetZoom();
-                    });
-                  }
-                }
-              });
-            }
           }
         }
       },
