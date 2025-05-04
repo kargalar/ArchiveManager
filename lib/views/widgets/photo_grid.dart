@@ -7,7 +7,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/foundation.dart';
 import '../../models/photo.dart';
 import '../../models/tag.dart';
 import '../../managers/folder_manager.dart';
@@ -486,8 +485,8 @@ class _PhotoGridState extends State<PhotoGrid> {
                       child: Padding(
                         padding: const EdgeInsets.all(10),
                         child: Container(
-                          width: 30,
-                          height: 30,
+                          width: 25,
+                          height: 25,
                           decoration: BoxDecoration(
                             color: isMultiSelected ? Colors.blue : Colors.black54,
                             shape: BoxShape.circle,
@@ -496,7 +495,7 @@ class _PhotoGridState extends State<PhotoGrid> {
                           child: Center(
                             child: Icon(
                               Icons.check,
-                              size: 20,
+                              size: 15,
                               color: Colors.white,
                             ),
                           ),

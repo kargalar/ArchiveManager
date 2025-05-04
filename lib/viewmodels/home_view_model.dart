@@ -1,7 +1,6 @@
 import 'package:archive_manager_v3/views/widgets/full_screen_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../models/photo.dart';
 import '../models/sort_state.dart';

@@ -1,0 +1,2 @@
+C:/KARGALAR/Projeler/Flutter/archive_manager_v3/android/app/.cxx/RelWithDebInfo/6a14444d/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/KARGALAR/Projeler/Flutter/archive_manager_v3/android/app/.cxx/RelWithDebInfo/6a14444d/armeabi-v7a/CMakeFiles/rebuild_cache.dir
