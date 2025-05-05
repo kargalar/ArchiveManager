@@ -127,9 +127,6 @@ class _HomePageState extends State<HomePage> {
           PageRouteBuilder(
             settings: const RouteSettings(name: 'fullscreen_image'),
             pageBuilder: (context, animation, secondaryAnimation) => FullScreenImage(photo: _homeViewModel.selectedPhoto!),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return FadeTransition(opacity: animation, child: child);
-            },
           ),
         );
       }
