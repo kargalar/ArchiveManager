@@ -258,7 +258,7 @@ class _PhotoGridState extends State<PhotoGrid> {
         // Selection status bar - only visible when photos are selected
         if (homeViewModel.hasSelectedPhotos)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
             color: Colors.blue.shade800,
             child: Row(
               children: [
@@ -483,7 +483,7 @@ class _PhotoGridState extends State<PhotoGrid> {
                     child: Container(
                       color: Colors.transparent,
                       child: Padding(
-                        padding: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(5),
                         child: Container(
                           width: 25,
                           height: 25,
