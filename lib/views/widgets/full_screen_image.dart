@@ -246,10 +246,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
   }
 
   // Puan verme işlemini gerçekleştirir ve gerekirse sonraki fotoğrafa geçer
-  void _handleRating(List<Photo> filteredPhotos, PhotoManager photoManager, int rating) {
-    // Mevcut fotoğrafa puan ver (toggle davranışı olmadan)
-    photoManager.setRating(_currentPhoto, rating, allowToggle: false);
-
+  void _handleRating(List<Photo> filteredPhotos) {
     // Eğer otomatik geçiş açıksa ve son fotoğraf değilse sonraki fotoğrafa geç
     if (_autoNext) {
       final currentIndex = filteredPhotos.indexOf(_currentPhoto);
@@ -345,32 +342,13 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
           } else if (event.logicalKey == LogicalKeyboardKey.space || event.logicalKey == LogicalKeyboardKey.enter) {
             // Boşluk veya Enter tuşuna basıldığında seçim durumunu değiştir
             homeViewModel.togglePhotoSelection(_currentPhoto);
-          } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
-            // F tuşuna basıldığında favori durumunu değiştir
-            Future.microtask(() {
-              photoManager.toggleFavorite(_currentPhoto);
-
-              // Eğer otomatik geçiş açıksa, sonraki fotoğrafa geç
-              if (_autoNext) {
-                final currentIndex = filteredPhotos.indexOf(_currentPhoto);
-                if (currentIndex < filteredPhotos.length - 1) {
-                  // Kısa bir gecikme ekleyerek kullanıcının favoriye eklediğini görmesini sağla
-                  Future.delayed(const Duration(milliseconds: 200), () {
-                    if (mounted) {
-                      _moveToNextPhoto(filteredPhotos);
-                    }
-                  });
-                }
-              }
-            });
           } else {
             // Handle number keys for rating (0-9)
             final key = event.logicalKey.keyLabel;
             if (key.length == 1 && RegExp(r'[0-9]').hasMatch(key)) {
-              final rating = int.parse(key);
               // Use Future.microtask to avoid setState during build
               Future.microtask(() {
-                _handleRating(filteredPhotos, photoManager, rating);
+                _handleRating(filteredPhotos);
               });
             }
           }
