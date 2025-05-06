@@ -205,7 +205,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                           values: RangeValues(filterManager.minRatingFilter, filterManager.maxRatingFilter),
                           min: 0,
                           max: 9,
-                          divisions: 5,
+                          divisions: 9,
                           onChanged: (RangeValues values) {
                             filterManager.setRatingFilter(values.start, values.end);
                           },

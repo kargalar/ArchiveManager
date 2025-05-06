@@ -528,39 +528,19 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              _autoNext ? Icons.skip_next : Icons.skip_next_outlined,
-                              color: _autoNext ? Colors.blue : Colors.white70,
-                            ),
-                            onPressed: () {
-                              final settingsManager = Provider.of<SettingsManager>(context, listen: false);
-                              setState(() {
-                                _autoNext = !_autoNext;
-                                settingsManager.setFullscreenAutoNext(_autoNext);
-                              });
-                            },
-                            tooltip: 'Auto Next (Shift)',
-                          ),
-                          if (_autoNext)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.withAlpha(51), // 0.2 opacity
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text(
-                                'Auto Next ON',
-                                style: TextStyle(
-                                  color: Colors.blue,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                        ],
+                      IconButton(
+                        icon: Icon(
+                          _autoNext ? Icons.skip_next : Icons.skip_next_outlined,
+                          color: _autoNext ? Colors.blue : Colors.white70,
+                        ),
+                        onPressed: () {
+                          final settingsManager = Provider.of<SettingsManager>(context, listen: false);
+                          setState(() {
+                            _autoNext = !_autoNext;
+                            settingsManager.setFullscreenAutoNext(_autoNext);
+                          });
+                        },
+                        tooltip: 'Auto Next (Shift)',
                       ),
                       Row(
                         children: [
