@@ -22,6 +22,12 @@ class FilterManager extends ChangeNotifier {
   double _minRatingFilter = 0;
   double _maxRatingFilter = 9;
 
+  // Tag tri-state filtering
+  final List<Tag> _positiveTagFilters = [];
+  final List<Tag> _negativeTagFilters = [];
+  List<Tag> get positiveTagFilters => _positiveTagFilters;
+  List<Tag> get negativeTagFilters => _negativeTagFilters;
+
   // Loading state tracking
   bool _isLoadingDimensions = false;
   bool _isSorting = false;
@@ -628,12 +634,12 @@ class FilterManager extends ChangeNotifier {
   void toggleTagFilterMode() {
     switch (_tagFilterMode) {
       case 'none':
-        _tagFilterMode = 'untagged';
-        break;
-      case 'untagged':
         _tagFilterMode = 'tagged';
         break;
       case 'tagged':
+        _tagFilterMode = 'untagged';
+        break;
+      case 'untagged':
         _tagFilterMode = 'none';
         break;
       case 'filtered':
@@ -692,6 +698,32 @@ class FilterManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Tag'a tıklanınca üçlü döngü: yok -> pozitif -> negatif -> yok
+  void toggleTagTriState(Tag tag) {
+    if (_positiveTagFilters.contains(tag)) {
+      _positiveTagFilters.remove(tag);
+      _negativeTagFilters.add(tag);
+    } else if (_negativeTagFilters.contains(tag)) {
+      _negativeTagFilters.remove(tag);
+    } else {
+      _positiveTagFilters.add(tag);
+    }
+    // Filtre modunu 'filtered' yap
+    if (_positiveTagFilters.isNotEmpty || _negativeTagFilters.isNotEmpty) {
+      setTagFilterMode('filtered');
+    } else {
+      setTagFilterMode('none');
+    }
+    notifyListeners();
+  }
+
+  void clearTagTriStateFilters() {
+    _positiveTagFilters.clear();
+    _negativeTagFilters.clear();
+    setTagFilterMode('none');
+    notifyListeners();
+  }
+
   List<Photo> filterPhotos(List<Photo> photos, List<Tag> selectedTags) {
     return photos.where((photo) {
       // Handle favorite filter modes
@@ -705,16 +737,24 @@ class FilterManager extends ChangeNotifier {
       }
 
       // Handle different tag filter modes
-      switch (_tagFilterMode) {
-        case 'untagged':
-          if (photo.tags.isNotEmpty) return false;
-          break;
-        case 'tagged':
-          if (photo.tags.isEmpty) return false;
-          break;
-        case 'filtered':
-          if (selectedTags.isNotEmpty && !selectedTags.every((tag) => photo.tags.any((photoTag) => photoTag.id == tag.id))) return false;
-          break;
+      if (_tagFilterMode == 'filtered') {
+        // Pozitif tag'lerin hepsi olmalı
+        for (final tag in _positiveTagFilters) {
+          if (!photo.tags.any((photoTag) => photoTag.id == tag.id)) return false;
+        }
+        // Negatif tag'lerin hiçbiri olmamalı
+        for (final tag in _negativeTagFilters) {
+          if (photo.tags.any((photoTag) => photoTag.id == tag.id)) return false;
+        }
+      } else {
+        switch (_tagFilterMode) {
+          case 'untagged':
+            if (photo.tags.isNotEmpty) return false;
+            break;
+          case 'tagged':
+            if (photo.tags.isEmpty) return false;
+            break;
+        }
       }
 
       if (photo.rating < _minRatingFilter || photo.rating > _maxRatingFilter) return false;

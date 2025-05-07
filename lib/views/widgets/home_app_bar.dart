@@ -11,6 +11,16 @@ import '../../managers/photo_manager.dart';
 import '../../models/indexing_state.dart';
 import '../dialogs/settings_dialog.dart';
 
+// Extension to add darken method to Color
+extension ColorUtils on Color {
+  Color darken([double amount = .1]) {
+    assert(amount >= 0 && amount <= 1);
+    final hsl = HSLColor.fromColor(this);
+    final hslDark = hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0));
+    return hslDark.toColor();
+  }
+}
+
 class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool isMenuExpanded;
   final VoidCallback onMenuToggle;
@@ -115,34 +125,98 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
-                        children: tagManager.tags
-                            .map((tag) => Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                                  child: InkWell(
-                                    onTap: () => tagManager.toggleTagFilter(tag),
-                                    onSecondaryTap: () => tagManager.removeTagFilter(tag),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: tagManager.selectedTags.contains(tag) ? tag.color.withAlpha(204) : tag.color.withAlpha(51), // 0.8 and 0.2 opacity
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(
-                                          color: tagManager.selectedTags.contains(tag) ? tag.color : tag.color.withAlpha(128), // 0.5 opacity
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        tag.name,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: tagManager.selectedTags.contains(tag) ? Colors.white : Colors.white70,
-                                          fontWeight: tagManager.selectedTags.contains(tag) ? FontWeight.bold : FontWeight.normal,
-                                        ),
+                        children: tagManager.tags.map((tag) {
+                          final isPositive = filterManager.positiveTagFilters.contains(tag);
+                          final isNegative = filterManager.negativeTagFilters.contains(tag);
+                          Color bgColor;
+                          Color borderColor;
+                          Color textColor;
+                          List<BoxShadow> boxShadow = [];
+                          IconData? icon;
+                          if (isPositive) {
+                            bgColor = tag.color;
+                            borderColor = tag.color.darken(0.2);
+                            textColor = Colors.white;
+                            icon = Icons.check;
+                            boxShadow = [
+                              BoxShadow(
+                                color: tag.color.withOpacity(0.4),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ];
+                          } else if (isNegative) {
+                            bgColor = Colors.grey[900]!;
+                            borderColor = tag.color;
+                            textColor = tag.color;
+                            icon = Icons.close;
+                            boxShadow = [
+                              BoxShadow(
+                                color: tag.color.withOpacity(0.2),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ];
+                          } else {
+                            bgColor = tag.color.withAlpha(30);
+                            borderColor = tag.color.withAlpha(80);
+                            textColor = Colors.white70;
+                            icon = null;
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(18),
+                              onTap: () => filterManager.toggleTagTriState(tag),
+                              onSecondaryTap: () {
+                                // Sadece bu tag'in durumunu sıfırla
+                                if (filterManager.positiveTagFilters.contains(tag)) {
+                                  filterManager.positiveTagFilters.remove(tag);
+                                }
+                                if (filterManager.negativeTagFilters.contains(tag)) {
+                                  filterManager.negativeTagFilters.remove(tag);
+                                }
+                                // Filtre modunu güncelle
+                                if (filterManager.positiveTagFilters.isEmpty && filterManager.negativeTagFilters.isEmpty) {
+                                  filterManager.setTagFilterMode('none');
+                                }
+                                // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+                                filterManager.notifyListeners();
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: bgColor,
+                                  borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(
+                                    color: borderColor,
+                                    width: isPositive ? 2 : 1,
+                                  ),
+                                  boxShadow: boxShadow,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (icon != null) ...[
+                                      Icon(icon, size: 16, color: textColor),
+                                      const SizedBox(width: 4),
+                                    ],
+                                    Text(
+                                      tag.name,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: textColor,
+                                        fontWeight: isPositive ? FontWeight.bold : FontWeight.normal,
+                                        letterSpacing: 0.2,
                                       ),
                                     ),
-                                  ),
-                                ))
-                            .toList(),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
                       ),
                     ),
                   ),
