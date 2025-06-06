@@ -304,6 +304,32 @@ class HomeViewModel extends ChangeNotifier {
     }
   }
 
+  /// Selects a range of photos from the anchor (last selected) to [photo], clearing previous selections.
+  void selectRange(List<Photo> photos, Photo photo) {
+    if (_selectedPhoto == null) {
+      // No anchor, fall back to single selection
+      togglePhotoSelection(photo);
+      return;
+    }
+    final startIndex = photos.indexOf(_selectedPhoto!);
+    final endIndex = photos.indexOf(photo);
+    if (startIndex == -1 || endIndex == -1) {
+      togglePhotoSelection(photo);
+      return;
+    }
+    final int lower = startIndex < endIndex ? startIndex : endIndex;
+    final int upper = startIndex < endIndex ? endIndex : startIndex;
+    clearPhotoSelections();
+    for (int i = lower; i <= upper; i++) {
+      final p = photos[i];
+      if (!p.isSelected) {
+        p.isSelected = true;
+        _selectedPhotos.add(p);
+      }
+    }
+    notifyListeners();
+  }
+
   void handlePhotoTap(Photo photo, {bool isCtrlPressed = false}) {
     // If Ctrl key is pressed, don't change the selected photo
     // This allows selecting multiple photos without changing the current selection

@@ -409,17 +409,21 @@ class _PhotoGridState extends State<PhotoGrid> {
                 },
                 child: GestureDetector(
                   onTap: () {
-                    // Get keyboard modifiers using HardwareKeyboard
+                    // Get keyboard modifiers
+                    final bool isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
                     final bool isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
-
-                    // Check if selection mode is active (any photos are selected)
                     final bool selectionModeActive = homeViewModel.hasSelectedPhotos;
 
-                    // If Ctrl is pressed or selection mode is active, toggle selection
-                    if (isCtrlPressed || selectionModeActive) {
+                    // Shift+click: select range from anchor (primary selected) to tapped photo
+                    if (isShiftPressed && homeViewModel.selectedPhoto != null) {
+                      homeViewModel.selectRange(sortedPhotos, photo);
+                    }
+                    // Ctrl+click or existing selection: toggle individual selection
+                    else if (isCtrlPressed || selectionModeActive) {
                       homeViewModel.togglePhotoSelection(photo);
-                    } else {
-                      // Normal tap behavior when no selection is active
+                    }
+                    // Otherwise, normal selection
+                    else {
                       homeViewModel.handlePhotoTap(photo, isCtrlPressed: isCtrlPressed);
                     }
                   },
@@ -457,17 +461,21 @@ class _PhotoGridState extends State<PhotoGrid> {
               },
               child: GestureDetector(
                 onTap: () {
-                  // Get keyboard modifiers using HardwareKeyboard
+                  // Get keyboard modifiers
+                  final bool isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
                   final bool isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
-
-                  // Check if selection mode is active (any photos are selected)
                   final bool selectionModeActive = homeViewModel.hasSelectedPhotos;
 
-                  // If Ctrl is pressed or selection mode is active, toggle selection
-                  if (isCtrlPressed || selectionModeActive) {
+                  // Shift+click: select range from anchor (primary selected) to tapped photo
+                  if (isShiftPressed && homeViewModel.selectedPhoto != null) {
+                    homeViewModel.selectRange(sortedPhotos, photo);
+                  }
+                  // Ctrl+click or existing selection: toggle individual selection
+                  else if (isCtrlPressed || selectionModeActive) {
                     homeViewModel.togglePhotoSelection(photo);
-                  } else {
-                    // Normal tap behavior when no selection is active
+                  }
+                  // Otherwise, normal selection
+                  else {
                     homeViewModel.handlePhotoTap(photo, isCtrlPressed: isCtrlPressed);
                   }
                 },

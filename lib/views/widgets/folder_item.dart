@@ -210,8 +210,8 @@ class FolderItem extends StatelessWidget {
         DragTarget<Photo>(
           // onWillAcceptWithDetails: (data) => data != null,
           onAcceptWithDetails: (details) async {
-             final photoManager = Provider.of<PhotoManager>(context, listen: false);
-             final homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
+            final photoManager = Provider.of<PhotoManager>(context, listen: false);
+            final homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
             // If dragging a selected photo, move all selected photos
             if (homeViewModel.hasSelectedPhotos && homeViewModel.selectedPhotos.contains(details.data)) {
               for (var photo in List<Photo>.from(homeViewModel.selectedPhotos)) {
