@@ -378,49 +378,110 @@ class _PhotoGridState extends State<PhotoGrid> {
       addRepaintBoundaries: true,
       itemBuilder: (context, index) {
         final photo = sortedPhotos[index];
-        return RepaintBoundary(
-          child: Listener(
-            onPointerDown: (event) {
-              if (event.buttons == kMiddleMouseButton) {
-                // Tıklanan fotoğrafı seçili fotoğraf olarak ayarla
-                homeViewModel.setSelectedPhoto(photo);
+        return Draggable<Photo>(
+          data: photo,
+          feedback: Material(
+            color: Colors.transparent,
+            child: SizedBox(
+              width: 100,
+              height: 100,
+              child: _buildPhotoContainer(photo, homeViewModel, context, settingsManager),
+            ),
+          ),
+          childWhenDragging: Opacity(
+            opacity: 0.5,
+            child: RepaintBoundary(
+              child: Listener(
+                onPointerDown: (event) {
+                  if (event.buttons == kMiddleMouseButton) {
+                    // Tıklanan fotoğrafı seçili fotoğraf olarak ayarla
+                    homeViewModel.setSelectedPhoto(photo);
 
-                // Tam ekran görünümüne geç
-                Navigator.push(
-                  context,
-                  PageRouteBuilder(
-                    settings: const RouteSettings(name: 'fullscreen_image'),
-                    pageBuilder: (context, animation, secondaryAnimation) => FullScreenImage(photo: photo),
+                    // Tam ekran görünümüne geç
+                    Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        settings: const RouteSettings(name: 'fullscreen_image'),
+                        pageBuilder: (context, animation, secondaryAnimation) => FullScreenImage(photo: photo),
+                      ),
+                    );
+                  }
+                },
+                child: GestureDetector(
+                  onTap: () {
+                    // Get keyboard modifiers using HardwareKeyboard
+                    final bool isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
+
+                    // Check if selection mode is active (any photos are selected)
+                    final bool selectionModeActive = homeViewModel.hasSelectedPhotos;
+
+                    // If Ctrl is pressed or selection mode is active, toggle selection
+                    if (isCtrlPressed || selectionModeActive) {
+                      homeViewModel.togglePhotoSelection(photo);
+                    } else {
+                      // Normal tap behavior when no selection is active
+                      homeViewModel.handlePhotoTap(photo, isCtrlPressed: isCtrlPressed);
+                    }
+                  },
+                  onSecondaryTapDown: (details) {
+                    homeViewModel.handlePhotoTap(photo);
+                    _showPhotoContextMenu(context, photo, photoManager, tagManager, details.globalPosition);
+                  },
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      _buildPhotoContainer(photo, homeViewModel, context, settingsManager),
+                      _buildPhotoOverlay(photo, tagManager),
+                    ],
                   ),
-                );
-              }
-            },
-            child: GestureDetector(
-              onTap: () {
-                // Get keyboard modifiers using HardwareKeyboard
-                final bool isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
+                ),
+              ),
+            ),
+          ),
+          child: RepaintBoundary(
+            child: Listener(
+              onPointerDown: (event) {
+                if (event.buttons == kMiddleMouseButton) {
+                  // Tıklanan fotoğrafı seçili fotoğraf olarak ayarla
+                  homeViewModel.setSelectedPhoto(photo);
 
-                // Check if selection mode is active (any photos are selected)
-                final bool selectionModeActive = homeViewModel.hasSelectedPhotos;
-
-                // If Ctrl is pressed or selection mode is active, toggle selection
-                if (isCtrlPressed || selectionModeActive) {
-                  homeViewModel.togglePhotoSelection(photo);
-                } else {
-                  // Normal tap behavior when no selection is active
-                  homeViewModel.handlePhotoTap(photo, isCtrlPressed: isCtrlPressed);
+                  // Tam ekran görünümüne geç
+                  Navigator.push(
+                    context,
+                    PageRouteBuilder(
+                      settings: const RouteSettings(name: 'fullscreen_image'),
+                      pageBuilder: (context, animation, secondaryAnimation) => FullScreenImage(photo: photo),
+                    ),
+                  );
                 }
               },
-              onSecondaryTapDown: (details) {
-                homeViewModel.handlePhotoTap(photo);
-                _showPhotoContextMenu(context, photo, photoManager, tagManager, details.globalPosition);
-              },
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  _buildPhotoContainer(photo, homeViewModel, context, settingsManager),
-                  _buildPhotoOverlay(photo, tagManager),
-                ],
+              child: GestureDetector(
+                onTap: () {
+                  // Get keyboard modifiers using HardwareKeyboard
+                  final bool isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
+
+                  // Check if selection mode is active (any photos are selected)
+                  final bool selectionModeActive = homeViewModel.hasSelectedPhotos;
+
+                  // If Ctrl is pressed or selection mode is active, toggle selection
+                  if (isCtrlPressed || selectionModeActive) {
+                    homeViewModel.togglePhotoSelection(photo);
+                  } else {
+                    // Normal tap behavior when no selection is active
+                    homeViewModel.handlePhotoTap(photo, isCtrlPressed: isCtrlPressed);
+                  }
+                },
+                onSecondaryTapDown: (details) {
+                  homeViewModel.handlePhotoTap(photo);
+                  _showPhotoContextMenu(context, photo, photoManager, tagManager, details.globalPosition);
+                },
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    _buildPhotoContainer(photo, homeViewModel, context, settingsManager),
+                    _buildPhotoOverlay(photo, tagManager),
+                  ],
+                ),
               ),
             ),
           ),

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:path/path.dart' as p;
 import '../models/photo.dart';
 import '../models/indexing_state.dart';
 import 'filter_manager.dart';
@@ -464,6 +465,22 @@ class PhotoManager extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('Error opening file in explorer: $e');
+    }
+  }
+
+  // Move a photo file to a new folder and update its path
+  Future<void> movePhotoToFolder(Photo photo, String newFolderPath) async {
+    try {
+      final file = File(photo.path);
+      if (!await file.exists()) return;
+      final fileName = p.basename(photo.path);
+      final newPath = p.join(newFolderPath, fileName);
+      final movedFile = await file.rename(newPath);
+      photo.path = movedFile.path;
+      await photo.save();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error moving photo to folder $newFolderPath: $e');
     }
   }
 

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 import '../../managers/folder_manager.dart';
+import '../../models/photo.dart';
+import '../../managers/photo_manager.dart';
 
 // Widget that displays a folder and its subfolders in the folder tree.
 // Includes folder selection, deletion, favorite marking, and opening in explorer.
@@ -204,189 +206,197 @@ class FolderItem extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: EdgeInsets.only(left: 8.0 * level),
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFF3A3A3A) : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-              border: isSelected ? Border.all(color: Colors.blue.withAlpha(50), width: 1) : null,
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onSecondaryTap: isProblematic
-                    ? null
-                    : () {
-                        final RenderBox button = context.findRenderObject() as RenderBox;
-                        final position = button.localToGlobal(Offset.zero);
-                        showMenu(
-                          context: context,
-                          position: RelativeRect.fromLTRB(
-                            position.dx,
-                            position.dy + button.size.height,
-                            position.dx + button.size.width,
-                            position.dy + button.size.height + 100,
-                          ),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          elevation: 8,
-                          items: [
-                            PopupMenuItem(
-                              height: 42,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: isFavorite ? Colors.amber.withAlpha(30) : Colors.grey.withAlpha(30),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Icon(
-                                      isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
-                                      size: 16,
-                                      color: isFavorite ? Colors.amber : Colors.grey[400],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
-                                    style: const TextStyle(fontSize: 13),
-                                  ),
-                                ],
+        DragTarget<Photo>(
+          // onWillAcceptWithDetails: (data) => data != null,
+          onAcceptWithDetails: (details) {
+            Provider.of<PhotoManager>(context, listen: false).movePhotoToFolder(details.data, folder);
+          },
+          builder: (context, candidateData, rejectedData) {
+            return Padding(
+              padding: EdgeInsets.only(left: 8.0 * level),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFF3A3A3A) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  border: isSelected ? Border.all(color: Colors.blue.withAlpha(50), width: 1) : null,
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onSecondaryTap: isProblematic
+                        ? null
+                        : () {
+                            final RenderBox button = context.findRenderObject() as RenderBox;
+                            final position = button.localToGlobal(Offset.zero);
+                            showMenu(
+                              context: context,
+                              position: RelativeRect.fromLTRB(
+                                position.dx,
+                                position.dy + button.size.height,
+                                position.dx + button.size.width,
+                                position.dy + button.size.height + 100,
                               ),
-                              onTap: () {
-                                Future.delayed(Duration.zero, () {
-                                  folderManager.toggleFavorite(folder);
-                                });
-                              },
-                            ),
-                            PopupMenuItem(
-                              height: 42,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.withAlpha(30),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.red),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              elevation: 8,
+                              items: [
+                                PopupMenuItem(
+                                  height: 42,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: isFavorite ? Colors.amber.withAlpha(30) : Colors.grey.withAlpha(30),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Icon(
+                                          isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
+                                          size: 16,
+                                          color: isFavorite ? Colors.amber : Colors.grey[400],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 12),
-                                  const Text('Delete', style: TextStyle(fontSize: 13)),
-                                ],
-                              ),
-                              onTap: () {
-                                // We need to use Future.delayed because onTap is called before the menu is closed
-                                Future.delayed(Duration.zero, () {
-                                  showDeleteConfirmation();
-                                });
-                              },
-                            ),
-                            PopupMenuItem(
-                              height: 42,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.blue.withAlpha(30),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Icon(Icons.folder_open_rounded, size: 16, color: Colors.blue),
+                                  onTap: () {
+                                    Future.delayed(Duration.zero, () {
+                                      folderManager.toggleFavorite(folder);
+                                    });
+                                  },
+                                ),
+                                PopupMenuItem(
+                                  height: 42,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.withAlpha(30),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.red),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Text('Delete', style: TextStyle(fontSize: 13)),
+                                    ],
                                   ),
-                                  const SizedBox(width: 12),
-                                  const Text('Open in Explorer', style: TextStyle(fontSize: 13)),
-                                ],
+                                  onTap: () {
+                                    // We need to use Future.delayed because onTap is called before the menu is closed
+                                    Future.delayed(Duration.zero, () {
+                                      showDeleteConfirmation();
+                                    });
+                                  },
+                                ),
+                                PopupMenuItem(
+                                  height: 42,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.withAlpha(30),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: const Icon(Icons.folder_open_rounded, size: 16, color: Colors.blue),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Text('Open in Explorer', style: TextStyle(fontSize: 13)),
+                                    ],
+                                  ),
+                                  onTap: () => Process.start('explorer.exe', [folder]),
+                                ),
+                              ],
+                            );
+                          },
+                    onTap: () {
+                      final folderExists = Directory(folder).existsSync();
+                      if (!folderExists) {
+                        if (onMissingFolder != null) {
+                          onMissingFolder!(context, folder);
+                        }
+                      } else {
+                        folderManager.clearSectionSelection(); // Clear any section selection
+                        folderManager.selectFolder(folder);
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+                      child: Row(
+                        children: [
+                          if (hasChildren)
+                            Container(
+                              decoration: BoxDecoration(
+                                color: isSelected ? Colors.blue.withAlpha(30) : const Color(0xFF2A2A2A),
+                                borderRadius: BorderRadius.circular(4),
                               ),
-                              onTap: () => Process.start('explorer.exe', [folder]),
-                            ),
-                          ],
-                        );
-                      },
-                onTap: () {
-                  final folderExists = Directory(folder).existsSync();
-                  if (!folderExists) {
-                    if (onMissingFolder != null) {
-                      onMissingFolder!(context, folder);
-                    }
-                  } else {
-                    folderManager.clearSectionSelection(); // Clear any section selection
-                    folderManager.selectFolder(folder);
-                  }
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
-                  child: Row(
-                    children: [
-                      if (hasChildren)
-                        Container(
-                          decoration: BoxDecoration(
-                            color: isSelected ? Colors.blue.withAlpha(30) : const Color(0xFF2A2A2A),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(4),
-                              onTap: () => folderManager.toggleFolderExpanded(folder),
-                              child: Padding(
-                                padding: const EdgeInsets.all(2.0),
-                                child: AnimatedRotation(
-                                  turns: isExpanded ? 0.25 : 0,
-                                  duration: const Duration(milliseconds: 200),
-                                  child: Icon(
-                                    Icons.chevron_right_rounded,
-                                    size: 16,
-                                    color: isSelected ? Colors.blue : Colors.grey,
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(4),
+                                  onTap: () => folderManager.toggleFolderExpanded(folder),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(2.0),
+                                    child: AnimatedRotation(
+                                      turns: isExpanded ? 0.25 : 0,
+                                      duration: const Duration(milliseconds: 200),
+                                      child: Icon(
+                                        Icons.chevron_right_rounded,
+                                        size: 16,
+                                        color: isSelected ? Colors.blue : Colors.grey,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
+                            )
+                          else
+                            const SizedBox(width: 24),
+                          const SizedBox(width: 8),
+                          Icon(
+                            isFavorite ? Icons.folder_special_rounded : Icons.folder_rounded,
+                            size: 20,
+                            color: isFavorite ? Colors.amber : (isSelected ? Colors.blue : null),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                if (isProblematic || !Directory(folder).existsSync())
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 4.0),
+                                    child: Icon(Icons.warning_amber_rounded, color: hasParentMissing ? Colors.red : Colors.orange, size: 16),
+                                  ),
+                                Expanded(
+                                  child: Text(
+                                    folderName,
+                                    style: TextStyle(
+                                      color: isSelected ? Colors.blue : (hasParentMissing ? Colors.red : (isMissing ? Colors.orange : Colors.white)),
+                                      fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
+                                      fontSize: 13,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        )
-                      else
-                        const SizedBox(width: 24),
-                      const SizedBox(width: 8),
-                      Icon(
-                        isFavorite ? Icons.folder_special_rounded : Icons.folder_rounded,
-                        size: 20,
-                        color: isFavorite ? Colors.amber : (isSelected ? Colors.blue : null),
+                        ],
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Row(
-                          children: [
-                            if (isProblematic || !Directory(folder).existsSync())
-                              Padding(
-                                padding: const EdgeInsets.only(right: 4.0),
-                                child: Icon(Icons.warning_amber_rounded, color: hasParentMissing ? Colors.red : Colors.orange, size: 16),
-                              ),
-                            Expanded(
-                              child: Text(
-                                folderName,
-                                style: TextStyle(
-                                  color: isSelected ? Colors.blue : (hasParentMissing ? Colors.red : (isMissing ? Colors.orange : Colors.white)),
-                                  fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
-                                  fontSize: 13,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         ),
         if (isExpanded && hasChildren)
           ...folderManager.folderHierarchy[folder]!.map(
