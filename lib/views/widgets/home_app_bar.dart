@@ -121,7 +121,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                   ),
                 if (tagManager.tags.isNotEmpty)
                   Container(
-                    constraints: const BoxConstraints(maxWidth: 700),
+                    constraints: const BoxConstraints(maxWidth: 400),
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
@@ -140,7 +140,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                             icon = Icons.check;
                             boxShadow = [
                               BoxShadow(
-                                color: tag.color.withOpacity(0.4),
+                                color: tag.color.withAlpha(50),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -152,7 +152,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                             icon = Icons.close;
                             boxShadow = [
                               BoxShadow(
-                                color: tag.color.withOpacity(0.2),
+                                color: tag.color.withAlpha(50),
                                 blurRadius: 4,
                                 offset: const Offset(0, 1),
                               ),
