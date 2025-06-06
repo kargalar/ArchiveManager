@@ -4,6 +4,7 @@ import 'dart:io';
 import '../../managers/folder_manager.dart';
 import '../../models/photo.dart';
 import '../../managers/photo_manager.dart';
+import '../../viewmodels/home_view_model.dart';
 
 // Widget that displays a folder and its subfolders in the folder tree.
 // Includes folder selection, deletion, favorite marking, and opening in explorer.
@@ -208,8 +209,19 @@ class FolderItem extends StatelessWidget {
       children: [
         DragTarget<Photo>(
           // onWillAcceptWithDetails: (data) => data != null,
-          onAcceptWithDetails: (details) {
-            Provider.of<PhotoManager>(context, listen: false).movePhotoToFolder(details.data, folder);
+          onAcceptWithDetails: (details) async {
+             final photoManager = Provider.of<PhotoManager>(context, listen: false);
+             final homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
+            // If dragging a selected photo, move all selected photos
+            if (homeViewModel.hasSelectedPhotos && homeViewModel.selectedPhotos.contains(details.data)) {
+              for (var photo in List<Photo>.from(homeViewModel.selectedPhotos)) {
+                await photoManager.movePhotoToFolder(photo, folder);
+              }
+              homeViewModel.clearPhotoSelections();
+            } else {
+              // Single photo move
+              await photoManager.movePhotoToFolder(details.data, folder);
+            }
           },
           builder: (context, candidateData, rejectedData) {
             return Padding(

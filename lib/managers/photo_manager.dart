@@ -478,6 +478,8 @@ class PhotoManager extends ChangeNotifier {
       final movedFile = await file.rename(newPath);
       photo.path = movedFile.path;
       await photo.save();
+      // Remove photo from current loaded list if moved to a different folder
+      _photos.remove(photo);
       notifyListeners();
     } catch (e) {
       debugPrint('Error moving photo to folder $newFolderPath: $e');
