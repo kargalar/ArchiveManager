@@ -75,8 +75,23 @@ class HomeViewModel extends ChangeNotifier {
   void toggleTagForSelectedPhotos(TagManager tagManager, Tag tag) {
     if (_selectedPhotos.isEmpty) return;
 
+    // Check how many of the selected photos have this tag
+    int photosWithTag = _selectedPhotos.where((photo) => photo.tags.any((t) => t.id == tag.id)).length;
+
+    // If all photos have the tag, remove it from all
+    // If not all photos have the tag, add it to all photos that don't have it
+    bool shouldAddTag = photosWithTag < _selectedPhotos.length;
+
     for (var photo in _selectedPhotos) {
-      tagManager.toggleTag(photo, tag);
+      bool photoHasTag = photo.tags.any((t) => t.id == tag.id);
+
+      if (shouldAddTag && !photoHasTag) {
+        // Add tag to photos that don't have it
+        tagManager.toggleTag(photo, tag);
+      } else if (!shouldAddTag && photoHasTag) {
+        // Remove tag from photos that have it (only when all photos had the tag)
+        tagManager.toggleTag(photo, tag);
+      }
     }
   }
 

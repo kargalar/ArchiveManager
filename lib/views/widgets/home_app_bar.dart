@@ -121,7 +121,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                   ),
                 if (tagManager.tags.isNotEmpty)
                   Container(
-                    constraints: const BoxConstraints(maxWidth: 400),
+                    constraints: const BoxConstraints(maxWidth: 700),
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
