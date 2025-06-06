@@ -457,6 +457,16 @@ class PhotoManager extends ChangeNotifier {
     }
   }
 
+  void openInExplorer(Photo photo) {
+    try {
+      if (Platform.isWindows) {
+        Process.run('explorer', ['/select,', photo.path]);
+      }
+    } catch (e) {
+      debugPrint('Error opening file in explorer: $e');
+    }
+  }
+
   @override
   void dispose() {
     _indexingController.close();

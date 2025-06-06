@@ -597,18 +597,57 @@ class _PhotoGridState extends State<PhotoGrid> {
       items: [
         if (hasSelectedPhotos)
           PopupMenuItem(
-            child: const Text('Seçili Fotoğrafları Favorilere Ekle/Çıkar'),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withAlpha(30),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Icon(Icons.favorite, size: 16, color: Colors.red),
+                ),
+                const SizedBox(width: 12),
+                const Text('Seçili Fotoğrafları Favorilere Ekle/Çıkar'),
+              ],
+            ),
             onTap: () => homeViewModel.toggleFavoriteForSelectedPhotos(photoManager),
           )
         else
           PopupMenuItem(
-            child: const Text('Favorilere Ekle/Çıkar'),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withAlpha(30),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Icon(Icons.favorite_outline, size: 16, color: Colors.red),
+                ),
+                const SizedBox(width: 12),
+                const Text('Favorilere Ekle/Çıkar'),
+              ],
+            ),
             onTap: () => photoManager.toggleFavorite(photo),
           ),
 
         if (hasSelectedPhotos)
           PopupMenuItem(
-            child: const Text('Seçili Fotoğrafları Sil'),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withAlpha(30),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                ),
+                const SizedBox(width: 12),
+                const Text('Seçili Fotoğrafları Sil'),
+              ],
+            ),
             onTap: () {
               List<Photo> photosToDelete = List.from(homeViewModel.selectedPhotos);
               for (var selectedPhoto in photosToDelete) {
@@ -619,20 +658,76 @@ class _PhotoGridState extends State<PhotoGrid> {
           )
         else
           PopupMenuItem(
-            child: const Text('Sil'),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withAlpha(30),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                ),
+                const SizedBox(width: 12),
+                const Text('Sil'),
+              ],
+            ),
             onTap: () => photoManager.deletePhoto(photo),
           ),
 
         if (hasSelectedPhotos)
           PopupMenuItem(
-            child: const Text('Seçimi Temizle'),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withAlpha(30),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Icon(Icons.clear, size: 16, color: Colors.grey),
+                ),
+                const SizedBox(width: 12),
+                const Text('Seçimi Temizle'),
+              ],
+            ),
             onTap: () => homeViewModel.clearPhotoSelections(),
           )
         else
           PopupMenuItem(
-            child: const Text('Seç'),
-            onTap: () => homeViewModel.togglePhotoSelection(photo),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withAlpha(30),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Icon(Icons.folder_open_outlined, size: 16, color: Colors.blue),
+                ),
+                const SizedBox(width: 12),
+                const Text('Windows\'ta Göster'),
+              ],
+            ),
+            onTap: () => photoManager.openInExplorer(photo),
           ),
+        PopupMenuItem(
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withAlpha(30),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Icon(Icons.check_circle_outline, size: 16, color: Colors.blue),
+              ),
+              const SizedBox(width: 12),
+              const Text('Seç'),
+            ],
+          ),
+          onTap: () => homeViewModel.togglePhotoSelection(photo),
+        ),
 
         // Rating options for selected photos
         if (hasSelectedPhotos)
