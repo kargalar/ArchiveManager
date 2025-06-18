@@ -74,8 +74,18 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
       actions: [
         Consumer4<FolderManager, TagManager, FilterManager, PhotoManager>(
           builder: (context, folderManager, tagManager, filterManager, photoManager, child) {
+            // Filtrelenmiş fotoğraf sayısını hesapla
+            final filteredCount = filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags).length;
             return Row(
               children: [
+                // Fotoğraf sayısı göstergesi
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    '$filteredCount fotoğraf',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                ),
                 // Show indexing progress using StreamBuilder - always show regardless of selected folder
                 StreamBuilder<IndexingState>(
                   stream: photoManager.indexingStream,
