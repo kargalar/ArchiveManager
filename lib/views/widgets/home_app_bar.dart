@@ -1,6 +1,6 @@
-// HomePage üst menü ve appbar kısmını widgetlaştırdık
 import 'package:archive_manager_v3/models/sort_state.dart';
 import 'package:archive_manager_v3/views/dialogs/missing_folders_dialog.dart';
+import 'package:archive_manager_v3/views/dialogs/duplicate_photos_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
@@ -364,6 +364,36 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
               ],
             );
           },
+        ),
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.tune, color: Colors.white),
+          tooltip: 'Özellikler',
+          color: const Color.fromARGB(255, 50, 50, 50),
+          onSelected: (String value) {
+            switch (value) {
+              case 'duplicates':
+                showDialog(
+                  context: context,
+                  builder: (_) => const DuplicatePhotosDialog(),
+                );
+                break;
+            }
+          },
+          itemBuilder: (BuildContext context) => [
+            const PopupMenuItem<String>(
+              value: 'duplicates',
+              child: Row(
+                children: [
+                  Icon(Icons.content_copy, color: Colors.white70, size: 20),
+                  SizedBox(width: 12),
+                  Text(
+                    'Aynı Fotoğrafları Bul',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         IconButton(
           icon: const Icon(Icons.settings),

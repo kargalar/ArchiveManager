@@ -486,6 +486,20 @@ class PhotoManager extends ChangeNotifier {
     }
   }
 
+  // Remove photos from the current list and from Hive storage
+  void removePhotosFromList(List<Photo> photosToRemove) {
+    for (final photo in photosToRemove) {
+      _photos.remove(photo);
+      // Also remove from Hive if it exists
+      try {
+        photo.delete();
+      } catch (e) {
+        debugPrint('Error removing photo from Hive: $e');
+      }
+    }
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _indexingController.close();
