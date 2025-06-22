@@ -20,8 +20,6 @@ class _PhotoComparisonDialogState extends State<PhotoComparisonDialog> {
   int _leftPhotoIndex = 0;
   int _rightPhotoIndex = 1;
   double _dividerPosition = 0.5;
-  final double _zoomLevel = 1.0;
-  final Offset _panOffset = Offset.zero;
 
   final TransformationController _leftController = TransformationController();
   final TransformationController _rightController = TransformationController();
@@ -203,18 +201,18 @@ class _PhotoComparisonDialogState extends State<PhotoComparisonDialog> {
   Widget _buildSideBySideComparison() {
     return Container(
       color: Colors.black,
-      child: Stack(
-        children: [
-          // Ana fotoğraf görüntüleme alanı
-          InteractiveViewer(
-            transformationController: _leftController,
-            minScale: 0.1,
-            maxScale: 5.0,
-            onInteractionUpdate: (details) {
-              // Sync zoom and pan with right photo
-              _rightController.value = _leftController.value;
-            },
-            child: SizedBox(
+      child: InteractiveViewer(
+        transformationController: _leftController,
+        minScale: 0.1,
+        maxScale: 5.0,
+        onInteractionUpdate: (details) {
+          // Sync zoom and pan with right photo
+          _rightController.value = _leftController.value;
+        },
+        child: Stack(
+          children: [
+            // Ana fotoğraf görüntüleme alanı
+            SizedBox(
               width: double.infinity,
               height: double.infinity,
               child: Stack(
@@ -261,90 +259,91 @@ class _PhotoComparisonDialogState extends State<PhotoComparisonDialog> {
                       ),
                     ),
                   ),
+
+                  // Sürüklenebilir ayırıcı çizgi - şimdi transform edilmiş alan içinde
+                  Positioned.fill(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Stack(
+                          children: [
+                            Positioned(
+                              left: constraints.maxWidth * _dividerPosition - 2,
+                              top: 0,
+                              bottom: 0,
+                              child: GestureDetector(
+                                onPanUpdate: (details) {
+                                  // Global koordinatları widget koordinatlarına çevir
+                                  final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                                  final localPosition = renderBox.globalToLocal(details.globalPosition);
+
+                                  setState(() {
+                                    final newPosition = localPosition.dx / constraints.maxWidth;
+                                    _dividerPosition = newPosition.clamp(0.05, 0.95);
+                                  });
+                                },
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.resizeLeftRight,
+                                  child: Container(
+                                    width: 2,
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: Colors.black, width: 0.2),
+                                      borderRadius: BorderRadius.circular(2),
+                                      color: Colors.white.withAlpha(150),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ), // Sol üst köşe - sol fotoğraf indikator
+                            Positioned(
+                              top: 16,
+                              left: 16,
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withOpacity(0.8),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  'SOL',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // Sağ üst köşe - sağ fotoğraf indikator
+                            Positioned(
+                              top: 16,
+                              right: 16,
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.8),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  'SAĞ',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),
-
-          // Sürüklenebilir ayırıcı çizgi
-          Positioned(
-            left: MediaQuery.of(context).size.width * 0.95 * _dividerPosition - 2,
-            top: 0,
-            bottom: 0,
-            child: GestureDetector(
-              onPanUpdate: (details) {
-                setState(() {
-                  final newPosition = details.globalPosition.dx / (MediaQuery.of(context).size.width * 0.95);
-                  _dividerPosition = newPosition.clamp(0.05, 0.95);
-                });
-              },
-              child: MouseRegion(
-                cursor: SystemMouseCursors.resizeLeftRight,
-                child: Container(
-                  width: 4,
-                  color: Colors.orange,
-                  child: Center(
-                    child: Container(
-                      width: 20,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.orange,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.drag_indicator,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // Sol üst köşe - sol fotoğraf indikator
-          Positioned(
-            top: 16,
-            left: 16,
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Text(
-                'SOL',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ),
-
-          // Sağ üst köşe - sağ fotoğraf indikator
-          Positioned(
-            top: 16,
-            right: 16,
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Text(
-                'SAĞ',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -390,15 +389,6 @@ class _PhotoComparisonDialogState extends State<PhotoComparisonDialog> {
           ),
       ],
     );
-  }
-
-  void _updateTransformations() {
-    final matrix = Matrix4.identity()
-      ..scale(_zoomLevel)
-      ..translate(_panOffset.dx, _panOffset.dy);
-
-    _leftController.value = matrix;
-    _rightController.value = matrix;
   }
 
   String _formatFileSize(int bytes) {
