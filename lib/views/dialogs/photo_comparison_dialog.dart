@@ -300,7 +300,7 @@ class _PhotoComparisonDialogState extends State<PhotoComparisonDialog> {
                               child: Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
-                                  color: Colors.blue.withOpacity(0.8),
+                                  color: Colors.blue.withAlpha(200),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: const Text(
@@ -321,7 +321,7 @@ class _PhotoComparisonDialogState extends State<PhotoComparisonDialog> {
                               child: Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
-                                  color: Colors.green.withOpacity(0.8),
+                                  color: Colors.green.withAlpha(200),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: const Text(

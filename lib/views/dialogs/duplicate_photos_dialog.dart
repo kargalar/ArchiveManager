@@ -191,9 +191,9 @@ class _DuplicatePhotosDialogState extends State<DuplicatePhotosDialog> {
                             width: double.infinity,
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Colors.blue.withOpacity(0.1),
+                              color: Colors.blue.withAlpha(50),
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                              border: Border.all(color: Colors.blue.withAlpha(100)),
                             ),
                             child: Row(
                               children: [
@@ -311,8 +311,8 @@ class _DuplicatePhotosDialogState extends State<DuplicatePhotosDialog> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: color.withAlpha(50),
+        border: Border.all(color: color.withAlpha(100)),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -360,7 +360,7 @@ class _DuplicatePhotosDialogState extends State<DuplicatePhotosDialog> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.2),
+                    color: Colors.blue.withAlpha(80),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -376,7 +376,7 @@ class _DuplicatePhotosDialogState extends State<DuplicatePhotosDialog> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.2),
+                    color: Colors.orange.withAlpha(80),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
