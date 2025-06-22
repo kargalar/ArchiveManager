@@ -15,7 +15,6 @@ import 'models/settings.dart';
 import 'models/color_adapter.dart';
 import 'models/keyboard_key_adapter.dart';
 import 'models/datetime_adapter.dart';
-import 'models/rect_adapter.dart';
 import 'managers/folder_manager.dart';
 import 'managers/photo_manager.dart';
 import 'managers/tag_manager.dart';
@@ -23,9 +22,6 @@ import 'managers/settings_manager.dart';
 import 'managers/filter_manager.dart';
 import 'managers/file_system_watcher.dart';
 import 'viewmodels/home_view_model.dart';
-import 'faces/face_filter_manager.dart';
-import 'faces/face.dart';
-import 'faces/face_detection_service.dart';
 // PhotoViewModel artık kullanılmıyor, doğrudan manager sınıfları kullanılıyor
 import 'views/home_page.dart';
 
@@ -55,31 +51,21 @@ void main() async {
       await windowManager.show();
     });
   }
+
   // Hive ve adapter kayıtları
   Hive.registerAdapter(ColorAdapter());
+  final appDocDir = await getApplicationDocumentsDirectory();
+  final hivePath = '${appDocDir.path}/Archive Manager';
+  await Directory(hivePath).create(recursive: true);
+  await Hive.initFlutter(hivePath);
   Hive.registerAdapter(DateTimeAdapter());
-  Hive.registerAdapter(RectAdapter());
   Hive.registerAdapter(PhotoAdapter());
   Hive.registerAdapter(FolderAdapter());
   Hive.registerAdapter(TagAdapter());
   Hive.registerAdapter(LogicalKeyboardKeyAdapter());
   Hive.registerAdapter(SettingsAdapter());
-  Hive.registerAdapter(FaceAdapter());
-  final appDocDir = await getApplicationDocumentsDirectory();
-  final hivePath = '${appDocDir.path}/Archive Manager';
-  await Directory(hivePath).create(recursive: true);
-  await Hive.initFlutter(hivePath);
   final photoBox = await Hive.openBox<Photo>('photos');
   final folderBox = await Hive.openBox<Folder>('folders');
-  // Initialize face detection service
-  try {
-    await FaceDetectionService().initialize();
-    debugPrint('Face detection service initialized successfully');
-  } catch (e) {
-    debugPrint('Warning: Face detection service initialization failed: $e');
-    debugPrint('Face detection features will be disabled');
-  }
-
   runApp(MyApp(photoBox: photoBox, folderBox: folderBox));
 }
 
@@ -230,9 +216,6 @@ class _MyAppState extends State<MyApp> with WindowListener {
         // ViewModel providers
         ChangeNotifierProvider(
           create: (context) => HomeViewModel(),
-        ),
-        ChangeNotifierProvider<FaceFilterManager>(
-          create: (context) => FaceFilterManager(),
         ),
       ],
       child: MaterialApp(

@@ -41,8 +41,10 @@ class Settings extends HiveObject {
 
   @HiveField(8, defaultValue: false)
   bool isFullscreen;
+
   @HiveField(9, defaultValue: 250)
   double folderMenuWidth;
+
   Settings({
     this.photosPerRow = 4,
     this.showImageInfo = true,
