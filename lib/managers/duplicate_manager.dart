@@ -53,6 +53,7 @@ class DuplicateGroup {
 class DuplicateManager extends ChangeNotifier {
   List<DuplicateGroup> _duplicateGroups = [];
   bool _isScanning = false;
+  bool _shouldCancelScan = false;
   double _scanProgress = 0.0;
   String _scanStatus = '';
   int _totalFilesToScan = 0;
@@ -65,10 +66,15 @@ class DuplicateManager extends ChangeNotifier {
   int get totalDuplicates => _duplicateGroups.fold(0, (sum, group) => sum + group.photos.length);
   int get duplicateGroupsCount => _duplicateGroups.length;
 
+  void cancelScan() {
+    _shouldCancelScan = true;
+  }
+
   Future<void> scanForDuplicates(List<Photo> photos) async {
     if (_isScanning) return;
 
     _isScanning = true;
+    _shouldCancelScan = false;
     _scanProgress = 0.0;
     _scanStatus = 'Tarama başlatılıyor...';
     _totalFilesToScan = photos.length;
@@ -79,43 +85,57 @@ class DuplicateManager extends ChangeNotifier {
     try {
       final Map<String, List<Photo>> hashGroups = {};
 
-      for (int i = 0; i < photos.length; i++) {
+      for (int i = 0; i < photos.length && !_shouldCancelScan; i++) {
         final photo = photos[i];
         _scanStatus = 'Taranıyor: ${photo.path.split('\\').last}';
         _scannedFiles = i + 1;
         _scanProgress = _scannedFiles / _totalFilesToScan;
-        notifyListeners();
 
         try {
           final hash = await _calculateFileHash(photo.path);
           if (hash != null) {
             hashGroups.putIfAbsent(hash, () => []).add(photo);
+
+            // Gerçek zamanlı olarak aynı fotoğrafları güncelle
+            _updateDuplicateGroups(hashGroups);
           }
         } catch (e) {
           debugPrint('Dosya hash hesaplanamadı: ${photo.path} - $e');
         }
 
-        // UI'ın donmaması için kısa bir mola
-        if (i % 10 == 0) {
+        // Her 5 dosyada bir UI'ı güncelle ve kısa mola ver
+        if (i % 5 == 0) {
+          notifyListeners();
           await Future.delayed(const Duration(milliseconds: 1));
         }
       }
 
-      // Sadece birden fazla fotoğrafı olan grupları al
-      _duplicateGroups = hashGroups.entries.where((entry) => entry.value.length > 1).map((entry) => DuplicateGroup(hash: entry.key, photos: entry.value)).toList();
-
-      // Gruplari dosya boyutuna göre sırala (büyükten küçüğe)
-      _duplicateGroups.sort((a, b) => b.fileSize.compareTo(a.fileSize));
-
-      _scanStatus = 'Tarama tamamlandı';
+      if (_shouldCancelScan) {
+        _scanStatus = 'Tarama iptal edildi';
+      } else {
+        // Final güncelleme - sadece birden fazla fotoğrafı olan grupları al
+        _updateDuplicateGroups(hashGroups);
+        _scanStatus = 'Tarama tamamlandı';
+      }
     } catch (e) {
       _scanStatus = 'Tarama hatası: $e';
       debugPrint('Duplicate scan error: $e');
     } finally {
       _isScanning = false;
-      _scanProgress = 1.0;
+      _shouldCancelScan = false;
+      if (!_shouldCancelScan) {
+        _scanProgress = 1.0;
+      }
       notifyListeners();
     }
+  }
+
+  void _updateDuplicateGroups(Map<String, List<Photo>> hashGroups) {
+    // Sadece birden fazla fotoğrafı olan grupları al
+    _duplicateGroups = hashGroups.entries.where((entry) => entry.value.length > 1).map((entry) => DuplicateGroup(hash: entry.key, photos: entry.value)).toList();
+
+    // Gruplari dosya boyutuna göre sırala (büyükten küçüğe)
+    _duplicateGroups.sort((a, b) => b.fileSize.compareTo(a.fileSize));
   }
 
   Future<String?> _calculateFileHash(String filePath) async {

@@ -63,7 +63,21 @@ class _DuplicatePhotosDialogState extends State<DuplicatePhotosDialog> {
                   Consumer<DuplicateManager>(
                     builder: (context, duplicateManager, child) {
                       if (duplicateManager.isScanning) {
-                        return const SizedBox.shrink();
+                        return Row(
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                duplicateManager.cancelScan();
+                              },
+                              icon: const Icon(Icons.stop, size: 16),
+                              label: const Text('Taramayı Durdur'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                        );
                       }
                       return Row(
                         children: [
@@ -163,25 +177,91 @@ class _DuplicatePhotosDialogState extends State<DuplicatePhotosDialog> {
                   );
                 },
               ),
-              const SizedBox(height: 16),
-
-              // Aynı fotoğraf grupları listesi
+              const SizedBox(height: 16), // Aynı fotoğraf grupları listesi
               Expanded(
                 child: Consumer<DuplicateManager>(
                   builder: (context, duplicateManager, child) {
                     if (duplicateManager.isScanning) {
-                      return const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 16),
-                            Text(
-                              'Aynı fotoğraflar taranıyor...',
-                              style: TextStyle(color: Colors.white70),
+                      // Tarama devam ederken bulunan grupları göster
+                      return Column(
+                        children: [
+                          // Tarama durumu
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.blue.withOpacity(0.3)),
                             ),
-                          ],
-                        ),
+                            child: Row(
+                              children: [
+                                const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Tarama devam ediyor... ${(duplicateManager.scanProgress * 100).toStringAsFixed(1)}%',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        duplicateManager.scanStatus,
+                                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Şu ana kadar bulunan grupları göster
+                          if (duplicateManager.duplicateGroups.isNotEmpty)
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Şu ana kadar ${duplicateManager.duplicateGroupsCount} grup bulundu:',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Expanded(
+                                    child: ListView.builder(
+                                      itemCount: duplicateManager.duplicateGroups.length,
+                                      itemBuilder: (context, index) {
+                                        final group = duplicateManager.duplicateGroups[index];
+                                        return _buildDuplicateGroup(group, index);
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else
+                            const Expanded(
+                              child: Center(
+                                child: Text(
+                                  'Henüz aynı fotoğraf bulunamadı...',
+                                  style: TextStyle(color: Colors.white70),
+                                ),
+                              ),
+                            ),
+                        ],
                       );
                     }
 
@@ -319,89 +399,125 @@ class _DuplicatePhotosDialogState extends State<DuplicatePhotosDialog> {
             ),
             const SizedBox(height: 12),
             SizedBox(
-              height: 120,
+              height: 160, // Increased height to accommodate file info
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: group.photos.length,
                 itemBuilder: (context, photoIndex) {
                   final photo = group.photos[photoIndex];
                   final isSelected = group.selectedForDeletion[photoIndex];
-
+                  final fileName = photo.path.split('\\').last;
+                  final file = File(photo.path);
+                  final fileSize = file.existsSync() ? file.lengthSync() : 0;
+                  final fileSizeFormatted = _formatFileSize(fileSize);
                   return GestureDetector(
                     onTap: () {
                       group.toggleSelection(photoIndex);
                       setState(() {});
                     },
+                    onSecondaryTapDown: (details) {
+                      _showPhotoContextMenu(context, details.globalPosition, photo.path);
+                    },
                     child: Container(
-                      width: 100,
+                      width: 120, // Increased width for better text display
                       margin: const EdgeInsets.only(right: 8),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: isSelected ? Colors.red : Colors.transparent,
-                          width: 3,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Stack(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(5),
-                            child: Image.file(
-                              File(photo.path),
-                              width: 100,
-                              height: 120,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  width: 100,
-                                  height: 120,
-                                  color: Colors.grey[800],
-                                  child: const Icon(
-                                    Icons.broken_image,
-                                    color: Colors.grey,
+                          // Image container
+                          Container(
+                            height: 100,
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: isSelected ? Colors.red : Colors.transparent,
+                                width: 3,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(5),
+                                  child: Image.file(
+                                    File(photo.path),
+                                    width: 120,
+                                    height: 100,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        width: 120,
+                                        height: 100,
+                                        color: Colors.grey[800],
+                                        child: const Icon(
+                                          Icons.broken_image,
+                                          color: Colors.grey,
+                                        ),
+                                      );
+                                    },
                                   ),
-                                );
-                              },
+                                ),
+                                if (isSelected)
+                                  Positioned(
+                                    top: 4,
+                                    right: 4,
+                                    child: Container(
+                                      width: 24,
+                                      height: 24,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.check,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
+                                    ),
+                                  ),
+                                if (photoIndex == 0)
+                                  Positioned(
+                                    top: 4,
+                                    left: 4,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text(
+                                        'ORİJİNAL',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
-                          if (isSelected)
-                            Positioned(
-                              top: 4,
-                              right: 4,
-                              child: Container(
-                                width: 24,
-                                height: 24,
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.check,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                              ),
+                          const SizedBox(height: 4),
+                          // File name
+                          Text(
+                            fileName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
                             ),
-                          if (photoIndex == 0)
-                            Positioned(
-                              top: 4,
-                              left: 4,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.green,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: const Text(
-                                  'ORİJİNAL',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          // File size
+                          Text(
+                            fileSizeFormatted,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 9,
                             ),
+                          ),
                         ],
                       ),
                     ),
@@ -412,6 +528,140 @@ class _DuplicatePhotosDialogState extends State<DuplicatePhotosDialog> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showPhotoContextMenu(BuildContext context, Offset position, String filePath) {
+    showMenu(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx + 1,
+        position.dy + 1,
+      ),
+      color: const Color.fromARGB(255, 50, 50, 50),
+      items: [
+        PopupMenuItem(
+          child: const Row(
+            children: [
+              Icon(Icons.folder_open, color: Colors.white70, size: 18),
+              SizedBox(width: 8),
+              Text(
+                'Dosya Konumunu Aç',
+                style: TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+          onTap: () => _openFileLocation(filePath),
+        ),
+        PopupMenuItem(
+          child: const Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.white70, size: 18),
+              SizedBox(width: 8),
+              Text(
+                'Dosya Bilgileri',
+                style: TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+          onTap: () => _showFileInfo(context, filePath),
+        ),
+      ],
+    );
+  }
+
+  void _openFileLocation(String filePath) {
+    try {
+      if (Platform.isWindows) {
+        // Windows'ta dosyayı Explorer'da seçili olarak aç
+        Process.run('explorer', ['/select,', filePath]);
+      } else if (Platform.isMacOS) {
+        // macOS'ta Finder'da aç
+        Process.run('open', ['-R', filePath]);
+      } else if (Platform.isLinux) {
+        // Linux'ta dosya yöneticisinde aç (genellikle file manager)
+        final directory = File(filePath).parent.path;
+        Process.run('xdg-open', [directory]);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Dosya konumu açılamadı: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showFileInfo(BuildContext context, String filePath) {
+    final file = File(filePath);
+    final fileName = filePath.split('\\').last;
+    final fileSize = file.existsSync() ? file.lengthSync() : 0;
+    final fileSizeFormatted = _formatFileSize(fileSize);
+    final lastModified = file.existsSync() ? file.lastModifiedSync() : null;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color.fromARGB(255, 40, 40, 40),
+        title: const Text(
+          'Dosya Bilgileri',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildInfoRow('Dosya Adı:', fileName),
+            const SizedBox(height: 8),
+            _buildInfoRow('Boyut:', fileSizeFormatted),
+            const SizedBox(height: 8),
+            _buildInfoRow('Konum:', filePath),
+            if (lastModified != null) ...[
+              const SizedBox(height: 8),
+              _buildInfoRow('Son Değiştirilme:', '${lastModified.day}/${lastModified.month}/${lastModified.year} ${lastModified.hour}:${lastModified.minute.toString().padLeft(2, '0')}'),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Kapat'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 100,
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -488,5 +738,12 @@ class _DuplicatePhotosDialogState extends State<DuplicatePhotosDialog> {
         });
       }
     }
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 }
