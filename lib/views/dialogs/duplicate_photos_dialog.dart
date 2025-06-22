@@ -83,10 +83,10 @@ class _DuplicatePhotosDialogState extends State<DuplicatePhotosDialog> {
                         children: [
                           ElevatedButton.icon(
                             onPressed: () {
-                              duplicateManager.selectAllExceptFirstInAllGroups();
+                              duplicateManager.selectAllExceptLargestInAllGroups();
                             },
-                            icon: const Icon(Icons.select_all, size: 16),
-                            label: const Text('İlk Hariç Tümünü Seç'),
+                            icon: const Icon(Icons.photo_size_select_large, size: 16),
+                            label: const Text('Büyük Olanı Sakla'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.blue,
                               foregroundColor: Colors.white,
@@ -390,16 +390,16 @@ class _DuplicatePhotosDialogState extends State<DuplicatePhotosDialog> {
                 const Spacer(),
                 TextButton(
                   onPressed: () {
-                    group.selectAllExceptFirst();
+                    group.selectAllExceptLargest();
                     setState(() {});
                   },
-                  child: const Text('İlk Hariç Seç'),
+                  child: const Text('Büyük Olanı Sakla'),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             SizedBox(
-              height: 160, // Increased height to accommodate file info
+              height: 185, // Increased height to accommodate file location info
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: group.photos.length,
@@ -419,14 +419,13 @@ class _DuplicatePhotosDialogState extends State<DuplicatePhotosDialog> {
                       _showPhotoContextMenu(context, details.globalPosition, photo.path);
                     },
                     child: Container(
-                      width: 120, // Increased width for better text display
+                      width: 200, // Increased width for better text display
                       margin: const EdgeInsets.only(right: 8),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Image container
                           Container(
-                            height: 100,
                             decoration: BoxDecoration(
                               border: Border.all(
                                 color: isSelected ? Colors.red : Colors.transparent,
@@ -507,6 +506,17 @@ class _DuplicatePhotosDialogState extends State<DuplicatePhotosDialog> {
                               fontWeight: FontWeight.w500,
                             ),
                             maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          // File location (directory)
+                          Text(
+                            File(photo.path).parent.path.split('\\').last,
+                            style: const TextStyle(
+                              color: Colors.lightBlue,
+                              fontSize: 9,
+                            ),
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 2),

@@ -38,6 +38,42 @@ class DuplicateGroup {
     }
   }
 
+  void selectAllExceptLargest() {
+    // Önce tüm seçimleri temizle
+    for (int i = 0; i < selectedForDeletion.length; i++) {
+      selectedForDeletion[i] = false;
+    }
+
+    if (photos.isEmpty) return;
+
+    // En büyük dosyayı bul
+    int largestIndex = 0;
+    int largestSize = 0;
+
+    for (int i = 0; i < photos.length; i++) {
+      try {
+        final file = File(photos[i].path);
+        if (file.existsSync()) {
+          final size = file.lengthSync();
+          if (size > largestSize) {
+            largestSize = size;
+            largestIndex = i;
+          }
+        }
+      } catch (e) {
+        // Dosya okunamıyorsa geç
+        continue;
+      }
+    }
+
+    // En büyük dosya hariç diğerlerini seç
+    for (int i = 0; i < selectedForDeletion.length; i++) {
+      if (i != largestIndex) {
+        selectedForDeletion[i] = true;
+      }
+    }
+  }
+
   List<Photo> get selectedPhotos {
     final selected = <Photo>[];
     for (int i = 0; i < photos.length; i++) {
@@ -172,13 +208,8 @@ class DuplicateManager extends ChangeNotifier {
         }
       } catch (e) {
         debugPrint('Perceptual hash calculation failed for $filePath: $e');
-      }
-
-      // Boyut ve temel bilgileri al
-      final fileSize = file.lengthSync();
-
-      // Composite hash oluştur: file_hash|perceptual_hash|size
-      return '$fileHash|${perceptualHash ?? 'null'}|$fileSize';
+      } // Composite hash oluştur: file_hash|perceptual_hash
+      return '$fileHash|${perceptualHash ?? 'null'}';
     } catch (e) {
       debugPrint('Image hash calculation error for $filePath: $e');
       return null;
@@ -187,15 +218,29 @@ class DuplicateManager extends ChangeNotifier {
 
   // Gelişmiş perceptual hash (DCT tabanlı - daha hassas)
   String _calculatePerceptualHash(img.Image image) {
-    // Daha büyük boyuta indirgele (32x32) - daha fazla detay için
-    final resized = img.copyResize(image, width: 32, height: 32);
+    // Daha büyük boyuta indirgele (64x64) - çok daha fazla detay için
+    final resized = img.copyResize(image, width: 64, height: 64);
 
     // Gri tonlamaya çevir
     final grayscale = img.grayscale(resized);
 
-    // DCT-benzeri yaklaşım: farklı bölgelerin ortalamasını hesapla
-    final blockSize = 4;
-    final blockCount = (32 / blockSize).floor();
+    // Multi-level block analysis
+    final hashes = <String>[];
+
+    // 8x8 blocks (64 total)
+    hashes.add(_calculateBlockHash(grayscale, 8, 64));
+
+    // 16x16 blocks (16 total) - more general features
+    hashes.add(_calculateBlockHash(grayscale, 16, 64));
+
+    // Gradient-based hash
+    hashes.add(_calculateGradientHash(grayscale));
+
+    return hashes.join(':');
+  }
+
+  String _calculateBlockHash(img.Image grayscale, int blockSize, int imageSize) {
+    final blockCount = (imageSize / blockSize).floor();
     final blockAverages = <double>[];
 
     for (int by = 0; by < blockCount; by++) {
@@ -203,17 +248,21 @@ class DuplicateManager extends ChangeNotifier {
         double sum = 0;
         int count = 0;
 
-        for (int y = by * blockSize; y < (by + 1) * blockSize; y++) {
-          for (int x = bx * blockSize; x < (bx + 1) * blockSize; x++) {
+        for (int y = by * blockSize; y < (by + 1) * blockSize && y < imageSize; y++) {
+          for (int x = bx * blockSize; x < (bx + 1) * blockSize && x < imageSize; x++) {
             final pixel = grayscale.getPixel(x, y);
             sum += pixel.luminance * 255;
             count++;
           }
         }
 
-        blockAverages.add(sum / count);
+        if (count > 0) {
+          blockAverages.add(sum / count);
+        }
       }
     }
+
+    if (blockAverages.isEmpty) return '';
 
     // Genel ortalama
     final average = blockAverages.reduce((a, b) => a + b) / blockAverages.length;
@@ -224,46 +273,44 @@ class DuplicateManager extends ChangeNotifier {
       hash.write(blockAvg > average ? '1' : '0');
     }
 
-    // Ek olarak, kenar tespiti tabanlı hash ekle
-    final edgeHash = _calculateEdgeHash(grayscale);
-
-    return '${hash.toString()}:$edgeHash';
+    return hash.toString();
   }
 
-  // Kenar tespiti tabanlı ek hash
-  String _calculateEdgeHash(img.Image grayscale) {
-    final edges = <int>[];
+  String _calculateGradientHash(img.Image grayscale) {
+    final gradients = <double>[];
 
-    // Basit Sobel operator benzeri kenar tespiti
-    for (int y = 1; y < 31; y += 2) {
-      for (int x = 1; x < 31; x += 2) {
-        final pixel = grayscale.getPixel(x, y);
+    // Calculate gradients across the image
+    for (int y = 1; y < 63; y += 2) {
+      for (int x = 1; x < 63; x += 2) {
+        final center = grayscale.getPixel(x, y);
         final right = grayscale.getPixel(x + 1, y);
         final bottom = grayscale.getPixel(x, y + 1);
 
-        final horizontalEdge = ((right.luminance - pixel.luminance) * 255).abs();
-        final verticalEdge = ((bottom.luminance - pixel.luminance) * 255).abs();
+        final horizontalGrad = (right.luminance - center.luminance).abs();
+        final verticalGrad = (bottom.luminance - center.luminance).abs();
 
-        edges.add((horizontalEdge + verticalEdge).toInt());
+        gradients.add((horizontalGrad + verticalGrad) * 255);
       }
     }
 
-    final edgeAverage = edges.reduce((a, b) => a + b) / edges.length;
-    final edgeHash = StringBuffer();
-    for (final edge in edges) {
-      edgeHash.write(edge > edgeAverage ? '1' : '0');
+    if (gradients.isEmpty) return '';
+
+    final average = gradients.reduce((a, b) => a + b) / gradients.length;
+    final hash = StringBuffer();
+
+    for (final grad in gradients) {
+      hash.write(grad > average ? '1' : '0');
     }
 
-    return edgeHash.toString();
-  }
+    return hash.toString();
+  } // Gelişmiş hash karşılaştırması
 
-  // Gelişmiş hash karşılaştırması
   int _hammingDistance(String hash1, String hash2) {
-    // Her iki hash de composite format'ta: "blockhash:edgehash"
+    // Yeni hash formatı: "8x8blocks:16x16blocks:gradients"
     final parts1 = hash1.split(':');
     final parts2 = hash2.split(':');
 
-    if (parts1.length != 2 || parts2.length != 2) {
+    if (parts1.length != 3 || parts2.length != 3) {
       // Basit hash formatı için fallback
       if (hash1.length != hash2.length) return hash1.length;
 
@@ -274,13 +321,15 @@ class DuplicateManager extends ChangeNotifier {
       return distance;
     }
 
-    // Block hash karşılaştırması
-    final blockDistance = _simpleHammingDistance(parts1[0], parts2[0]);
-    // Edge hash karşılaştırması
-    final edgeDistance = _simpleHammingDistance(parts1[1], parts2[1]);
+    // Her bir hash tipini karşılaştır ve ağırlıklı toplam hesapla
+    final block8Distance = _simpleHammingDistance(parts1[0], parts2[0]);
+    final block16Distance = _simpleHammingDistance(parts1[1], parts2[1]);
+    final gradientDistance = _simpleHammingDistance(parts1[2], parts2[2]);
 
-    // Ağırlıklı toplam (block hash daha önemli)
-    return (blockDistance * 0.7 + edgeDistance * 0.3).round();
+    // Ağırlıklı toplam: 8x8 bloklar en önemli, gradientler orta, 16x16 bloklar genel yapı için
+    final weightedDistance = (block8Distance * 0.5 + gradientDistance * 0.3 + block16Distance * 0.2);
+
+    return weightedDistance.round();
   }
 
   int _simpleHammingDistance(String hash1, String hash2) {
@@ -291,13 +340,13 @@ class DuplicateManager extends ChangeNotifier {
       if (hash1[i] != hash2[i]) distance++;
     }
     return distance;
-  } // İki hash'in benzer olup olmadığını kontrol et
+  }
 
-  bool _areHashesSimilar(String hash1, String hash2, {int threshold = 15}) {
+  bool _areHashesSimilar(String hash1, String hash2, {int threshold = 25}) {
     final parts1 = hash1.split('|');
     final parts2 = hash2.split('|');
 
-    if (parts1.length != 3 || parts2.length != 3) return false;
+    if (parts1.length != 2 || parts2.length != 2) return false;
 
     final fileHash1 = parts1[0];
     final fileHash2 = parts2[0];
@@ -326,6 +375,13 @@ class DuplicateManager extends ChangeNotifier {
   void selectAllExceptFirstInAllGroups() {
     for (final group in _duplicateGroups) {
       group.selectAllExceptFirst();
+    }
+    notifyListeners();
+  }
+
+  void selectAllExceptLargestInAllGroups() {
+    for (final group in _duplicateGroups) {
+      group.selectAllExceptLargest();
     }
     notifyListeners();
   }
