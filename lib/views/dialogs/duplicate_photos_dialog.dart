@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../managers/duplicate_manager.dart';
 import '../../managers/photo_manager.dart';
 import 'dart:io';
+import 'photo_comparison_dialog.dart';
 
 class DuplicatePhotosDialog extends StatefulWidget {
   const DuplicatePhotosDialog({super.key});
@@ -388,6 +389,25 @@ class _DuplicatePhotosDialogState extends State<DuplicatePhotosDialog> {
                   ),
                 ),
                 const Spacer(),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => PhotoComparisonDialog(
+                        photos: group.photos,
+                        groupIndex: groupIndex,
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.compare, size: 14),
+                  label: const Text('Karşılaştır'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 TextButton(
                   onPressed: () {
                     group.selectAllExceptLargest();
