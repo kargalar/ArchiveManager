@@ -1,3 +1,4 @@
+import 'package:archive_manager_v3/faces/face.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'tag.dart';
@@ -38,12 +39,19 @@ class Photo extends HiveObject {
 
   @HiveField(7)
   DateTime? dateModified;
-
   @HiveField(8, defaultValue: false)
   bool dimensionsLoaded;
 
+  @HiveField(9, defaultValue: false)
+  bool faceDetectionDone;
+
   // isSelected is a transient property (not stored in Hive)
   bool isSelected = false;
+  @HiveField(10)
+  List<Face> faces = [];
+
+  @HiveField(11, defaultValue: <int>[])
+  List<int> faceTrackingIds = [];
 
   Photo({
     required this.path,
@@ -56,7 +64,12 @@ class Photo extends HiveObject {
     this.dateModified,
     this.dimensionsLoaded = false,
     this.isSelected = false,
-  }) : tags = tags ?? [];
+    this.faceDetectionDone = false,
+    List<Face>? faces,
+    List<int>? faceTrackingIds,
+  })  : tags = tags ?? [],
+        faces = faces ?? [],
+        faceTrackingIds = faceTrackingIds ?? [];
 
   // Calculate resolution (total pixels)
   int get resolution => width * height;
@@ -82,6 +95,38 @@ class Photo extends HiveObject {
       }
     } else {
       debugPrint('Photo.setRating: Invalid rating value: $value (must be 0-9)');
+    }
+  }
+
+  void addFace(Face face) {
+    faces.add(face);
+    try {
+      save();
+      debugPrint('Photo.addFace: Face added with ID ${face.id} for photo: $path');
+    } catch (e) {
+      debugPrint('Photo.addFace ERROR: $e');
+    }
+  }
+
+  void addFaceTrackingId(int trackingId) {
+    if (!faceTrackingIds.contains(trackingId)) {
+      faceTrackingIds.add(trackingId);
+      try {
+        save();
+        debugPrint('Photo.addFaceTrackingId: Tracking ID $trackingId added for photo: $path');
+      } catch (e) {
+        debugPrint('Photo.addFaceTrackingId ERROR: $e');
+      }
+    }
+  }
+
+  void clearFaceTrackingIds() {
+    faceTrackingIds.clear();
+    try {
+      save();
+      debugPrint('Photo.clearFaceTrackingIds: All tracking IDs cleared for photo: $path');
+    } catch (e) {
+      debugPrint('Photo.clearFaceTrackingIds ERROR: $e');
     }
   }
 }

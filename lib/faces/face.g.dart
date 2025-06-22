@@ -1,41 +1,47 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'folder.dart';
+part of 'face.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class FolderAdapter extends TypeAdapter<Folder> {
+class FaceAdapter extends TypeAdapter<Face> {
   @override
-  final int typeId = 1;
+  final int typeId = 7;
 
   @override
-  Folder read(BinaryReader reader) {
+  Face read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Folder(
-      path: fields[0] as String,
-      subFolders: (fields[1] as List?)?.cast<String>(),
-      isFavorite: fields[2] == null ? false : fields[2] as bool,
-      faceDetectionEnabled: fields[3] == null ? false : fields[3] as bool,
+    return Face(
+      id: fields[0] as String,
+      boundingBox: fields[1] as Rect,
+      smileProbability: fields[2] as double?,
+      leftEyeOpenProbability: fields[3] as double?,
+      rightEyeOpenProbability: fields[4] as double?,
+      label: fields[5] as String?,
     );
   }
 
   @override
-  void write(BinaryWriter writer, Folder obj) {
+  void write(BinaryWriter writer, Face obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(6)
       ..writeByte(0)
-      ..write(obj.path)
+      ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.subFolders)
+      ..write(obj.boundingBox)
       ..writeByte(2)
-      ..write(obj.isFavorite)
+      ..write(obj.smileProbability)
       ..writeByte(3)
-      ..write(obj.faceDetectionEnabled);
+      ..write(obj.leftEyeOpenProbability)
+      ..writeByte(4)
+      ..write(obj.rightEyeOpenProbability)
+      ..writeByte(5)
+      ..write(obj.label);
   }
 
   @override
@@ -44,7 +50,7 @@ class FolderAdapter extends TypeAdapter<Folder> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is FolderAdapter &&
+      other is FaceAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

@@ -14,6 +14,7 @@ import '../../managers/photo_manager.dart';
 import '../../managers/tag_manager.dart';
 import '../../managers/settings_manager.dart';
 import '../../managers/filter_manager.dart';
+import '../../faces/face_filter_manager.dart';
 import 'full_screen_image.dart';
 
 class PhotoGrid extends StatefulWidget {
@@ -184,6 +185,12 @@ class _PhotoGridState extends State<PhotoGrid> {
   Widget _buildGrid(BuildContext context, FolderManager folderManager, PhotoManager photoManager, TagManager tagManager, SettingsManager settingsManager, FilterManager filterManager, HomeViewModel homeViewModel) {
     // Get filtered photos
     List<Photo> filteredPhotos = filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags);
+
+    // Apply face filter if in faces section
+    final faceFilterManager = Provider.of<FaceFilterManager>(context);
+    if (folderManager.selectedSection == 'faces') {
+      filteredPhotos = faceFilterManager.filterPhotosByFace(filteredPhotos);
+    }
 
     // Create a copy of the filtered photos to sort
     List<Photo> sortedPhotos = List.from(filteredPhotos);

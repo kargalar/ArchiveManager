@@ -17,10 +17,14 @@ class Folder extends HiveObject {
   @HiveField(2, defaultValue: false)
   bool isFavorite;
 
+  @HiveField(3, defaultValue: false)
+  bool faceDetectionEnabled;
+
   Folder({
     required this.path,
     List<String>? subFolders,
     this.isFavorite = false,
+    this.faceDetectionEnabled = false,
   }) : subFolders = subFolders ?? [];
 
   void addSubFolder(String path) {

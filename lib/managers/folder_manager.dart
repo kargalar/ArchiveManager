@@ -29,10 +29,14 @@ class FolderManager extends ChangeNotifier {
   // Track which section is selected for viewing all photos
   String? _selectedSection;
 
+  // Faces section properties
+  bool _isFacesSectionExpanded = true;
+  final List<String> _facesFolders = [];
   FolderManager(this._folderBox, this._photoBox) {
     _loadFolders();
     checkFoldersExistence();
     _updateFilteredFolders();
+    _updateFacesFolders(); // Initialize faces folders
   }
 
   void setPhotoManager(PhotoManager photoManager) {
@@ -50,6 +54,8 @@ class FolderManager extends ChangeNotifier {
   bool get isFavoriteSectionExpanded => _isFavoriteSectionExpanded;
   bool get isAllFoldersSectionExpanded => _isAllFoldersSectionExpanded;
   String? get selectedSection => _selectedSection;
+  bool get isFacesSectionExpanded => _isFacesSectionExpanded;
+  List<String> get facesFolders => _facesFolders;
 
   // Optimized folder loading
   void _loadFolders() {
@@ -500,6 +506,12 @@ class FolderManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Toggle faces section expanded state
+  void toggleFacesSectionExpanded() {
+    _isFacesSectionExpanded = !_isFacesSectionExpanded;
+    notifyListeners();
+  }
+
   // Select the Favorites section to view all photos from favorite folders
   void selectFavoritesSection() {
     _selectedSection = 'favorites';
@@ -514,9 +526,59 @@ class FolderManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Select the Faces section to view all photos from folders with faces
+  void selectFacesSection() {
+    _selectedSection = 'faces';
+    _selectedFolder = null;
+    notifyListeners();
+  }
+
   // Clear section selection
   void clearSectionSelection() {
     _selectedSection = null;
+    notifyListeners();
+  }
+
+  // Get Folder object by path
+  Folder? getFolderObject(String path) {
+    return _folderBox.get(path);
+  }
+
+  // Check if face detection is enabled for a folder
+  bool isFaceDetectionEnabled(String folderPath) {
+    final folder = getFolderObject(folderPath);
+    return folder?.faceDetectionEnabled ?? false;
+  }
+
+  // Set face detection enabled state for a folder
+  void setFaceDetectionEnabled(String folderPath, bool enabled) {
+    Folder? folder = getFolderObject(folderPath);
+    if (folder == null) {
+      // Create new Folder object if it doesn't exist
+      folder = Folder(path: folderPath, faceDetectionEnabled: enabled);
+      _folderBox.put(folderPath, folder);
+    } else {
+      folder.faceDetectionEnabled = enabled;
+      folder.save();
+    }
+    _updateFacesFolders(); // Update the faces folders list
+    notifyListeners();
+  }
+
+  // Get all folders with face detection enabled
+  List<String> getFaceDetectionEnabledFolders() {
+    return _folders.where((folderPath) => isFaceDetectionEnabled(folderPath)).toList();
+  }
+
+  // Update the faces folders list based on face detection enabled state
+  void _updateFacesFolders() {
+    _facesFolders.clear();
+    _facesFolders.addAll(getFaceDetectionEnabledFolders());
+  }
+
+  // Call this method to refresh faces folders when needed
+  void refreshFacesFolders() {
+    _updateFacesFolders();
     notifyListeners();
   }
 }

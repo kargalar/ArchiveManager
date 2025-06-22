@@ -6,6 +6,7 @@ import '../../managers/settings_manager.dart';
 import '../../managers/tag_manager.dart';
 import '../widgets/keyboard_shortcuts_guide.dart';
 import 'tag_dialogs.dart';
+import '../../faces/face_settings.dart';
 
 class SettingsDialog extends StatelessWidget {
   const SettingsDialog({super.key});
@@ -307,6 +308,20 @@ class SettingsDialog extends StatelessWidget {
                           );
                         },
                       ),
+
+                      // Face Detection Settings
+                      Row(
+                        children: [
+                          const Text('Face Detection', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 10),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.face),
+                            label: const Text('Face Settings'),
+                            onPressed: () => showDialog(context: context, builder: (_) => const FaceSettingsDialog()),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
                     ],
                   ),
                 ),

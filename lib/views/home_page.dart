@@ -7,6 +7,7 @@ import '../managers/folder_manager.dart';
 import '../managers/photo_manager.dart';
 import '../managers/tag_manager.dart';
 import '../managers/settings_manager.dart';
+import '../faces/face_filter_manager.dart';
 import '../viewmodels/home_view_model.dart';
 import 'widgets/photo_grid.dart';
 import 'widgets/full_screen_image.dart';
@@ -60,9 +61,7 @@ class _HomePageState extends State<HomePage> {
       if (folderManager.selectedFolder != lastSelectedFolder || folderManager.selectedSection != lastSelectedSection) {
         // Update tracking variables
         lastSelectedFolder = folderManager.selectedFolder;
-        lastSelectedSection = folderManager.selectedSection;
-
-        // Load photos based on selection
+        lastSelectedSection = folderManager.selectedSection; // Load photos based on selection
         if (folderManager.selectedFolder != null) {
           // Load photos from a single selected folder
           photoManager.loadPhotosFromFolder(folderManager.selectedFolder!);
@@ -77,6 +76,20 @@ class _HomePageState extends State<HomePage> {
           // Load photos from all folders
           if (folderManager.folders.isNotEmpty) {
             photoManager.loadPhotosFromMultipleFolders(folderManager.folders);
+          } else {
+            photoManager.clearPhotos();
+          }
+        } else if (folderManager.selectedSection == 'faces') {
+          // Load photos from folders with face detection enabled
+          final facesFolders = folderManager.getFaceDetectionEnabledFolders();
+          if (facesFolders.isNotEmpty) {
+            photoManager.loadPhotosFromMultipleFolders(facesFolders).then((_) {
+              // After loading photos, analyze faces
+              if (mounted) {
+                final faceFilterManager = Provider.of<FaceFilterManager>(context, listen: false);
+                faceFilterManager.analyzeFaces(photoManager.photos);
+              }
+            });
           } else {
             photoManager.clearPhotos();
           }
