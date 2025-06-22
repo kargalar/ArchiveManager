@@ -518,6 +518,15 @@ class _DuplicatePhotosDialogState extends State<DuplicatePhotosDialog> {
                               fontSize: 9,
                             ),
                           ),
+                          // Date
+                          if (file.existsSync())
+                            Text(
+                              '${file.lastModifiedSync().day}/${file.lastModifiedSync().month}/${file.lastModifiedSync().year}',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 9,
+                              ),
+                            ),
                         ],
                       ),
                     ),

@@ -45,6 +45,7 @@ dependencies:
   vector_math: ^2.1.4
   path: ^1.9.1
   crypto: ^3.0.6
+  image: ^4.1.7
 
 dev_dependencies:
   flutter_test:
