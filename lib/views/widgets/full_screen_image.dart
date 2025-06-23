@@ -11,7 +11,6 @@ import 'package:vector_math/vector_math_64.dart' hide Colors;
 import '../../models/photo.dart';
 import '../../models/sort_state.dart';
 import '../../managers/photo_manager.dart';
-import '../../managers/tag_manager.dart';
 import '../../managers/settings_manager.dart';
 import '../../managers/filter_manager.dart';
 
@@ -19,11 +18,16 @@ import '../../managers/filter_manager.dart';
 // Klavye ve mouse ile gezinme, etiketleme, puanlama ve bilgi gösterimi içerir.
 class FullScreenImage extends StatefulWidget {
   final Photo photo;
+  final List<Photo> filteredPhotos; // Tam ekran moduna girdiğindeki filtrelenmiş liste
 
   // Static flag to track if we're in fullscreen mode
   static bool isActive = false;
 
-  const FullScreenImage({super.key, required this.photo});
+  const FullScreenImage({
+    super.key,
+    required this.photo,
+    required this.filteredPhotos, // Filtrelenmiş listeyi parametre olarak al
+  });
 
   @override
   State<FullScreenImage> createState() => _FullScreenImageState();
@@ -31,6 +35,7 @@ class FullScreenImage extends StatefulWidget {
 
 class _FullScreenImageState extends State<FullScreenImage> with TickerProviderStateMixin {
   late Photo _currentPhoto;
+  late List<Photo> _frozenFilteredPhotos; // Tam ekrana girdiğindeki dondurulmuş liste
   late bool _autoNext;
   late bool _showInfo;
   late bool _zenMode;
@@ -48,19 +53,18 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
   // Artık sıralama durumunu takip etmeye gerek yok
 
   List<Tag> get tags => _tagBox.values.toList();
-
   @override
   void initState() {
     super.initState();
     _currentPhoto = widget.photo;
+    _frozenFilteredPhotos = List.from(widget.filteredPhotos); // Filtrelenmiş listeyi dondur
     _tagBox = Hive.box<Tag>('tags');
     _showInfo = context.read<SettingsManager>().showImageInfo;
     _autoNext = context.read<SettingsManager>().fullscreenAutoNext;
-    _zenMode = false;
-
-    // Set the static flag to indicate we're in fullscreen mode
+    _zenMode = false; // Set the static flag to indicate we're in fullscreen mode
     FullScreenImage.isActive = true;
     debugPrint('FullScreenImage: Setting isActive to true');
+    debugPrint('FullScreenImage: Frozen filtered photos count: ${_frozenFilteredPhotos.length}');
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
@@ -179,13 +183,12 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    final photoManager = Provider.of<PhotoManager>(context);
-    final tagManager = Provider.of<TagManager>(context);
     final filterManager = Provider.of<FilterManager>(context);
     final homeViewModel = Provider.of<HomeViewModel>(context);
 
-    // Filtrelenmiş fotoğrafları al
-    List<Photo> filteredPhotos = filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags);
+    // Tam ekranda dondurulmuş filtrelenmiş listeyi kullan
+    // Filtreleme durumu değişse bile liste aynı kalacak
+    List<Photo> filteredPhotos = _frozenFilteredPhotos;
 
     // Sıralama uygula - PhotoGrid ile aynı sıralamayı kullan
     List<Photo> sortedPhotos = List.from(filteredPhotos);
@@ -346,8 +349,16 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
             // Handle number keys for rating (0-9)
             final key = event.logicalKey.keyLabel;
             if (key.length == 1 && RegExp(r'[0-9]').hasMatch(key)) {
+              final rating = int.parse(key);
               // Use Future.microtask to avoid setState during build
               Future.microtask(() {
+                // ignore: use_build_context_synchronously
+                final photoManager = Provider.of<PhotoManager>(context, listen: false);
+                photoManager.setRating(_currentPhoto, rating, allowToggle: false);
+                // Tam ekranda da state'i güncelle
+                setState(() {
+                  // Bu sadece UI'ı yeniden render etmek için
+                });
                 _handleRating(filteredPhotos);
               });
             }
@@ -604,6 +615,11 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                             onPressed: () {
                               final photoManager = Provider.of<PhotoManager>(context, listen: false);
                               photoManager.toggleFavorite(_currentPhoto);
+
+                              // Tam ekranda da state'i güncelle
+                              setState(() {
+                                // Bu sadece UI'ı yeniden render etmek için
+                              });
 
                               // Eğer otomatik geçiş açıksa, sonraki fotoğrafa geç
                               if (_autoNext) {

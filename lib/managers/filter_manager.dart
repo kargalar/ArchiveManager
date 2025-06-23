@@ -33,7 +33,6 @@ class FilterManager extends ChangeNotifier {
   bool _isSorting = false;
   double _loadingProgress = 0.0; // 0.0 to 1.0
   Completer<void>? _dimensionsLoadingCompleter;
-
   // Getters
   SortState get dateSortState => _dateSortState;
   SortState get ratingSortState => _ratingSortState;

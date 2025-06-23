@@ -402,7 +402,10 @@ class _PhotoGridState extends State<PhotoGrid> {
                       context,
                       PageRouteBuilder(
                         settings: const RouteSettings(name: 'fullscreen_image'),
-                        pageBuilder: (context, animation, secondaryAnimation) => FullScreenImage(photo: photo),
+                        pageBuilder: (context, animation, secondaryAnimation) => FullScreenImage(
+                          photo: photo,
+                          filteredPhotos: sortedPhotos,
+                        ),
                       ),
                     );
                   }
@@ -454,7 +457,10 @@ class _PhotoGridState extends State<PhotoGrid> {
                     context,
                     PageRouteBuilder(
                       settings: const RouteSettings(name: 'fullscreen_image'),
-                      pageBuilder: (context, animation, secondaryAnimation) => FullScreenImage(photo: photo),
+                      pageBuilder: (context, animation, secondaryAnimation) => FullScreenImage(
+                        photo: photo,
+                        filteredPhotos: sortedPhotos,
+                      ),
                     ),
                   );
                 }

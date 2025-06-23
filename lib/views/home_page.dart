@@ -7,6 +7,7 @@ import '../managers/folder_manager.dart';
 import '../managers/photo_manager.dart';
 import '../managers/tag_manager.dart';
 import '../managers/settings_manager.dart';
+import '../managers/filter_manager.dart';
 import '../viewmodels/home_view_model.dart';
 import 'widgets/photo_grid.dart';
 import 'widgets/full_screen_image.dart';
@@ -119,14 +120,18 @@ class _HomePageState extends State<HomePage> {
         return;
       }
 
-      _homeViewModel.handleKeyEvent(event, context, folderManager, photoManager, tagManager);
-
-      // Only open fullscreen view if we're not already in one
+      _homeViewModel.handleKeyEvent(event, context, folderManager, photoManager, tagManager); // Only open fullscreen view if we're not already in one
       if (event.logicalKey == LogicalKeyboardKey.enter && _homeViewModel.selectedPhoto != null && !FullScreenImage.isActive) {
+        final filterManager = context.read<FilterManager>();
+        final filteredPhotos = filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags);
+
         Navigator.of(context).push(
           PageRouteBuilder(
             settings: const RouteSettings(name: 'fullscreen_image'),
-            pageBuilder: (context, animation, secondaryAnimation) => FullScreenImage(photo: _homeViewModel.selectedPhoto!),
+            pageBuilder: (context, animation, secondaryAnimation) => FullScreenImage(
+              photo: _homeViewModel.selectedPhoto!,
+              filteredPhotos: filteredPhotos,
+            ),
           ),
         );
       }
