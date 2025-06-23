@@ -44,8 +44,166 @@ class FolderItem extends StatelessWidget {
     // Folder is problematic if it's missing or has a missing parent
     final isProblematic = isMissing || hasParentMissing;
 
+    void showRemoveConfirmation() {
+      showDialog(
+        context: context,
+        builder: (BuildContext confirmContext) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withAlpha(30),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.remove_circle_outline_rounded, color: Colors.orange, size: 24),
+                ),
+                const SizedBox(width: 16),
+                const Text('Remove from List'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Remove this folder from the application list? The folder will remain on your computer.'),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withAlpha(20),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.folder_rounded, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          folderName,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (folderManager.folderHierarchy[folder]?.isNotEmpty ?? false)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16.0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded, color: Colors.blue, size: 16),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'All subfolders will also be removed from the list.',
+                            style: TextStyle(color: Colors.blue),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(confirmContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () {
+                  // Close the confirmation dialog
+                  Navigator.of(confirmContext).pop();
+
+                  // Then show a loading dialog
+                  final loadingDialogKey = GlobalKey<State>();
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (BuildContext loadingContext) {
+                      return Dialog(
+                        key: loadingDialogKey,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(width: 8),
+                              const CircularProgressIndicator(),
+                              const SizedBox(width: 24),
+                              Text(
+                                'Removing from list...',
+                                style: TextStyle(fontSize: 14),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+
+                  // Remove the folder from list only
+                  folderManager.removeFolderFromList(folder).then((_) {
+                    // Close the loading dialog if it's still open
+                    if (loadingDialogKey.currentContext != null) {
+                      Navigator.of(loadingDialogKey.currentContext!).pop();
+                    }
+                  }).catchError((error) {
+                    // Close the loading dialog if it's still open
+                    if (loadingDialogKey.currentContext != null) {
+                      Navigator.of(loadingDialogKey.currentContext!).pop();
+                    }
+                    // Show error dialog if the widget is still mounted
+                    if (context.mounted) {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext errorContext) {
+                          return AlertDialog(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            title: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withAlpha(30),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(Icons.error_outline_rounded, color: Colors.red, size: 24),
+                                ),
+                                const SizedBox(width: 16),
+                                const Text('Error'),
+                              ],
+                            ),
+                            content: Text('Failed to remove folder from list: $error'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(errorContext).pop(),
+                                child: const Text('OK'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    }
+                  });
+                },
+                child: const Text('Remove'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+
     void showDeleteConfirmation() {
-      // First close the confirmation dialog
       showDialog(
         context: context,
         builder: (BuildContext confirmContext) {
@@ -69,7 +227,7 @@ class FolderItem extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Are you sure you want to delete this folder?'),
+                Text('Are you sure you want to permanently delete this folder? It will be moved to the recycle bin.'),
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -151,8 +309,8 @@ class FolderItem extends StatelessWidget {
                     },
                   );
 
-                  // Delete the folder
-                  folderManager.removeFolder(folder).then((_) {
+                  // Delete the folder permanently to recycle bin
+                  folderManager.deleteFolderToRecycleBin(folder).then((_) {
                     // Close the loading dialog if it's still open
                     if (loadingDialogKey.currentContext != null) {
                       Navigator.of(loadingDialogKey.currentContext!).pop();
@@ -291,13 +449,37 @@ class FolderItem extends StatelessWidget {
                                       Container(
                                         padding: const EdgeInsets.all(4),
                                         decoration: BoxDecoration(
+                                          color: Colors.orange.withAlpha(30),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: const Icon(Icons.remove_circle_outline_rounded, size: 16, color: Colors.orange),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Text('Remove from List', style: TextStyle(fontSize: 13)),
+                                    ],
+                                  ),
+                                  onTap: () {
+                                    // We need to use Future.delayed because onTap is called before the menu is closed
+                                    Future.delayed(Duration.zero, () {
+                                      showRemoveConfirmation();
+                                    });
+                                  },
+                                ),
+                                PopupMenuItem(
+                                  height: 42,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
                                           color: Colors.red.withAlpha(30),
                                           borderRadius: BorderRadius.circular(4),
                                         ),
                                         child: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.red),
                                       ),
                                       const SizedBox(width: 12),
-                                      const Text('Delete', style: TextStyle(fontSize: 13)),
+                                      const Text('Delete Permanently', style: TextStyle(fontSize: 13)),
                                     ],
                                   ),
                                   onTap: () {
