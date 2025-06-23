@@ -28,10 +28,10 @@ class FolderManager extends ChangeNotifier {
 
   // Track which section is selected for viewing all photos
   String? _selectedSection;
-
   FolderManager(this._folderBox, this._photoBox) {
     _loadFolders();
     checkFoldersExistence();
+    _scanForNewSubfolders(); // Yeni alt klasörleri tara
     _updateFilteredFolders();
   }
 
@@ -621,5 +621,128 @@ class FolderManager extends ChangeNotifier {
       notifyListeners();
       debugPrint('Folder removal from list complete (photos preserved): $path');
     }
+  }
+
+  // Scan for new subfolders that were created after initial import
+  Future<void> _scanForNewSubfolders() async {
+    debugPrint('Scanning for new subfolders...');
+
+    int newFoldersFound = 0;
+    final List<String> newFolders = [];
+
+    // Create a copy of the folders list to avoid modification during iteration
+    final foldersToScan = List<String>.from(_folders);
+
+    for (String folderPath in foldersToScan) {
+      // Only scan existing folders
+      if (!Directory(folderPath).existsSync()) {
+        continue;
+      }
+
+      try {
+        // Get current subfolders in our database for this folder
+        final currentSubfolders = Set<String>.from(_folderHierarchy[folderPath] ?? []);
+
+        // Scan directory for actual subfolders
+        final directory = Directory(folderPath);
+        final entities = directory.listSync();
+
+        for (var entity in entities) {
+          if (entity is Directory) {
+            final subPath = entity.path;
+
+            // Check if this subfolder is new (not in our lists)
+            if (!_folders.contains(subPath) && !currentSubfolders.contains(subPath)) {
+              debugPrint('New subfolder found: $subPath');
+
+              // Add to our lists
+              _folders.add(subPath);
+              newFolders.add(subPath);
+              _addToHierarchy(subPath);
+
+              // Update parent folder's subfolder list in Hive
+              final parentFolderInBox = _folderBox.values.where((f) => f.path == folderPath).toList();
+              if (parentFolderInBox.isNotEmpty) {
+                parentFolderInBox.first.addSubFolder(subPath);
+                await parentFolderInBox.first.save();
+              }
+
+              // Create Folder object for the new subfolder
+              final newSubfolderObj = Folder(path: subPath);
+              _folderBox.add(newSubfolderObj);
+
+              newFoldersFound++;
+
+              // Recursively scan the new subfolder for its subfolders
+              await _scanFolderRecursively(subPath, newFolders);
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Error scanning folder $folderPath: $e');
+      }
+    }
+
+    if (newFoldersFound > 0) {
+      debugPrint('Found $newFoldersFound new subfolders');
+      _updateFilteredFolders();
+      notifyListeners();
+
+      // Start indexing for new folders if photo manager is available
+      if (_photoManager != null && newFolders.isNotEmpty) {
+        for (String newFolder in newFolders) {
+          debugPrint('Starting indexing for new subfolder: $newFolder');
+          _photoManager!.indexFolderPhotos(newFolder);
+        }
+      }
+    } else {
+      debugPrint('No new subfolders found');
+    }
+  }
+
+  // Helper method to recursively scan a folder and its subfolders
+  Future<void> _scanFolderRecursively(String folderPath, List<String> newFolders) async {
+    try {
+      final directory = Directory(folderPath);
+      if (!directory.existsSync()) return;
+
+      final entities = directory.listSync();
+
+      for (var entity in entities) {
+        if (entity is Directory) {
+          final subPath = entity.path;
+
+          if (!_folders.contains(subPath)) {
+            // Add to our lists
+            _folders.add(subPath);
+            newFolders.add(subPath);
+            _addToHierarchy(subPath);
+
+            // Update parent folder's subfolder list in Hive
+            final parentFolderInBox = _folderBox.values.where((f) => f.path == folderPath).toList();
+            if (parentFolderInBox.isNotEmpty) {
+              parentFolderInBox.first.addSubFolder(subPath);
+              await parentFolderInBox.first.save();
+            }
+
+            // Create Folder object for the new subfolder
+            final newSubfolderObj = Folder(path: subPath);
+            _folderBox.add(newSubfolderObj);
+
+            // Continue recursively
+            await _scanFolderRecursively(subPath, newFolders);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error scanning folder recursively $folderPath: $e');
+    }
+  }
+
+  // Manually trigger a scan for new subfolders (can be called from UI)
+  Future<void> refreshSubfolders() async {
+    debugPrint('Manual refresh of subfolders triggered');
+    await _scanForNewSubfolders();
+    debugPrint('Manual refresh completed');
   }
 }
