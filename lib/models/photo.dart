@@ -42,6 +42,10 @@ class Photo extends HiveObject {
   @HiveField(8, defaultValue: false)
   bool dimensionsLoaded;
 
+  // Whether the photo has been viewed (clicked or opened fullscreen)
+  @HiveField(9, defaultValue: false)
+  bool isViewed;
+
   // isSelected is a transient property (not stored in Hive)
   bool isSelected = false;
 
@@ -55,6 +59,7 @@ class Photo extends HiveObject {
     this.height = 0,
     this.dateModified,
     this.dimensionsLoaded = false,
+    this.isViewed = false,
     this.isSelected = false,
   }) : tags = tags ?? [];
 
@@ -82,6 +87,19 @@ class Photo extends HiveObject {
       }
     } else {
       debugPrint('Photo.setRating: Invalid rating value: $value (must be 0-9)');
+    }
+  }
+
+  // Mark photo as viewed and persist if changed
+  void markViewed() {
+    if (!isViewed) {
+      isViewed = true;
+      try {
+        save();
+        debugPrint('Photo.markViewed: Marked as viewed for $path');
+      } catch (e) {
+        debugPrint('Photo.markViewed ERROR: $e');
+      }
     }
   }
 }

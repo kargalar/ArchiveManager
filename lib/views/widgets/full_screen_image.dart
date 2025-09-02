@@ -57,6 +57,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
   void initState() {
     super.initState();
     _currentPhoto = widget.photo;
+    // Mark initial photo as viewed when opening fullscreen
+    _currentPhoto.markViewed();
     _frozenFilteredPhotos = List.from(widget.filteredPhotos); // Filtrelenmiş listeyi dondur
     _tagBox = Hive.box<Tag>('tags');
     _showInfo = context.read<SettingsManager>().showImageInfo;
@@ -279,6 +281,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
             final prevPhoto = filteredPhotos[currentIndex - 1];
             // HomeViewModel'deki seçili fotoğrafı güncelle
             homeViewModel.setSelectedPhoto(prevPhoto);
+            // Mark as viewed when navigated to
+            prevPhoto.markViewed();
             setState(() {
               _currentPhoto = prevPhoto;
               _resetZoom();
@@ -287,6 +291,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
             final nextPhoto = filteredPhotos[currentIndex + 1];
             // HomeViewModel'deki seçili fotoğrafı güncelle
             homeViewModel.setSelectedPhoto(nextPhoto);
+            // Mark as viewed when navigated to
+            nextPhoto.markViewed();
             setState(() {
               _currentPhoto = nextPhoto;
               _resetZoom();
@@ -312,6 +318,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                 final nextPhoto = filteredPhotos[currentIndex < filteredPhotos.length ? currentIndex : filteredPhotos.length - 1];
                 // HomeViewModel'deki seçili fotoğrafı güncelle
                 homeViewModel.setSelectedPhoto(nextPhoto);
+                // Mark as viewed when navigated to
+                nextPhoto.markViewed();
                 setState(() {
                   _currentPhoto = nextPhoto;
                   _resetZoom();
@@ -355,6 +363,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                 // ignore: use_build_context_synchronously
                 final photoManager = Provider.of<PhotoManager>(context, listen: false);
                 photoManager.setRating(_currentPhoto, rating, allowToggle: false);
+                // Current photo is being interacted with, mark viewed
+                _currentPhoto.markViewed();
                 // Tam ekranda da state'i güncelle
                 setState(() {
                   // Bu sadece UI'ı yeniden render etmek için

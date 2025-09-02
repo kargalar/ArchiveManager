@@ -145,6 +145,13 @@ class HomeViewModel extends ChangeNotifier {
     if (sortedPhotos.isEmpty) return;
 
     if (_selectedPhoto == null) {
+      // If no selection yet and user navigates with arrow keys, select first and mark viewed
+      if (event.logicalKey == LogicalKeyboardKey.arrowLeft || event.logicalKey == LogicalKeyboardKey.arrowRight || event.logicalKey == LogicalKeyboardKey.arrowUp || event.logicalKey == LogicalKeyboardKey.arrowDown) {
+        final first = sortedPhotos[0];
+        first.markViewed();
+        setSelectedPhoto(first);
+        return;
+      }
       setSelectedPhoto(sortedPhotos[0]);
       return;
     }
@@ -300,7 +307,10 @@ class HomeViewModel extends ChangeNotifier {
     }
 
     if (newIndex != currentIndex) {
-      setSelectedPhoto(sortedPhotos[newIndex]);
+      final target = sortedPhotos[newIndex];
+      // Mark as viewed when navigating with arrow keys in grid
+      target.markViewed();
+      setSelectedPhoto(target);
     }
   }
 

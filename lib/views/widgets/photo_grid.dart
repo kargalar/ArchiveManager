@@ -417,6 +417,9 @@ class _PhotoGridState extends State<PhotoGrid> {
                     final bool isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
                     final bool selectionModeActive = homeViewModel.hasSelectedPhotos;
 
+                    // Mark as viewed on any tap interaction
+                    photo.markViewed();
+
                     // Shift+click: select range from anchor (primary selected) to tapped photo
                     if (isShiftPressed && homeViewModel.selectedPhoto != null) {
                       homeViewModel.selectRange(sortedPhotos, photo);
@@ -452,6 +455,9 @@ class _PhotoGridState extends State<PhotoGrid> {
                   // Tıklanan fotoğrafı seçili fotoğraf olarak ayarla
                   homeViewModel.setSelectedPhoto(photo);
 
+                  // Mark as viewed when opening fullscreen via middle click
+                  photo.markViewed();
+
                   // Tam ekran görünümüne geç
                   Navigator.push(
                     context,
@@ -471,6 +477,9 @@ class _PhotoGridState extends State<PhotoGrid> {
                   final bool isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
                   final bool isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
                   final bool selectionModeActive = homeViewModel.hasSelectedPhotos;
+
+                  // Mark as viewed on any tap interaction
+                  photo.markViewed();
 
                   // Shift+click: select range from anchor (primary selected) to tapped photo
                   if (isShiftPressed && homeViewModel.selectedPhoto != null) {
@@ -852,6 +861,36 @@ class _PhotoGridState extends State<PhotoGrid> {
   Widget _buildPhotoOverlay(Photo photo, TagManager tagManager) {
     return Stack(
       children: [
+        // Show NEW badge if photo not viewed yet
+        if (!photo.isViewed)
+          Positioned(
+            top: 6,
+            left: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.greenAccent,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white24, width: 1),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(102), // 0.4 opacity
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Text(
+                'Yeni',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+          ),
         if (photo.tags.isNotEmpty)
           Positioned(
             bottom: 6,
