@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 import '../../managers/folder_manager.dart';
-import '../../models/photo.dart';
+import '../../managers/tag_manager.dart';
 import '../../managers/photo_manager.dart';
+import '../../models/photo.dart';
 import '../../viewmodels/home_view_model.dart';
 
 // Widget that displays a folder and its subfolders in the folder tree.
@@ -465,6 +466,32 @@ class FolderItem extends StatelessWidget {
                                     });
                                   },
                                 ),
+                                // Tag with... submenu
+                                PopupMenuItem(
+                                  height: 42,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green.withAlpha(30),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: const Icon(Icons.label, size: 16, color: Colors.green),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Text('Tag with...', style: TextStyle(fontSize: 13)),
+                                      const Spacer(),
+                                      const Icon(Icons.arrow_right, size: 16, color: Colors.grey),
+                                    ],
+                                  ),
+                                  onTap: () {
+                                    Future.delayed(Duration.zero, () {
+                                      _showTagMenu(context, folder);
+                                    });
+                                  },
+                                ),
                                 PopupMenuItem(
                                   height: 42,
                                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -601,6 +628,168 @@ class FolderItem extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  void _showTagMenu(BuildContext context, String folderPath) {
+    final tagManager = Provider.of<TagManager>(context, listen: false);
+    final folderManager = Provider.of<FolderManager>(context, listen: false);
+    final photoManager = Provider.of<PhotoManager>(context, listen: false);
+
+    final folder = folderManager.getFolderObject(folderPath);
+    if (folder == null) return;
+
+    // Get all available tags
+    final availableTags = tagManager.tags;
+
+    if (availableTags.isEmpty) {
+      // Show message if no tags exist
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.blue),
+                SizedBox(width: 12),
+                Text('No Tags Available'),
+              ],
+            ),
+            content: const Text('Create some tags first to use auto-tagging.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withAlpha(30),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.label, color: Colors.green, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(child: Text('Auto-Tag Folder')),
+                ],
+              ),
+              content: SizedBox(
+                width: 400,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Select tags to automatically apply to all photos in this folder:',
+                      style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      constraints: const BoxConstraints(maxHeight: 300),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: availableTags.map((tag) {
+                            final isSelected = folder.hasAutoTag(tag);
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              decoration: BoxDecoration(
+                                color: isSelected ? tag.color.withAlpha(30) : Colors.grey.withAlpha(10),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: isSelected ? tag.color.withAlpha(100) : Colors.grey.withAlpha(30),
+                                  width: 1,
+                                ),
+                              ),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                leading: Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: tag.color.withAlpha(50),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Icon(
+                                    Icons.label,
+                                    color: tag.color,
+                                    size: 18,
+                                  ),
+                                ),
+                                title: Text(
+                                  tag.name,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                trailing: Checkbox(
+                                  value: isSelected,
+                                  activeColor: tag.color,
+                                  onChanged: (value) async {
+                                    setState(() {
+                                      if (value == true) {
+                                        folder.addAutoTag(tag);
+                                        // Apply the tag to existing photos in the folder
+                                        photoManager.applyAutoTagsToFolderPhotos(folderPath, [tag]);
+                                      } else {
+                                        folder.removeAutoTag(tag);
+                                        // Remove the tag from photos in the folder (only auto-applied ones)
+                                        photoManager.removeAutoTagFromFolderPhotos(folderPath, tag);
+                                      }
+                                    });
+                                    // Save the folder object
+                                    await folder.save();
+                                  },
+                                ),
+                                onTap: () async {
+                                  setState(() {
+                                    if (folder.hasAutoTag(tag)) {
+                                      folder.removeAutoTag(tag);
+                                      photoManager.removeAutoTagFromFolderPhotos(folderPath, tag);
+                                    } else {
+                                      folder.addAutoTag(tag);
+                                      photoManager.applyAutoTagsToFolderPhotos(folderPath, [tag]);
+                                    }
+                                  });
+                                  // Save the folder object
+                                  await folder.save();
+                                },
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Done'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

@@ -21,7 +21,7 @@ class PhotoAdapter extends TypeAdapter<Photo> {
       isFavorite: fields[1] as bool,
       rating: fields[2] as int,
       isRecycled: fields[3] as bool,
-      tags: (fields[4] as List).cast<Tag>(),
+      tags: (fields[4] as List?)?.cast<Tag>(),
       width: fields[5] == null ? 0 : fields[5] as int,
       height: fields[6] == null ? 0 : fields[6] as int,
       dateModified: fields[7] as DateTime?,
@@ -60,5 +60,9 @@ class PhotoAdapter extends TypeAdapter<Photo> {
   int get hashCode => typeId.hashCode;
 
   @override
-  bool operator ==(Object other) => identical(this, other) || other is PhotoAdapter && runtimeType == other.runtimeType && typeId == other.typeId;
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PhotoAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
 }

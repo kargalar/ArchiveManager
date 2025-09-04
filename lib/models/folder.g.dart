@@ -20,19 +20,22 @@ class FolderAdapter extends TypeAdapter<Folder> {
       path: fields[0] as String,
       subFolders: (fields[1] as List?)?.cast<String>(),
       isFavorite: fields[2] == null ? false : fields[2] as bool,
+      autoTags: fields[3] == null ? [] : (fields[3] as List?)?.cast<Tag>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Folder obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(4)
       ..writeByte(0)
       ..write(obj.path)
       ..writeByte(1)
       ..write(obj.subFolders)
       ..writeByte(2)
-      ..write(obj.isFavorite);
+      ..write(obj.isFavorite)
+      ..writeByte(3)
+      ..write(obj.autoTags);
   }
 
   @override

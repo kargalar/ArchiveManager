@@ -4,13 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:path/path.dart' as p;
 import '../models/photo.dart';
+import '../models/tag.dart';
 import '../models/indexing_state.dart';
 import 'filter_manager.dart';
+import 'folder_manager.dart';
 
 class PhotoManager extends ChangeNotifier {
   final Box<Photo> _photoBox;
   final List<Photo> _photos = [];
   FilterManager? _filterManager;
+  FolderManager? _folderManager;
 
   // Indexing state tracking
   bool _isIndexing = false;
@@ -39,6 +42,10 @@ class PhotoManager extends ChangeNotifier {
 
   void setFilterManager(FilterManager filterManager) {
     _filterManager = filterManager;
+  }
+
+  void setFolderManager(FolderManager folderManager) {
+    _folderManager = folderManager;
   }
 
   List<Photo> get photos => _photos;
@@ -246,6 +253,9 @@ class PhotoManager extends ChangeNotifier {
         if (!existingPhotos.containsKey(file.path)) {
           _photoBox.add(photo);
           existingPhotos[file.path] = photo; // Update the map
+
+          // Apply auto-tags from folder if this is a new photo
+          _applyAutoTagsToPhoto(photo, file.path);
         }
 
         // Add to photos list and track the path if needed
@@ -261,6 +271,63 @@ class PhotoManager extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error loading photos from folder $path: $e');
     }
+  }
+
+  // Apply auto-tags from folder to a photo
+  void _applyAutoTagsToPhoto(Photo photo, String photoPath) {
+    if (_folderManager == null) return;
+
+    // Find all folders that contain this photo and have auto-tags
+    for (var folder in _folderManager!.folders) {
+      // Check if photo is in this folder
+      if (photoPath.startsWith(folder) && _folderManager!.getFolderObject(folder)?.autoTags.isNotEmpty == true) {
+        final folderObj = _folderManager!.getFolderObject(folder)!;
+
+        // Apply auto-tags to the photo if it doesn't already have them
+        for (var autoTag in folderObj.autoTags) {
+          if (!photo.tags.any((tag) => tag.id == autoTag.id)) {
+            photo.tags.add(autoTag);
+          }
+        }
+
+        if (folderObj.autoTags.isNotEmpty) {
+          photo.save(); // Save the photo with new tags
+          debugPrint('Applied auto-tags to ${photo.path}: ${folderObj.autoTags.map((t) => t.name).join(', ')}');
+        }
+      }
+    }
+  }
+
+  // Apply auto-tags to all photos in a folder (when folder gets new auto-tags)
+  void applyAutoTagsToFolderPhotos(String folderPath, List<Tag> autoTags) {
+    for (var photo in _photos) {
+      if (photo.path.startsWith(folderPath)) {
+        bool modified = false;
+        for (var autoTag in autoTags) {
+          if (!photo.tags.any((tag) => tag.id == autoTag.id)) {
+            photo.tags.add(autoTag);
+            modified = true;
+          }
+        }
+        if (modified) {
+          photo.save();
+        }
+      }
+    }
+    notifyListeners();
+    debugPrint('Applied auto-tags to all photos in folder: $folderPath');
+  }
+
+  // Remove auto-tags from all photos in a folder (when auto-tag is removed from folder)
+  void removeAutoTagFromFolderPhotos(String folderPath, Tag tagToRemove) {
+    for (var photo in _photos) {
+      if (photo.path.startsWith(folderPath)) {
+        photo.tags.removeWhere((tag) => tag.id == tagToRemove.id);
+        photo.save();
+      }
+    }
+    notifyListeners();
+    debugPrint('Removed auto-tag ${tagToRemove.name} from all photos in folder: $folderPath');
   }
 
   void toggleFavorite(Photo photo) {

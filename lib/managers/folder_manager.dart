@@ -461,6 +461,12 @@ class FolderManager extends ChangeNotifier {
     return folderInBox.isNotEmpty ? folderInBox.first.isFavorite : false;
   }
 
+  // Get folder object by path
+  Folder? getFolderObject(String path) {
+    final folderInBox = _folderBox.values.where((f) => f.path == path).toList();
+    return folderInBox.isNotEmpty ? folderInBox.first : null;
+  }
+
   // Check if search is active
   bool get isSearchActive => _searchQuery.isNotEmpty;
 
