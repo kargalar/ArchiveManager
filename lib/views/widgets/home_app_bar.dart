@@ -240,6 +240,16 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                     tooltip: _getFavoriteTooltip(filterManager.favoriteFilterMode),
                   ),
                 ),
+                // Yeni (görülmemiş) filtre düğmesi: none -> only new -> only non-new -> none
+                GestureDetector(
+                  onSecondaryTap: () => filterManager.resetNewFilter(),
+                  child: IconButton(
+                    icon: Icon(_getNewIcon(filterManager.newFilterMode)),
+                    color: _getNewColor(filterManager.newFilterMode),
+                    onPressed: () => filterManager.toggleNewFilter(),
+                    tooltip: _getNewTooltip(filterManager.newFilterMode),
+                  ),
+                ),
                 GestureDetector(
                   onSecondaryTap: () {
                     filterManager.resetTagFilter();
@@ -433,6 +443,39 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
         return 'Clear Favorite Filter';
       default:
         return 'Show Favorites';
+    }
+  }
+
+  IconData _getNewIcon(String mode) {
+    switch (mode) {
+      case 'new':
+        return Icons.fiber_new;
+      case 'non-new':
+        return Icons.new_releases_outlined; // indicates the opposite state subtly
+      default:
+        return Icons.fiber_new_outlined;
+    }
+  }
+
+  Color _getNewColor(String mode) {
+    switch (mode) {
+      case 'new':
+        return Colors.greenAccent;
+      case 'non-new':
+        return Colors.amber;
+      default:
+        return Colors.white70;
+    }
+  }
+
+  String _getNewTooltip(String mode) {
+    switch (mode) {
+      case 'new':
+        return 'Sadece yeni (görülmemiş)';
+      case 'non-new':
+        return 'Sadece görülenler';
+      default:
+        return 'Yenileri göster';
     }
   }
 }

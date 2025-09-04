@@ -17,6 +17,7 @@ class FilterManager extends ChangeNotifier {
   // Filtering
   String _filterType = 'all';
   String _favoriteFilterMode = 'none'; // none, favorites, non-favorites
+  String _newFilterMode = 'none'; // none, new, non-new
   String _tagFilterMode = 'none'; // none, untagged, tagged, filtered
   bool _showUntaggedOnly = false;
   double _minRatingFilter = 0;
@@ -39,6 +40,7 @@ class FilterManager extends ChangeNotifier {
   SortState get resolutionSortState => _resolutionSortState;
   String get filterType => _filterType;
   String get favoriteFilterMode => _favoriteFilterMode;
+  String get newFilterMode => _newFilterMode;
   String get tagFilterMode => _tagFilterMode;
   bool get showUntaggedOnly => _showUntaggedOnly;
   double get minRatingFilter => _minRatingFilter;
@@ -673,6 +675,26 @@ class FilterManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  void toggleNewFilter() {
+    switch (_newFilterMode) {
+      case 'none':
+        _newFilterMode = 'new';
+        break;
+      case 'new':
+        _newFilterMode = 'non-new';
+        break;
+      case 'non-new':
+        _newFilterMode = 'none';
+        break;
+    }
+    notifyListeners();
+  }
+
+  void resetNewFilter() {
+    _newFilterMode = 'none';
+    notifyListeners();
+  }
+
   void resetTagFilter() {
     _tagFilterMode = 'none';
     notifyListeners();
@@ -732,6 +754,16 @@ class FilterManager extends ChangeNotifier {
           break;
         case 'non-favorites':
           if (photo.isFavorite) return false;
+          break;
+      }
+
+      // Handle new filter modes (uses Photo.isViewed)
+      switch (_newFilterMode) {
+        case 'new':
+          if (photo.isViewed) return false; // only unviewed
+          break;
+        case 'non-new':
+          if (!photo.isViewed) return false; // only viewed
           break;
       }
 

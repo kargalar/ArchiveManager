@@ -6,6 +6,7 @@ import 'package:archive_manager_v3/viewmodels/home_view_model.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:super_drag_and_drop/super_drag_and_drop.dart' as sdd;
 import 'package:provider/provider.dart';
 import '../../models/photo.dart';
 import '../../models/tag.dart';
@@ -378,136 +379,83 @@ class _PhotoGridState extends State<PhotoGrid> {
       addRepaintBoundaries: true,
       itemBuilder: (context, index) {
         final photo = sortedPhotos[index];
-        return Draggable<Photo>(
-          data: photo,
-          feedback: Material(
-            color: Colors.transparent,
-            child: SizedBox(
-              width: 100,
-              height: 100,
-              child: _buildPhotoContainer(photo, homeViewModel, context, settingsManager),
-            ),
-          ),
-          childWhenDragging: Opacity(
-            opacity: 0.5,
-            child: RepaintBoundary(
-              child: Listener(
-                onPointerDown: (event) {
-                  if (event.buttons == kMiddleMouseButton) {
-                    // Tıklanan fotoğrafı seçili fotoğraf olarak ayarla
-                    homeViewModel.setSelectedPhoto(photo);
 
-                    // Tam ekran görünümüne geç
-                    Navigator.push(
-                      context,
-                      PageRouteBuilder(
-                        settings: const RouteSettings(name: 'fullscreen_image'),
-                        pageBuilder: (context, animation, secondaryAnimation) => FullScreenImage(
-                          photo: photo,
-                          filteredPhotos: sortedPhotos,
-                        ),
-                      ),
-                    );
-                  }
-                },
-                child: GestureDetector(
-                  onTap: () {
-                    // Get keyboard modifiers
-                    final bool isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
-                    final bool isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
-                    final bool selectionModeActive = homeViewModel.hasSelectedPhotos;
+        // The interactive tile with existing behavior
+        final Widget tile = RepaintBoundary(
+          child: Listener(
+            onPointerDown: (event) {
+              if (event.buttons == kMiddleMouseButton) {
+                // Tıklanan fotoğrafı seçili fotoğraf olarak ayarla
+                homeViewModel.setSelectedPhoto(photo);
 
-                    // Mark as viewed on any tap interaction
-                    photo.markViewed();
+                // Mark as viewed when opening fullscreen via middle click
+                photo.markViewed();
 
-                    // Shift+click: select range from anchor (primary selected) to tapped photo
-                    if (isShiftPressed && homeViewModel.selectedPhoto != null) {
-                      homeViewModel.selectRange(sortedPhotos, photo);
-                    }
-                    // Ctrl+click or existing selection: toggle individual selection
-                    else if (isCtrlPressed || selectionModeActive) {
-                      homeViewModel.togglePhotoSelection(photo);
-                    }
-                    // Otherwise, normal selection
-                    else {
-                      homeViewModel.handlePhotoTap(photo, isCtrlPressed: isCtrlPressed);
-                    }
-                  },
-                  onSecondaryTapDown: (details) {
-                    homeViewModel.handlePhotoTap(photo);
-                    _showPhotoContextMenu(context, photo, photoManager, tagManager, details.globalPosition);
-                  },
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      _buildPhotoContainer(photo, homeViewModel, context, settingsManager),
-                      _buildPhotoOverlay(photo, tagManager),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          child: RepaintBoundary(
-            child: Listener(
-              onPointerDown: (event) {
-                if (event.buttons == kMiddleMouseButton) {
-                  // Tıklanan fotoğrafı seçili fotoğraf olarak ayarla
-                  homeViewModel.setSelectedPhoto(photo);
-
-                  // Mark as viewed when opening fullscreen via middle click
-                  photo.markViewed();
-
-                  // Tam ekran görünümüne geç
-                  Navigator.push(
-                    context,
-                    PageRouteBuilder(
-                      settings: const RouteSettings(name: 'fullscreen_image'),
-                      pageBuilder: (context, animation, secondaryAnimation) => FullScreenImage(
-                        photo: photo,
-                        filteredPhotos: sortedPhotos,
-                      ),
+                // Tam ekran görünümüne geç
+                Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    settings: const RouteSettings(name: 'fullscreen_image'),
+                    pageBuilder: (context, animation, secondaryAnimation) => FullScreenImage(
+                      photo: photo,
+                      filteredPhotos: sortedPhotos,
                     ),
-                  );
+                  ),
+                );
+              }
+            },
+            child: GestureDetector(
+              onTap: () {
+                // Get keyboard modifiers
+                final bool isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
+                final bool isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
+                final bool selectionModeActive = homeViewModel.hasSelectedPhotos;
+
+                // Mark as viewed on any tap interaction
+                photo.markViewed();
+
+                // Shift+click: select range from anchor (primary selected) to tapped photo
+                if (isShiftPressed && homeViewModel.selectedPhoto != null) {
+                  homeViewModel.selectRange(sortedPhotos, photo);
+                }
+                // Ctrl+click or existing selection: toggle individual selection
+                else if (isCtrlPressed || selectionModeActive) {
+                  homeViewModel.togglePhotoSelection(photo);
+                }
+                // Otherwise, normal selection
+                else {
+                  homeViewModel.handlePhotoTap(photo, isCtrlPressed: isCtrlPressed);
                 }
               },
-              child: GestureDetector(
-                onTap: () {
-                  // Get keyboard modifiers
-                  final bool isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
-                  final bool isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
-                  final bool selectionModeActive = homeViewModel.hasSelectedPhotos;
-
-                  // Mark as viewed on any tap interaction
-                  photo.markViewed();
-
-                  // Shift+click: select range from anchor (primary selected) to tapped photo
-                  if (isShiftPressed && homeViewModel.selectedPhoto != null) {
-                    homeViewModel.selectRange(sortedPhotos, photo);
-                  }
-                  // Ctrl+click or existing selection: toggle individual selection
-                  else if (isCtrlPressed || selectionModeActive) {
-                    homeViewModel.togglePhotoSelection(photo);
-                  }
-                  // Otherwise, normal selection
-                  else {
-                    homeViewModel.handlePhotoTap(photo, isCtrlPressed: isCtrlPressed);
-                  }
-                },
-                onSecondaryTapDown: (details) {
-                  homeViewModel.handlePhotoTap(photo);
-                  _showPhotoContextMenu(context, photo, photoManager, tagManager, details.globalPosition);
-                },
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    _buildPhotoContainer(photo, homeViewModel, context, settingsManager),
-                    _buildPhotoOverlay(photo, tagManager),
-                  ],
-                ),
+              onSecondaryTapDown: (details) {
+                homeViewModel.handlePhotoTap(photo);
+                _showPhotoContextMenu(context, photo, photoManager, tagManager, details.globalPosition);
+              },
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _buildPhotoContainer(photo, homeViewModel, context, settingsManager),
+                  _buildPhotoOverlay(photo, tagManager),
+                ],
               ),
             ),
           ),
+        );
+
+        // Wrap tile with native drag source for dragging to Desktop/Explorer
+        return sdd.DragItemWidget(
+          dragItemProvider: (request) async {
+            final item = sdd.DragItem();
+            try {
+              item.add(sdd.Formats.fileUri(Uri.file(photo.path)));
+            } catch (e) {
+              debugPrint('DragItemProvider error: $e');
+              return null;
+            }
+            return item;
+          },
+          allowedOperations: () => [sdd.DropOperation.copy],
+          child: sdd.DraggableWidget(child: tile),
         );
       },
     );
