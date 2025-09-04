@@ -1,2 +1,1 @@
-etiket filtrelerini sol alta dene
-
+ayarlar sayfasına clear viewed status ekle. yani hepsi tekrar yeni olarak işaretlensin.

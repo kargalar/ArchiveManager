@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../managers/folder_manager.dart';
+import '../../managers/tag_manager.dart';
+import '../../managers/filter_manager.dart';
 import 'folder_item.dart';
 import '../dialogs/missing_folders_dialog.dart';
 
@@ -73,6 +75,9 @@ class _FolderMenuState extends State<FolderMenu> {
                 },
               ),
             ),
+
+            // Tag Filters Section at the bottom
+            _buildTagFiltersSection(context),
           ],
         ),
       ),
@@ -426,6 +431,167 @@ class _FolderMenuState extends State<FolderMenu> {
             ),
         ],
       ),
+    );
+  }
+
+  // Extension to add darken method to Color
+  Color _darkenColor(Color color, [double amount = 0.1]) {
+    assert(amount >= 0 && amount <= 1);
+    final hsl = HSLColor.fromColor(color);
+    final hslDark = hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0));
+    return hslDark.toColor();
+  }
+
+  // Tag filters section widget
+  Widget _buildTagFiltersSection(BuildContext context) {
+    return Consumer2<TagManager, FilterManager>(
+      builder: (context, tagManager, filterManager, child) {
+        if (tagManager.tags.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Container(
+          margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF252525),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(30),
+                blurRadius: 4,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Section header
+              Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Row(
+                  children: [
+                    const Icon(Icons.label, color: Colors.blue, size: 16),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Tag Filters',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (filterManager.positiveTagFilters.isNotEmpty || filterManager.negativeTagFilters.isNotEmpty)
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(4),
+                          onTap: () {
+                            filterManager.clearTagTriStateFilters();
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(4.0),
+                            child: const Icon(
+                              Icons.clear_all,
+                              color: Colors.white54,
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              // Tags
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: tagManager.tags.map((tag) {
+                    final isPositive = filterManager.positiveTagFilters.contains(tag);
+                    final isNegative = filterManager.negativeTagFilters.contains(tag);
+                    Color bgColor;
+                    Color borderColor;
+                    Color textColor;
+                    IconData? icon;
+
+                    if (isPositive) {
+                      bgColor = tag.color;
+                      borderColor = _darkenColor(tag.color, 0.2);
+                      textColor = Colors.white;
+                      icon = Icons.check;
+                    } else if (isNegative) {
+                      bgColor = Colors.grey[900]!;
+                      borderColor = tag.color;
+                      textColor = tag.color;
+                      icon = Icons.close;
+                    } else {
+                      bgColor = tag.color.withAlpha(40);
+                      borderColor = tag.color.withAlpha(100);
+                      textColor = Colors.white70;
+                      icon = null;
+                    }
+
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () => filterManager.toggleTagTriState(tag),
+                        onSecondaryTap: () {
+                          // Reset this tag's state only
+                          if (filterManager.positiveTagFilters.contains(tag)) {
+                            filterManager.positiveTagFilters.remove(tag);
+                          }
+                          if (filterManager.negativeTagFilters.contains(tag)) {
+                            filterManager.negativeTagFilters.remove(tag);
+                          }
+                          // Update filter mode
+                          if (filterManager.positiveTagFilters.isEmpty && filterManager.negativeTagFilters.isEmpty) {
+                            filterManager.setTagFilterMode('none');
+                          }
+                          // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+                          filterManager.notifyListeners();
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: bgColor,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: borderColor,
+                              width: isPositive ? 2 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (icon != null) ...[
+                                Icon(icon, size: 12, color: textColor),
+                                const SizedBox(width: 4),
+                              ],
+                              Text(
+                                tag.name,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: textColor,
+                                  fontWeight: isPositive ? FontWeight.bold : FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
