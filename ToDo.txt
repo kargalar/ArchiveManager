@@ -1,4 +1,9 @@
-
 sürükle bırkak özelliğini düzeltelim. öncden sürükle bırka ile sol menüdeki klasörlere taşıyabiliyordum. sürükleyererk masaüstüne kopyalayabilme özelliğinden sonra bu bozuldu.
 
 windows gezgininden bir fotoğrafı da sürükleyip kalörün üzerine bırkakarak veya gride bırakarak kopyalabilmek istiyorum
+
+klasör sisteminin yenileyelim.  klasörler direkt path olarak çseçiliecek windowsta ne ise uygulamada da aynı şekilde gösterilecek. klasörün alt klasörü tekrar eklenemeyecek. üst klasörü eklenirse de ekra oalrak eklemek yerine sadece üst klasör gösterilecek gibi oalcak.
+
+klasörler şuan zaten remove list diyerek çıkartılıyor. onun yerine hide yazalım. ayrıca hide oaln klasörler ayarlardan tekrar açılabilsinler.
+
+yeni klasör oluşturulabilsin. klasörler taşınabilsin. yeniden isimlendirilebilsin. 
