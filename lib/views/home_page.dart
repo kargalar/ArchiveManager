@@ -108,20 +108,22 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _handleKeyEvent(KeyEvent event) {
-    if (event is KeyDownEvent) {
+    // Allow repeats only for arrow navigation; others should fire on initial KeyDown only
+    final isArrowKey = event.logicalKey == LogicalKeyboardKey.arrowLeft || event.logicalKey == LogicalKeyboardKey.arrowRight || event.logicalKey == LogicalKeyboardKey.arrowUp || event.logicalKey == LogicalKeyboardKey.arrowDown;
+    if (event is KeyDownEvent || (event is KeyRepeatEvent && isArrowKey)) {
       final folderManager = context.read<FolderManager>();
       final photoManager = context.read<PhotoManager>();
       final tagManager = context.read<TagManager>();
       final settingsManager = context.read<SettingsManager>();
 
       // F11 tuşuna basıldığında tam ekran modunu aç/kapat
-      if (event.logicalKey == LogicalKeyboardKey.f11) {
+      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.f11) {
         settingsManager.toggleFullscreen();
         return;
       }
 
       _homeViewModel.handleKeyEvent(event, context, folderManager, photoManager, tagManager); // Only open fullscreen view if we're not already in one
-      if (event.logicalKey == LogicalKeyboardKey.enter && _homeViewModel.selectedPhoto != null && !FullScreenImage.isActive) {
+      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter && _homeViewModel.selectedPhoto != null && !FullScreenImage.isActive) {
         final filterManager = context.read<FilterManager>();
         final filteredPhotos = filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags);
 

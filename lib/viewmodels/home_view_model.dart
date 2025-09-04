@@ -22,6 +22,10 @@ class HomeViewModel extends ChangeNotifier {
   // Check if any photos are selected
   bool get hasSelectedPhotos => _selectedPhotos.isNotEmpty;
 
+  // Throttle navigation on key repeat to slow down rapid movement
+  DateTime? _lastNavigationTime;
+  static const Duration _navigationThrottleDelay = Duration(milliseconds: 100);
+
   void setSelectedPhoto(Photo? photo) {
     // Only notify listeners if the selected photo actually changed
     if (_selectedPhoto != photo) {
@@ -96,7 +100,18 @@ class HomeViewModel extends ChangeNotifier {
   }
 
   void handleKeyEvent(KeyEvent event, BuildContext context, FolderManager folderManager, PhotoManager photoManager, TagManager tagManager) {
-    if (event is! KeyDownEvent) return;
+    // Support continuous navigation on key hold by accepting KeyRepeatEvent for arrow keys only
+    final isArrowKey = event.logicalKey == LogicalKeyboardKey.arrowLeft || event.logicalKey == LogicalKeyboardKey.arrowRight || event.logicalKey == LogicalKeyboardKey.arrowUp || event.logicalKey == LogicalKeyboardKey.arrowDown;
+    if (event is! KeyDownEvent && !(event is KeyRepeatEvent && isArrowKey)) return;
+
+    // Throttle navigation on key repeat to prevent too rapid movement
+    if (event is KeyRepeatEvent && isArrowKey) {
+      final now = DateTime.now();
+      if (_lastNavigationTime != null && now.difference(_lastNavigationTime!) < _navigationThrottleDelay) {
+        return; // Skip this event if it's too soon
+      }
+      _lastNavigationTime = now;
+    }
 
     // Get the filter manager to access sorting state
     final filterManager = Provider.of<FilterManager>(context, listen: false);

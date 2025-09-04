@@ -25,6 +25,9 @@ class PhotoGrid extends StatefulWidget {
 }
 
 class _PhotoGridState extends State<PhotoGrid> {
+  // Scroll controller to enable programmatic scrolling
+  final ScrollController _scrollController = ScrollController();
+
   // Sorting durumunu yönetmek için
   SortState? _lastResolutionSortState;
   SortState? _lastDateSortState;
@@ -60,8 +63,9 @@ class _PhotoGridState extends State<PhotoGrid> {
 
   @override
   void dispose() {
-    // Cancel timer when widget is disposed
+    // Cancel timer and dispose scroll controller when widget is disposed
     _cleanupTimer?.cancel();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -361,104 +365,155 @@ class _PhotoGridState extends State<PhotoGrid> {
 
   // Helper method to build the grid view - optimized version
   Widget _buildGridView(List<Photo> sortedPhotos, SettingsManager settingsManager, HomeViewModel homeViewModel, PhotoManager photoManager, TagManager tagManager, BuildContext context) {
-    return GridView.builder(
-      padding: const EdgeInsets.all(8),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: settingsManager.photosPerRow,
-        // Add some spacing between grid items
-        crossAxisSpacing: 0,
-        mainAxisSpacing: 0,
-      ),
-      // Use caching for better performance
-      cacheExtent: 500, // Cache more items for smoother scrolling
-      // Optimize for large lists
-      itemCount: sortedPhotos.length,
-      // Use addAutomaticKeepAlives: false for better memory usage
-      addAutomaticKeepAlives: false,
-      // Use addRepaintBoundaries: true for better rendering performance
-      addRepaintBoundaries: true,
-      itemBuilder: (context, index) {
-        final photo = sortedPhotos[index];
+    return LayoutBuilder(builder: (context, constraints) {
+      // Keep selected item visible when navigating with arrow keys
+      final selected = homeViewModel.selectedPhoto;
+      final selectedIndex = selected != null ? sortedPhotos.indexOf(selected) : -1;
 
-        // The interactive tile with existing behavior
-        final Widget tile = RepaintBoundary(
-          child: Listener(
-            onPointerDown: (event) {
-              if (event.buttons == kMiddleMouseButton) {
-                // Tıklanan fotoğrafı seçili fotoğraf olarak ayarla
-                homeViewModel.setSelectedPhoto(photo);
+      if (selectedIndex >= 0 && _scrollController.hasClients) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          // Compute tile height (square tiles with default aspectRatio=1)
+          final photosPerRow = settingsManager.photosPerRow;
+          // Grid padding and spacing
+          const double horizontalPadding = 16; // EdgeInsets.all(8)
+          const double topPadding = 8;
+          const double mainAxisSpacing = 0;
+          final double tileWidth = (constraints.maxWidth - horizontalPadding) / photosPerRow;
+          final double tileHeight = tileWidth; // aspect ratio 1.0
 
-                // Mark as viewed when opening fullscreen via middle click
-                photo.markViewed();
+          final int row = selectedIndex ~/ photosPerRow;
+          final double itemTop = topPadding + row * (tileHeight + mainAxisSpacing);
+          final double itemBottom = itemTop + tileHeight;
 
-                // Tam ekran görünümüne geç
-                Navigator.push(
-                  context,
-                  PageRouteBuilder(
-                    settings: const RouteSettings(name: 'fullscreen_image'),
-                    pageBuilder: (context, animation, secondaryAnimation) => FullScreenImage(
-                      photo: photo,
-                      filteredPhotos: sortedPhotos,
+          final double viewportTop = _scrollController.offset;
+          final double viewportBottom = viewportTop + constraints.maxHeight;
+
+          double? targetOffset;
+          const double viewportPadding = 8;
+
+          if (itemTop < viewportTop + viewportPadding) {
+            targetOffset = (itemTop - viewportPadding).clamp(0.0, _scrollController.position.maxScrollExtent);
+          } else if (itemBottom > viewportBottom - viewportPadding) {
+            targetOffset = (itemBottom - constraints.maxHeight + viewportPadding).clamp(0.0, _scrollController.position.maxScrollExtent);
+          }
+
+          if (targetOffset != null && (targetOffset - viewportTop).abs() > 1.0) {
+            // Check if scroll controller is currently animating
+            if (_scrollController.position.isScrollingNotifier.value) {
+              // If already scrolling, jump immediately to avoid lag during key repeat
+              _scrollController.jumpTo(targetOffset);
+            } else {
+              // Otherwise use smooth animation
+              _scrollController.animateTo(
+                targetOffset,
+                duration: const Duration(milliseconds: 140),
+                curve: Curves.easeOut,
+              );
+            }
+          }
+        });
+      }
+
+      return GridView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.all(8),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: settingsManager.photosPerRow,
+          // Add some spacing between grid items
+          crossAxisSpacing: 0,
+          mainAxisSpacing: 0,
+        ),
+        // Use caching for better performance
+        cacheExtent: 500, // Cache more items for smoother scrolling
+        // Optimize for large lists
+        itemCount: sortedPhotos.length,
+        // Use addAutomaticKeepAlives: false for better memory usage
+        addAutomaticKeepAlives: false,
+        // Use addRepaintBoundaries: true for better rendering performance
+        addRepaintBoundaries: true,
+        itemBuilder: (context, index) {
+          final photo = sortedPhotos[index];
+
+          // The interactive tile with existing behavior
+          final Widget tile = RepaintBoundary(
+            child: Listener(
+              onPointerDown: (event) {
+                if (event.buttons == kMiddleMouseButton) {
+                  // Tıklanan fotoğrafı seçili fotoğraf olarak ayarla
+                  homeViewModel.setSelectedPhoto(photo);
+
+                  // Mark as viewed when opening fullscreen via middle click
+                  photo.markViewed();
+
+                  // Tam ekran görünümüne geç
+                  Navigator.push(
+                    context,
+                    PageRouteBuilder(
+                      settings: const RouteSettings(name: 'fullscreen_image'),
+                      pageBuilder: (context, animation, secondaryAnimation) => FullScreenImage(
+                        photo: photo,
+                        filteredPhotos: sortedPhotos,
+                      ),
                     ),
-                  ),
-                );
-              }
-            },
-            child: GestureDetector(
-              onTap: () {
-                // Get keyboard modifiers
-                final bool isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
-                final bool isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
-                final bool selectionModeActive = homeViewModel.hasSelectedPhotos;
-
-                // Mark as viewed on any tap interaction
-                photo.markViewed();
-
-                // Shift+click: select range from anchor (primary selected) to tapped photo
-                if (isShiftPressed && homeViewModel.selectedPhoto != null) {
-                  homeViewModel.selectRange(sortedPhotos, photo);
-                }
-                // Ctrl+click or existing selection: toggle individual selection
-                else if (isCtrlPressed || selectionModeActive) {
-                  homeViewModel.togglePhotoSelection(photo);
-                }
-                // Otherwise, normal selection
-                else {
-                  homeViewModel.handlePhotoTap(photo, isCtrlPressed: isCtrlPressed);
+                  );
                 }
               },
-              onSecondaryTapDown: (details) {
-                homeViewModel.handlePhotoTap(photo);
-                _showPhotoContextMenu(context, photo, photoManager, tagManager, details.globalPosition);
-              },
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  _buildPhotoContainer(photo, homeViewModel, context, settingsManager),
-                  _buildPhotoOverlay(photo, tagManager),
-                ],
+              child: GestureDetector(
+                onTap: () {
+                  // Get keyboard modifiers
+                  final bool isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
+                  final bool isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
+                  final bool selectionModeActive = homeViewModel.hasSelectedPhotos;
+
+                  // Mark as viewed on any tap interaction
+                  photo.markViewed();
+
+                  // Shift+click: select range from anchor (primary selected) to tapped photo
+                  if (isShiftPressed && homeViewModel.selectedPhoto != null) {
+                    homeViewModel.selectRange(sortedPhotos, photo);
+                  }
+                  // Ctrl+click or existing selection: toggle individual selection
+                  else if (isCtrlPressed || selectionModeActive) {
+                    homeViewModel.togglePhotoSelection(photo);
+                  }
+                  // Otherwise, normal selection
+                  else {
+                    homeViewModel.handlePhotoTap(photo, isCtrlPressed: isCtrlPressed);
+                  }
+                },
+                onSecondaryTapDown: (details) {
+                  homeViewModel.handlePhotoTap(photo);
+                  _showPhotoContextMenu(context, photo, photoManager, tagManager, details.globalPosition);
+                },
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    _buildPhotoContainer(photo, homeViewModel, context, settingsManager),
+                    _buildPhotoOverlay(photo, tagManager),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
+          );
 
-        // Wrap tile with native drag source for dragging to Desktop/Explorer
-        return sdd.DragItemWidget(
-          dragItemProvider: (request) async {
-            final item = sdd.DragItem();
-            try {
-              item.add(sdd.Formats.fileUri(Uri.file(photo.path)));
-            } catch (e) {
-              debugPrint('DragItemProvider error: $e');
-              return null;
-            }
-            return item;
-          },
-          allowedOperations: () => [sdd.DropOperation.copy],
-          child: sdd.DraggableWidget(child: tile),
-        );
-      },
-    );
+          // Wrap tile with native drag source for dragging to Desktop/Explorer
+          return sdd.DragItemWidget(
+            dragItemProvider: (request) async {
+              final item = sdd.DragItem();
+              try {
+                item.add(sdd.Formats.fileUri(Uri.file(photo.path)));
+              } catch (e) {
+                debugPrint('DragItemProvider error: $e');
+                return null;
+              }
+              return item;
+            },
+            allowedOperations: () => [sdd.DropOperation.copy],
+            child: sdd.DraggableWidget(child: tile),
+          );
+        },
+      );
+    });
   }
 
   Widget _buildPhotoContainer(Photo photo, HomeViewModel homeViewModel, BuildContext context, SettingsManager settingsManager) {
@@ -812,8 +867,8 @@ class _PhotoGridState extends State<PhotoGrid> {
         // Show NEW badge if photo not viewed yet
         if (!photo.isViewed)
           Positioned(
-            top: 6,
-            left: 8,
+            bottom: 6,
+            right: 8,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
@@ -887,7 +942,7 @@ class _PhotoGridState extends State<PhotoGrid> {
           ),
         Positioned(
           top: 6,
-          right: 8,
+          right: 0,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
