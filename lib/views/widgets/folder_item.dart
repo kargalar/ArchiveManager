@@ -589,23 +589,65 @@ class FolderItem extends StatelessWidget {
                           ),
                           const SizedBox(width: 10),
                           Expanded(
-                            child: Row(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (isProblematic || !Directory(folder).existsSync())
-                                  Padding(
-                                    padding: const EdgeInsets.only(right: 4.0),
-                                    child: Icon(Icons.warning_amber_rounded, color: hasParentMissing ? Colors.red : Colors.orange, size: 16),
-                                  ),
-                                Expanded(
-                                  child: Text(
-                                    folderName,
-                                    style: TextStyle(
-                                      color: isSelected ? Colors.blue : (hasParentMissing ? Colors.red : (isMissing ? Colors.orange : Colors.white)),
-                                      fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
-                                      fontSize: 13,
+                                Row(
+                                  children: [
+                                    if (isProblematic || !Directory(folder).existsSync())
+                                      Padding(
+                                        padding: const EdgeInsets.only(right: 4.0),
+                                        child: Icon(Icons.warning_amber_rounded, color: hasParentMissing ? Colors.red : Colors.orange, size: 16),
+                                      ),
+                                    Expanded(
+                                      child: Text(
+                                        folderName,
+                                        style: TextStyle(
+                                          color: isSelected ? Colors.blue : (hasParentMissing ? Colors.red : (isMissing ? Colors.orange : Colors.white)),
+                                          fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
+                                          fontSize: 13,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                                  ],
+                                ),
+                                // Show auto-tags if any exist
+                                Consumer<FolderManager>(
+                                  builder: (context, folderManager, child) {
+                                    final folderObj = folderManager.getFolderObject(folder);
+                                    if (folderObj?.autoTags.isNotEmpty == true) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 2.0),
+                                        child: Wrap(
+                                          spacing: 4,
+                                          runSpacing: 2,
+                                          children: folderObj!.autoTags.map((tag) {
+                                            return Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: tag.color.withAlpha(80),
+                                                borderRadius: BorderRadius.circular(8),
+                                                border: Border.all(
+                                                  color: tag.color.withAlpha(120),
+                                                  width: 0.5,
+                                                ),
+                                              ),
+                                              child: Text(
+                                                tag.name,
+                                                style: TextStyle(
+                                                  color: tag.color,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            );
+                                          }).toList(),
+                                        ),
+                                      );
+                                    }
+                                    return const SizedBox.shrink();
+                                  },
                                 ),
                               ],
                             ),
