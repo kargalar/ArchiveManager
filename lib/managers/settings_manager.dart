@@ -669,4 +669,25 @@ class SettingsManager extends ChangeNotifier {
       return false;
     }
   }
+
+  // Clear 'viewed' status for all photos so they appear as NEW again
+  Future<int> clearViewedStatus() async {
+    try {
+      final photoBox = Hive.box<Photo>('photos');
+      int clearedCount = 0;
+      for (var i = 0; i < photoBox.length; i++) {
+        final photo = photoBox.getAt(i);
+        if (photo != null && photo.isViewed) {
+          photo.isViewed = false;
+          await photo.save();
+          clearedCount++;
+        }
+      }
+      debugPrint('Cleared viewed status for $clearedCount photos');
+      return clearedCount;
+    } catch (e) {
+      debugPrint('Error clearing viewed status: $e');
+      return -1;
+    }
+  }
 }

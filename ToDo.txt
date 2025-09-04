@@ -1,1 +1,4 @@
-ayarlar sayfasına clear viewed status ekle. yani hepsi tekrar yeni olarak işaretlensin.
+
+sürükle bırkak özelliğini düzeltelim. öncden sürükle bırka ile sol menüdeki klasörlere taşıyabiliyordum. sürükleyererk masaüstüne kopyalayabilme özelliğinden sonra bu bozuldu.
+
+windows gezgininden bir fotoğrafı da sürükleyip kalörün üzerine bırkakarak veya gride bırakarak kopyalabilmek istiyorum

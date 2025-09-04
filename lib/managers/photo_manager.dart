@@ -483,6 +483,11 @@ class PhotoManager extends ChangeNotifier {
     }
   }
 
+  // Force UI to refresh based on current photo states
+  void refresh() {
+    notifyListeners();
+  }
+
   // Tüm fotoğrafları bir kez indeksle - uygulama başlangıcında çağrılır
   void startGlobalIndexing() {
     if (!_isIndexing) {

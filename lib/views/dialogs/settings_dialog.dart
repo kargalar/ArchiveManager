@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../managers/settings_manager.dart';
+import '../../managers/photo_manager.dart';
 import '../../managers/tag_manager.dart';
 import '../widgets/keyboard_shortcuts_guide.dart';
 import 'tag_dialogs.dart';
@@ -117,6 +118,43 @@ class SettingsDialog extends StatelessWidget {
                                 );
                         },
                       ),
+                      const SizedBox(height: 24),
+                      const Divider(),
+                      const SizedBox(height: 24),
+
+                      // Viewed Status Management
+                      const Text('Viewed Status', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      Consumer2<SettingsManager, PhotoManager>(
+                        builder: (context, settingsManager, photoManager, child) {
+                          return ElevatedButton.icon(
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Clear viewed status (mark all as NEW)'),
+                            onPressed: () async {
+                              final cleared = await settingsManager.clearViewedStatus();
+                              // Refresh UI to reflect NEW badges immediately
+                              photoManager.refresh();
+                              if (!context.mounted) return;
+                              if (cleared >= 0) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Cleared viewed status for $cleared photos'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Failed to clear viewed status'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            },
+                          );
+                        },
+                      ),
+
                       const SizedBox(height: 24),
                       const Divider(),
                       const SizedBox(height: 24),
