@@ -277,12 +277,13 @@ class PhotoManager extends ChangeNotifier {
   void _applyAutoTagsToPhoto(Photo photo, String photoPath) {
     if (_folderManager == null) return;
 
-    // Find all folders that contain this photo and have auto-tags
-    for (var folder in _folderManager!.folders) {
-      // Check if photo is in this folder
-      if (photoPath.startsWith(folder) && _folderManager!.getFolderObject(folder)?.autoTags.isNotEmpty == true) {
-        final folderObj = _folderManager!.getFolderObject(folder)!;
+    // Get all parent paths for this photo
+    final List<String> parentPaths = _getParentPaths(photoPath);
 
+    // Check each parent path for auto-tags
+    for (var path in parentPaths) {
+      final folderObj = _folderManager!.getFolderObject(path);
+      if (folderObj != null && folderObj.autoTags.isNotEmpty) {
         // Apply auto-tags to the photo if it doesn't already have them
         for (var autoTag in folderObj.autoTags) {
           if (!photo.tags.any((tag) => tag.id == autoTag.id)) {
@@ -296,6 +297,27 @@ class PhotoManager extends ChangeNotifier {
         }
       }
     }
+  }
+
+  // Get all parent directory paths for a file path
+  List<String> _getParentPaths(String filePath) {
+    final List<String> paths = [];
+    final separator = Platform.pathSeparator;
+    final parts = filePath.split(separator);
+
+    // Remove the filename (last part)
+    parts.removeLast();
+
+    // Build cumulative paths
+    String currentPath = '';
+    for (var part in parts) {
+      if (part.isNotEmpty) {
+        currentPath += (currentPath.isEmpty ? '' : separator) + part;
+        paths.add(currentPath);
+      }
+    }
+
+    return paths;
   }
 
   // Apply auto-tags to all photos in a folder (when folder gets new auto-tags)

@@ -86,6 +86,19 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                 ),
+                // Yenile butonu
+                IconButton(
+                  icon: const Icon(Icons.refresh, color: Colors.white),
+                  tooltip: 'Yenile',
+                  onPressed: () async {
+                    // Seçili klasör varsa onu, yoksa tüm klasörleri yenile
+                    if (folderManager.selectedFolder != null) {
+                      await photoManager.loadPhotosFromFolder(folderManager.selectedFolder!);
+                    } else {
+                      await photoManager.loadPhotosFromMultipleFolders(folderManager.folders);
+                    }
+                  },
+                ),
                 // Show indexing progress using StreamBuilder - always show regardless of selected folder
                 StreamBuilder<IndexingState>(
                   stream: photoManager.indexingStream,

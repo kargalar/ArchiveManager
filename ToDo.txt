@@ -1,9 +1,36 @@
-sürükle bırkak özelliğini düzeltelim. öncden sürükle bırka ile sol menüdeki klasörlere taşıyabiliyordum. sürükleyererk masaüstüne kopyalayabilme özelliğinden sonra bu bozuldu.
+## Yapılacaklar Listesi
 
-windows gezgininden bir fotoğrafı da sürükleyip kalörün üzerine bırkakarak veya gride bırakarak kopyalabilmek istiyorum
+### 1. Sürükle Bırak Özelliğini Düzelt
+- Önceden sürükle bırak ile sol menüdeki klasörlere taşıyabiliyordum.
+- Sürükleyerek masaüstüne kopyalama özelliğinden sonra bu bozuldu.
+- Windows gezgininden bir fotoğrafı sürükleyip klasörün üzerine bırakarak veya gride bırakarak kopyalayabilmek istiyorum.
 
-klasör sisteminin yenileyelim.  klasörler direkt path olarak çseçiliecek windowsta ne ise uygulamada da aynı şekilde gösterilecek. klasörün alt klasörü tekrar eklenemeyecek. üst klasörü eklenirse de ekra oalrak eklemek yerine sadece üst klasör gösterilecek gibi oalcak.
+### 2. Klasör Sistemini Yenile
+- Klasörler direkt path olarak seçilecek, Windows'ta ne ise uygulamada da aynı şekilde gösterilecek.
+- Klasörün alt klasörü tekrar eklenemeyecek.
+- Üst klasörü eklenirse, ekran olarak eklemek yerine sadece üst klasör gösterilecek.
 
-klasörler şuan zaten remove list diyerek çıkartılıyor. onun yerine hide yazalım. ayrıca hide oaln klasörler ayarlardan tekrar açılabilsinler.
+### 3. Klasör Yönetimi
+- Klasörler şuan "remove list" diyerek çıkartılıyor. Bunun yerine "hide" yazalım.
+- Hide olan klasörler ayarlardan tekrar açılabilsin.
+- Yeni klasör oluşturulabilsin.
+- Klasörler taşınabilsin.
+- Yeniden isimlendirilebilsin.
 
-yeni klasör oluşturulabilsin. klasörler taşınabilsin. yeniden isimlendirilebilsin. 
+### 5. Yenile Butonu
+- Uygulamada yenile butonu ekle.
+
+### 6. Film Öneri Sistemi
+- Kullanıcılar birbirlerine film önerileri gönderebilsinler.
+- Önerilen filmler "Önerilenler" klasöründe gözüksün.
+
+### 7. ai yeniden çiz
+- Kullanıcılar fotoğraflarını seçip ai ile yeniden çizebilsinler.
+- benzerlerini üret diyebilsinler.
+
+### aynı dptoğrafları bulma özelliğinden
+
+yüzleri bulma
+klasör üsilince veya fotoğrafı silince birşeylero luyor kontol et düzeltelim
+
+resmin yüksek çözünlürlüklü versiyonun bul özlelliğ

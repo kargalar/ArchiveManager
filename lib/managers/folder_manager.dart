@@ -544,6 +544,11 @@ class FolderManager extends ChangeNotifier {
     debugPrint('UI refresh complete. Folders: ${_folders.length}, Filtered: ${_filteredFolders.length}');
   }
 
+  // Trigger UI update after folder tag changes
+  void triggerTagUpdate() {
+    notifyListeners();
+  }
+
   // Remove folder from list while preserving photos (for folder replacement)
   Future<void> removeFolderFromListPreservingPhotos(String path) async {
     // Check if the folder is in any of our lists

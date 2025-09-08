@@ -615,14 +615,36 @@ class FolderItem extends StatelessWidget {
                                 // Show auto-tags if any exist
                                 Consumer<FolderManager>(
                                   builder: (context, folderManager, child) {
-                                    final folderObj = folderManager.getFolderObject(folder);
-                                    if (folderObj?.autoTags.isNotEmpty == true) {
+                                    final allTags = <String, dynamic>{}; // Map to avoid duplicates by tag id
+
+                                    // Get all parent paths for this folder
+                                    final parentPaths = _getParentPaths(folder);
+
+                                    // Collect auto-tags from all parent paths
+                                    for (var path in parentPaths) {
+                                      final folderObj = folderManager.getFolderObject(path);
+                                      if (folderObj?.autoTags.isNotEmpty == true) {
+                                        for (var tag in folderObj!.autoTags) {
+                                          allTags[tag.id] = tag;
+                                        }
+                                      }
+                                    }
+
+                                    // Also add auto-tags from the current folder itself
+                                    final currentFolderObj = folderManager.getFolderObject(folder);
+                                    if (currentFolderObj?.autoTags.isNotEmpty == true) {
+                                      for (var tag in currentFolderObj!.autoTags) {
+                                        allTags[tag.id] = tag;
+                                      }
+                                    }
+
+                                    if (allTags.isNotEmpty) {
                                       return Padding(
                                         padding: const EdgeInsets.only(top: 2.0),
                                         child: Wrap(
                                           spacing: 4,
                                           runSpacing: 2,
-                                          children: folderObj!.autoTags.map((tag) {
+                                          children: allTags.values.map((tag) {
                                             return Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                               decoration: BoxDecoration(
@@ -733,7 +755,7 @@ class FolderItem extends StatelessWidget {
                 ],
               ),
               content: SizedBox(
-                width: 400,
+                width: 600,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -744,13 +766,22 @@ class FolderItem extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Container(
-                      constraints: const BoxConstraints(maxHeight: 300),
+                      constraints: const BoxConstraints(maxHeight: 500),
                       child: SingleChildScrollView(
-                        child: Column(
-                          children: availableTags.map((tag) {
+                        child: GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 4.5,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                          ),
+                          itemCount: availableTags.length,
+                          itemBuilder: (context, index) {
+                            final tag = availableTags[index];
                             final isSelected = folder.hasAutoTag(tag);
                             return Container(
-                              margin: const EdgeInsets.only(bottom: 8),
                               decoration: BoxDecoration(
                                 color: isSelected ? tag.color.withAlpha(30) : Colors.grey.withAlpha(10),
                                 borderRadius: BorderRadius.circular(8),
@@ -760,10 +791,10 @@ class FolderItem extends StatelessWidget {
                                 ),
                               ),
                               child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                 leading: Container(
-                                  width: 32,
-                                  height: 32,
+                                  width: 28,
+                                  height: 28,
                                   decoration: BoxDecoration(
                                     color: tag.color.withAlpha(50),
                                     borderRadius: BorderRadius.circular(6),
@@ -771,34 +802,40 @@ class FolderItem extends StatelessWidget {
                                   child: Icon(
                                     Icons.label,
                                     color: tag.color,
-                                    size: 18,
+                                    size: 16,
                                   ),
                                 ),
                                 title: Text(
                                   tag.name,
                                   style: const TextStyle(
-                                    fontSize: 14,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w500,
                                   ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                trailing: Checkbox(
-                                  value: isSelected,
-                                  activeColor: tag.color,
-                                  onChanged: (value) async {
-                                    setState(() {
-                                      if (value == true) {
-                                        folder.addAutoTag(tag);
-                                        // Apply the tag to existing photos in the folder
-                                        photoManager.applyAutoTagsToFolderPhotos(folderPath, [tag]);
-                                      } else {
-                                        folder.removeAutoTag(tag);
-                                        // Remove the tag from photos in the folder (only auto-applied ones)
-                                        photoManager.removeAutoTagFromFolderPhotos(folderPath, tag);
-                                      }
-                                    });
-                                    // Save the folder object
-                                    await folder.save();
-                                  },
+                                trailing: Transform.scale(
+                                  scale: 0.8,
+                                  child: Checkbox(
+                                    value: isSelected,
+                                    activeColor: tag.color,
+                                    onChanged: (value) async {
+                                      setState(() {
+                                        if (value == true) {
+                                          folder.addAutoTag(tag);
+                                          // Apply the tag to existing photos in the folder
+                                          photoManager.applyAutoTagsToFolderPhotos(folderPath, [tag]);
+                                        } else {
+                                          folder.removeAutoTag(tag);
+                                          // Remove the tag from photos in the folder (only auto-applied ones)
+                                          photoManager.removeAutoTagFromFolderPhotos(folderPath, tag);
+                                        }
+                                      });
+                                      // Save the folder object
+                                      await folder.save();
+                                      // FolderManager'ı güncelle ki UI anında yenilensin
+                                      folderManager.triggerTagUpdate();
+                                    },
+                                  ),
                                 ),
                                 onTap: () async {
                                   setState(() {
@@ -812,10 +849,12 @@ class FolderItem extends StatelessWidget {
                                   });
                                   // Save the folder object
                                   await folder.save();
+                                  // FolderManager'ı güncelle ki UI anında yenilensin
+                                  folderManager.triggerTagUpdate();
                                 },
                               ),
                             );
-                          }).toList(),
+                          },
                         ),
                       ),
                     ),
@@ -833,5 +872,26 @@ class FolderItem extends StatelessWidget {
         );
       },
     );
+  }
+
+  // Get all parent directory paths for a folder path
+  List<String> _getParentPaths(String folderPath) {
+    final List<String> paths = [];
+    final separator = Platform.pathSeparator;
+    final parts = folderPath.split(separator);
+
+    // Remove the folder name (last part)
+    parts.removeLast();
+
+    // Build cumulative paths
+    String currentPath = '';
+    for (var part in parts) {
+      if (part.isNotEmpty) {
+        currentPath += (currentPath.isEmpty ? '' : separator) + part;
+        paths.add(currentPath);
+      }
+    }
+
+    return paths;
   }
 }
