@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import 'package:vector_math/vector_math_64.dart' hide Colors;
+import 'package:super_drag_and_drop/super_drag_and_drop.dart' as sdd;
 import '../../models/photo.dart';
 import '../../models/sort_state.dart';
 import '../../managers/photo_manager.dart';
@@ -49,6 +50,9 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
   bool _isDragging = false;
   Offset? _lastDragPosition;
   DateTime? _middleMouseDownTime;
+
+  // Key to access this screen's DragItemWidget state for multi-item drag
+  final GlobalKey<sdd.DragItemWidgetState> _dragKey = GlobalKey<sdd.DragItemWidgetState>();
 
   // Artık sıralama durumunu takip etmeye gerek yok
 
@@ -517,157 +521,224 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                     },
                     child: Center(
                       child: SizedBox.expand(
-                        child: InteractiveViewer(
-                          transformationController: _transformationController,
-                          minScale: _minScale,
-                          maxScale: _maxScale,
-                          onInteractionEnd: (details) {
-                            // Güncellenen ölçeği kaydet
-                            final scale = _transformationController.value.getMaxScaleOnAxis();
-                            setState(() {
-                              _currentScale = scale;
-                              // Zoom durumuna göre cursor güncellenir
-                              // (MouseRegion widget'inin cursor özelliği otomatik olarak güncellenecek)
-                            });
+                        child: sdd.DragItemWidget(
+                          key: _dragKey,
+                          dragItemProvider: (request) async {
+                            final item = sdd.DragItem();
+                            try {
+                              // Her DragItem yalnızca mevcut fotoğrafı temsil eder
+                              debugPrint('Preparing drag item for current photo: ${_currentPhoto.path}');
+                              item.add(sdd.Formats.fileUri(Uri.file(_currentPhoto.path)));
+                            } catch (e) {
+                              debugPrint('DragItemProvider error: $e');
+                              return null;
+                            }
+                            return item;
                           },
-                          child: Image.file(
-                            File(_currentPhoto.path),
-                            fit: BoxFit.contain,
+                          allowedOperations: () => [sdd.DropOperation.copy],
+                          child: sdd.DraggableWidget(
+                            // Provide multi-item drag when multiple photos are selected
+                            dragItemsProvider: (ctx) {
+                              final vm = Provider.of<HomeViewModel>(ctx, listen: false);
+                              final List<sdd.DragItemWidgetState> items = [];
+                              final self = _dragKey.currentState;
+                              if (self != null) items.add(self);
+
+                              if (vm.hasSelectedPhotos) {
+                                // Note: In fullscreen we only have this one DragItemWidget.
+                                // Returning single item here allows native drop to still include this photo.
+                                // The grid view is the primary place for multi-select multi-drag.
+                                // If desired in the future, we can render hidden DragItemWidgets for the rest.
+                              }
+                              return items;
+                            },
+                            child: InteractiveViewer(
+                              transformationController: _transformationController,
+                              minScale: _minScale,
+                              maxScale: _maxScale,
+                              onInteractionEnd: (details) {
+                                // Güncellenen ölçeği kaydet
+                                final scale = _transformationController.value.getMaxScaleOnAxis();
+                                setState(() {
+                                  _currentScale = scale;
+                                  // Zoom durumuna göre cursor güncellenir
+                                  // (MouseRegion widget'inin cursor özelliği otomatik olarak güncellenecek)
+                                });
+                              },
+                              child: Image.file(
+                                File(_currentPhoto.path),
+                                fit: BoxFit.contain,
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
                 )),
-            if (!_zenMode)
+            // Sürükleme bilgisi gösterimi
+            if (homeViewModel.hasSelectedPhotos && !_zenMode)
               Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          _autoNext ? Icons.skip_next : Icons.skip_next_outlined,
-                          color: _autoNext ? Colors.blue : Colors.white70,
-                        ),
-                        onPressed: () {
-                          final settingsManager = Provider.of<SettingsManager>(context, listen: false);
-                          setState(() {
-                            _autoNext = !_autoNext;
-                            settingsManager.setFullscreenAutoNext(_autoNext);
-                          });
-                        },
-                        tooltip: 'Auto Next (Shift)',
+                top: 60,
+                left: 16,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withAlpha(204), // 0.8 opacity
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(51), // 0.2 opacity
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
                       ),
-                      Row(
-                        children: [
-                          if (_currentPhoto.tags.isNotEmpty)
-                            Wrap(
-                              spacing: 4,
-                              runSpacing: 4,
-                              alignment: WrapAlignment.end,
-                              children: _currentPhoto.tags
-                                  .map((tag) => Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: tag.color,
-                                          borderRadius: BorderRadius.circular(6),
-                                          border: Border.all(color: Colors.white24, width: 1),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black,
-                                              blurRadius: 2,
-                                              offset: const Offset(0, 1),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Text(
-                                          tag.name,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ))
-                                  .toList(),
-                            ),
-                          if (_currentPhoto.rating > 0)
-                            Row(
-                              children: [
-                                const Icon(Icons.star, size: 18, color: Colors.amber),
-                                const SizedBox(width: 4),
-                                Text(
-                                  _currentPhoto.rating.toString(),
-                                  style: const TextStyle(color: Colors.amber),
-                                ),
-                              ],
-                            ),
-                          // Selection status icon
-                          IconButton(
-                            icon: Icon(
-                              _currentPhoto.isSelected ? Icons.check_circle : Icons.check_circle_outline,
-                              color: _currentPhoto.isSelected ? Colors.blue : Colors.white70,
-                            ),
-                            onPressed: () => homeViewModel.togglePhotoSelection(_currentPhoto),
-                            tooltip: _currentPhoto.isSelected ? 'Seçimi Kaldır (Space/Enter)' : 'Seç (Space/Enter)',
-                          ),
-                          // Favorite icon
-                          IconButton(
-                            icon: Icon(
-                              _currentPhoto.isFavorite ? Icons.favorite : Icons.favorite_border,
-                              color: _currentPhoto.isFavorite ? Colors.red : Colors.white70,
-                            ),
-                            onPressed: () {
-                              final photoManager = Provider.of<PhotoManager>(context, listen: false);
-                              photoManager.toggleFavorite(_currentPhoto);
-
-                              // Tam ekranda da state'i güncelle
-                              setState(() {
-                                // Bu sadece UI'ı yeniden render etmek için
-                              });
-
-                              // Eğer otomatik geçiş açıksa, sonraki fotoğrafa geç
-                              if (_autoNext) {
-                                final currentIndex = filteredPhotos.indexOf(_currentPhoto);
-                                if (currentIndex < filteredPhotos.length - 1) {
-                                  // Kısa bir gecikme ekleyerek kullanıcının favoriye eklediğini görmesini sağla
-                                  Future.delayed(const Duration(milliseconds: 200), () {
-                                    if (mounted) {
-                                      _moveToNextPhoto(filteredPhotos);
-                                    }
-                                  });
-                                }
-                              }
-                            },
-                            tooltip: 'Toggle Favorite (F)',
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.info_outline, color: _showInfo ? Colors.blue : Colors.white70),
-                            onPressed: () {
-                              final settingsManager = Provider.of<SettingsManager>(context, listen: false);
-                              setState(() {
-                                _showInfo = !_showInfo;
-                                settingsManager.setShowImageInfo(_showInfo);
-                              });
-                            },
-                            tooltip: _showInfo ? 'Hide Info (Ctrl)' : 'Show Info (Ctrl)',
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close, color: Colors.white70),
-                            onPressed: () => Navigator.of(context).pop(),
-                            tooltip: 'Close (ESC)',
-                          ),
-                        ],
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.drag_handle, size: 16, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Sürükle bırak: ${homeViewModel.selectedPhotos.length} fotoğraf kopyalanacak',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        _autoNext ? Icons.skip_next : Icons.skip_next_outlined,
+                        color: _autoNext ? Colors.blue : Colors.white70,
+                      ),
+                      onPressed: () {
+                        final settingsManager = Provider.of<SettingsManager>(context, listen: false);
+                        setState(() {
+                          _autoNext = !_autoNext;
+                          settingsManager.setFullscreenAutoNext(_autoNext);
+                        });
+                      },
+                      tooltip: 'Auto Next (Shift)',
+                    ),
+                    Row(
+                      children: [
+                        if (_currentPhoto.tags.isNotEmpty)
+                          Wrap(
+                            spacing: 4,
+                            runSpacing: 4,
+                            alignment: WrapAlignment.end,
+                            children: _currentPhoto.tags
+                                .map((tag) => Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: tag.color,
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: Colors.white24, width: 1),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black,
+                                            blurRadius: 2,
+                                            offset: const Offset(0, 1),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Text(
+                                        tag.name,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ))
+                                .toList(),
+                          ),
+                        if (_currentPhoto.rating > 0)
+                          Row(
+                            children: [
+                              const Icon(Icons.star, size: 18, color: Colors.amber),
+                              const SizedBox(width: 4),
+                              Text(
+                                _currentPhoto.rating.toString(),
+                                style: const TextStyle(color: Colors.amber),
+                              ),
+                            ],
+                          ),
+                        // Selection status icon
+                        IconButton(
+                          icon: Icon(
+                            _currentPhoto.isSelected ? Icons.check_circle : Icons.check_circle_outline,
+                            color: _currentPhoto.isSelected ? Colors.blue : Colors.white70,
+                          ),
+                          onPressed: () => homeViewModel.togglePhotoSelection(_currentPhoto),
+                          tooltip: _currentPhoto.isSelected ? 'Seçimi Kaldır (Space/Enter)' : 'Seç (Space/Enter)',
+                        ),
+                        // Favorite icon
+                        IconButton(
+                          icon: Icon(
+                            _currentPhoto.isFavorite ? Icons.favorite : Icons.favorite_border,
+                            color: _currentPhoto.isFavorite ? Colors.red : Colors.white70,
+                          ),
+                          onPressed: () {
+                            final photoManager = Provider.of<PhotoManager>(context, listen: false);
+                            photoManager.toggleFavorite(_currentPhoto);
+
+                            // Tam ekranda da state'i güncelle
+                            setState(() {
+                              // Bu sadece UI'ı yeniden render etmek için
+                            });
+
+                            // Eğer otomatik geçiş açıksa, sonraki fotoğrafa geç
+                            if (_autoNext) {
+                              final currentIndex = filteredPhotos.indexOf(_currentPhoto);
+                              if (currentIndex < filteredPhotos.length - 1) {
+                                // Kısa bir gecikme ekleyerek kullanıcının favoriye eklediğini görmesini sağla
+                                Future.delayed(const Duration(milliseconds: 200), () {
+                                  if (mounted) {
+                                    _moveToNextPhoto(filteredPhotos);
+                                  }
+                                });
+                              }
+                            }
+                          },
+                          tooltip: 'Toggle Favorite (F)',
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.info_outline, color: _showInfo ? Colors.blue : Colors.white70),
+                          onPressed: () {
+                            final settingsManager = Provider.of<SettingsManager>(context, listen: false);
+                            setState(() {
+                              _showInfo = !_showInfo;
+                              settingsManager.setShowImageInfo(_showInfo);
+                            });
+                          },
+                          tooltip: _showInfo ? 'Hide Info (Ctrl)' : 'Show Info (Ctrl)',
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white70),
+                          onPressed: () => Navigator.of(context).pop(),
+                          tooltip: 'Close (ESC)',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
             if (_showInfo && !_zenMode)
               AnimatedPositioned(
                 duration: const Duration(milliseconds: 200),
@@ -772,6 +843,29 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                               ),
                             ],
                           ),
+                          // Seçili fotoğraf sayısını göster
+                          if (homeViewModel.hasSelectedPhotos) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withAlpha(51), // 0.2 opacity
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.blue.withAlpha(102)), // 0.4 opacity
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.photo_library, size: 12, color: Colors.blue),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${homeViewModel.selectedPhotos.length} seçili',
+                                    style: const TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     );

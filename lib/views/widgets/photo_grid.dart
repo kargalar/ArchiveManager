@@ -28,6 +28,9 @@ class _PhotoGridState extends State<PhotoGrid> {
   // Scroll controller to enable programmatic scrolling
   final ScrollController _scrollController = ScrollController();
 
+  // Keep a DragItemWidgetState key per photo so we can build multi-item drags
+  final Map<String, GlobalKey<sdd.DragItemWidgetState>> _dragKeysByPath = {};
+
   // Sorting durumunu yönetmek için
   SortState? _lastResolutionSortState;
   SortState? _lastDateSortState;
@@ -498,9 +501,13 @@ class _PhotoGridState extends State<PhotoGrid> {
 
           // Wrap tile with native drag source for dragging to Desktop/Explorer
           return sdd.DragItemWidget(
+            // Assign a persistent key so we can reference this item when building multi-drag
+            key: _dragKeysByPath.putIfAbsent(photo.path, () => GlobalKey<sdd.DragItemWidgetState>()),
             dragItemProvider: (request) async {
               final item = sdd.DragItem();
               try {
+                // Her DragItem bu karo ile ilişkili tek bir dosyayı temsil etsin
+                debugPrint('Preparing drag item for: ${photo.path}');
                 item.add(sdd.Formats.fileUri(Uri.file(photo.path)));
               } catch (e) {
                 debugPrint('DragItemProvider error: $e');
@@ -509,7 +516,37 @@ class _PhotoGridState extends State<PhotoGrid> {
               return item;
             },
             allowedOperations: () => [sdd.DropOperation.copy],
-            child: sdd.DraggableWidget(child: tile),
+            child: sdd.DraggableWidget(
+              // Build a multi-item drag when there are selected photos
+              dragItemsProvider: (ctx) {
+                final vm = Provider.of<HomeViewModel>(ctx, listen: false);
+                final List<sdd.DragItemWidgetState> items = [];
+
+                // Always include this tile as primary item if available
+                final key = _dragKeysByPath[photo.path];
+                final currentState = key?.currentState;
+                if (currentState != null) {
+                  items.add(currentState);
+                }
+
+                // If multi-select is active, include other visible selected tiles
+                if (vm.hasSelectedPhotos) {
+                  for (final selected in vm.selectedPhotos) {
+                    if (selected.path == photo.path) continue; // already added
+                    final skey = _dragKeysByPath[selected.path];
+                    final sState = skey?.currentState;
+                    if (sState != null) {
+                      items.add(sState);
+                    }
+                  }
+                }
+
+                // This returns 1..N items (one per file). Platforms like Windows Explorer
+                // will treat this as a multi-file drag and copy all of them.
+                return items;
+              },
+              child: tile,
+            ),
           );
         },
       );
