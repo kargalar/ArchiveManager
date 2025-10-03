@@ -503,89 +503,103 @@ class _FolderMenuState extends State<FolderMenu> {
                   ],
                 ),
               ),
-              // Tags
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: tagManager.tags.map((tag) {
-                    final isPositive = filterManager.positiveTagFilters.contains(tag);
-                    final isNegative = filterManager.negativeTagFilters.contains(tag);
-                    Color bgColor;
-                    Color borderColor;
-                    Color textColor;
-                    IconData? icon;
+              // Tags - Scrollable container with max height
+              ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxHeight: 200, // Maximum height before scrolling
+                ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: tagManager.tags.map((tag) {
+                      final isPositive = filterManager.positiveTagFilters.contains(tag);
+                      final isNegative = filterManager.negativeTagFilters.contains(tag);
+                      Color bgColor;
+                      Color borderColor;
+                      Color textColor;
+                      IconData? icon;
 
-                    if (isPositive) {
-                      bgColor = tag.color;
-                      borderColor = _darkenColor(tag.color, 0.2);
-                      textColor = Colors.white;
-                      icon = Icons.check;
-                    } else if (isNegative) {
-                      bgColor = Colors.grey[900]!;
-                      borderColor = tag.color;
-                      textColor = tag.color;
-                      icon = Icons.close;
-                    } else {
-                      bgColor = tag.color.withAlpha(40);
-                      borderColor = tag.color.withAlpha(100);
-                      textColor = Colors.white70;
-                      icon = null;
-                    }
+                      if (isPositive) {
+                        bgColor = tag.color;
+                        borderColor = _darkenColor(tag.color, 0.2);
+                        textColor = Colors.white;
+                        icon = Icons.check;
+                      } else if (isNegative) {
+                        bgColor = Colors.grey[900]!;
+                        borderColor = tag.color;
+                        textColor = tag.color;
+                        icon = Icons.close;
+                      } else {
+                        bgColor = tag.color.withAlpha(40);
+                        borderColor = tag.color.withAlpha(100);
+                        textColor = Colors.white70;
+                        icon = null;
+                      }
 
-                    return Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () => filterManager.toggleTagTriState(tag),
-                        onSecondaryTap: () {
-                          // Reset this tag's state only
-                          if (filterManager.positiveTagFilters.contains(tag)) {
-                            filterManager.positiveTagFilters.remove(tag);
-                          }
-                          if (filterManager.negativeTagFilters.contains(tag)) {
-                            filterManager.negativeTagFilters.remove(tag);
-                          }
-                          // Update filter mode
-                          if (filterManager.positiveTagFilters.isEmpty && filterManager.negativeTagFilters.isEmpty) {
-                            filterManager.setTagFilterMode('none');
-                          }
-                          // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
-                          filterManager.notifyListeners();
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: bgColor,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: borderColor,
-                              width: isPositive ? 2 : 1,
+                      return Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => filterManager.toggleTagTriState(tag),
+                          onSecondaryTap: () {
+                            // Reset this tag's state only
+                            if (filterManager.positiveTagFilters.contains(tag)) {
+                              filterManager.positiveTagFilters.remove(tag);
+                            }
+                            if (filterManager.negativeTagFilters.contains(tag)) {
+                              filterManager.negativeTagFilters.remove(tag);
+                            }
+                            // Update filter mode
+                            if (filterManager.positiveTagFilters.isEmpty && filterManager.negativeTagFilters.isEmpty) {
+                              filterManager.setTagFilterMode('none');
+                            }
+                            // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+                            filterManager.notifyListeners();
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: bgColor,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: borderColor,
+                                width: isPositive ? 2 : 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (icon != null) ...[
+                                  Icon(icon, size: 12, color: textColor),
+                                  const SizedBox(width: 4),
+                                ],
+                                Text(
+                                  tag.name,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: textColor,
+                                    fontWeight: isPositive ? FontWeight.bold : FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  "(${tag.shortcutKey.keyLabel.toUpperCase()})",
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: textColor.withAlpha(180),
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (icon != null) ...[
-                                Icon(icon, size: 12, color: textColor),
-                                const SizedBox(width: 4),
-                              ],
-                              Text(
-                                tag.name,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: textColor,
-                                  fontWeight: isPositive ? FontWeight.bold : FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
                         ),
-                      ),
-                    );
-                  }).toList(),
+                      );
+                    }).toList(),
+                  ),
                 ),
               ),
             ],
