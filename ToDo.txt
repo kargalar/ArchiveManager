@@ -34,5 +34,3 @@ yüzleri bulma
 klasör üsilince veya fotoğrafı silince birşeylero luyor kontol et düzeltelim
 
 resmin yüksek çözünlürlüklü versiyonun bul özlelliğ
-
-yeni bir etiket eklerken veya eski etiketlerde aynıo kısayol tuşu varsa uyarılsın

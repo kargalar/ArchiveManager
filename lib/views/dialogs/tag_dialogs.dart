@@ -121,8 +121,30 @@ class _AddTagDialogState extends State<AddTagDialog> {
                   ElevatedButton(
                     onPressed: () {
                       if (nameController.text.isNotEmpty && selectedShortcutKey != null) {
+                        final tagManager = context.read<TagManager>();
+
+                        // Check if shortcut key is already in use
+                        final existingTag = tagManager.getTagByShortcutKey(selectedShortcutKey!);
+                        if (existingTag != null) {
+                          // Show warning dialog
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Duplicate Shortcut Key'),
+                              content: Text('The shortcut key "${selectedShortcutKey!.keyLabel.toUpperCase()}" is already used by the tag "${existingTag.name}". Please choose a different shortcut key.'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('OK'),
+                                ),
+                              ],
+                            ),
+                          );
+                          return;
+                        }
+
                         final tag = Tag(name: nameController.text, color: selectedColor, shortcutKey: selectedShortcutKey!);
-                        context.read<TagManager>().addTag(tag);
+                        tagManager.addTag(tag);
                         Navigator.pop(context);
                       }
                     },
@@ -264,6 +286,27 @@ class _EditTagDialogState extends State<EditTagDialog> {
                     onPressed: () {
                       if (nameController.text.trim().isNotEmpty) {
                         final tagManager = Provider.of<TagManager>(context, listen: false);
+
+                        // Check if shortcut key is already in use by another tag
+                        final existingTag = tagManager.getTagByShortcutKey(selectedShortcutKey, excludeTagId: widget.tag.id);
+                        if (existingTag != null) {
+                          // Show warning dialog
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Duplicate Shortcut Key'),
+                              content: Text('The shortcut key "${selectedShortcutKey.keyLabel.toUpperCase()}" is already used by the tag "${existingTag.name}". Please choose a different shortcut key.'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('OK'),
+                                ),
+                              ],
+                            ),
+                          );
+                          return;
+                        }
+
                         tagManager.updateTag(widget.tag, nameController.text.trim(), selectedColor, selectedShortcutKey);
                         Navigator.pop(context);
                       }

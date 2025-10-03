@@ -22,6 +22,16 @@ class TagManager extends ChangeNotifier {
   List<Tag> get tags => _tagBox?.values.toList() ?? [];
   List<Tag> get selectedTags => _selectedTags;
 
+  // Check if a shortcut key is already in use by another tag
+  Tag? getTagByShortcutKey(LogicalKeyboardKey shortcutKey, {String? excludeTagId}) {
+    for (var tag in tags) {
+      if (tag.shortcutKey == shortcutKey && tag.id != excludeTagId) {
+        return tag;
+      }
+    }
+    return null;
+  }
+
   Future<void> _initTagBox() async {
     _tagBox = await Hive.openBox<Tag>('tags');
     notifyListeners();
