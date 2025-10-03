@@ -39,8 +39,11 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
   late List<Photo> _frozenFilteredPhotos; // Tam ekrana girdiğindeki dondurulmuş liste
   late bool _autoNext;
   late bool _showInfo;
+  late bool _showNotes;
   late bool _zenMode;
   final FocusNode _focusNode = FocusNode();
+  final FocusNode _notesFocusNode = FocusNode();
+  final TextEditingController _notesController = TextEditingController();
   late final Box<Tag> _tagBox;
   final TransformationController _transformationController = TransformationController();
   final double _minScale = 1.0;
@@ -66,7 +69,9 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
     _frozenFilteredPhotos = List.from(widget.filteredPhotos); // Filtrelenmiş listeyi dondur
     _tagBox = Hive.box<Tag>('tags');
     _showInfo = context.read<SettingsManager>().showImageInfo;
+    _showNotes = context.read<SettingsManager>().showNotes;
     _autoNext = context.read<SettingsManager>().fullscreenAutoNext;
+    _notesController.text = _currentPhoto.note;
     _zenMode = false; // Set the static flag to indicate we're in fullscreen mode
     FullScreenImage.isActive = true;
     debugPrint('FullScreenImage: Setting isActive to true');
@@ -183,6 +188,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
     debugPrint('FullScreenImage: Setting isActive to false');
 
     _focusNode.dispose();
+    _notesFocusNode.dispose();
+    _notesController.dispose();
     _transformationController.dispose();
     super.dispose();
   }
@@ -249,6 +256,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
 
       setState(() {
         _currentPhoto = nextPhoto;
+        _notesController.text = nextPhoto.note;
         _resetZoom();
       });
     }
@@ -279,6 +287,23 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
       autofocus: true,
       onKeyEvent: (event) {
         if (event is KeyDownEvent) {
+          // ESC tuşu her zaman çalışsın
+          if (event.logicalKey == LogicalKeyboardKey.escape) {
+            Future.microtask(() {
+              if (mounted) {
+                Navigator.of(context).pop();
+              }
+            });
+            return;
+          }
+
+          // Not yazılıyorsa diğer kısayolları devre dışı bırak
+          // TextField aktifse hiçbir kısayol çalışmasın
+          if (_notesFocusNode.hasFocus) {
+            debugPrint('TextField has focus, ignoring keyboard shortcuts');
+            return;
+          }
+
           final currentIndex = filteredPhotos.indexOf(_currentPhoto);
 
           if (event.logicalKey == LogicalKeyboardKey.arrowLeft && currentIndex > 0) {
@@ -289,6 +314,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
             prevPhoto.markViewed();
             setState(() {
               _currentPhoto = prevPhoto;
+              _notesController.text = prevPhoto.note;
               _resetZoom();
             });
           } else if (event.logicalKey == LogicalKeyboardKey.arrowRight && currentIndex < filteredPhotos.length - 1) {
@@ -299,6 +325,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
             nextPhoto.markViewed();
             setState(() {
               _currentPhoto = nextPhoto;
+              _notesController.text = nextPhoto.note;
               _resetZoom();
             });
           } else if (event.logicalKey == LogicalKeyboardKey.delete) {
@@ -326,21 +353,20 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                 nextPhoto.markViewed();
                 setState(() {
                   _currentPhoto = nextPhoto;
+                  _notesController.text = nextPhoto.note;
                   _resetZoom();
                 });
-              }
-            });
-          } else if (event.logicalKey == LogicalKeyboardKey.escape) {
-            // Use Future.microtask to avoid setState during build
-            Future.microtask(() {
-              if (mounted) {
-                Navigator.of(context).pop();
               }
             });
           } else if (event.logicalKey == LogicalKeyboardKey.controlLeft) {
             setState(() {
               _showInfo = !_showInfo;
               settingsManager.setShowImageInfo(_showInfo);
+            });
+          } else if (event.logicalKey == LogicalKeyboardKey.keyN) {
+            setState(() {
+              _showNotes = !_showNotes;
+              settingsManager.setShowNotes(_showNotes);
             });
           } else if (event.logicalKey == LogicalKeyboardKey.tab) {
             setState(() {
@@ -729,6 +755,17 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                           tooltip: _showInfo ? 'Hide Info (Ctrl)' : 'Show Info (Ctrl)',
                         ),
                         IconButton(
+                          icon: Icon(Icons.note_outlined, color: _showNotes ? Colors.blue : Colors.white70),
+                          onPressed: () {
+                            final settingsManager = Provider.of<SettingsManager>(context, listen: false);
+                            setState(() {
+                              _showNotes = !_showNotes;
+                              settingsManager.setShowNotes(_showNotes);
+                            });
+                          },
+                          tooltip: _showNotes ? 'Hide Notes (N)' : 'Show Notes (N)',
+                        ),
+                        IconButton(
                           icon: const Icon(Icons.close, color: Colors.white70),
                           onPressed: () => Navigator.of(context).pop(),
                           tooltip: 'Close (ESC)',
@@ -870,6 +907,118 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                       ),
                     );
                   },
+                ),
+              ),
+            // Notes panel
+            if (_showNotes && !_zenMode)
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                bottom: 16,
+                left: 16,
+                child: Container(
+                  width: 400,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withAlpha(179), // 0.7 opacity
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withAlpha(26), // 0.1 opacity
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(51), // 0.2 opacity
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.note, color: Colors.white, size: 18),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Notlar',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            icon: const Icon(Icons.save, color: Colors.white70, size: 18),
+                            onPressed: () {
+                              _currentPhoto.updateNote(_notesController.text);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Not kaydedildi'),
+                                  duration: Duration(seconds: 1),
+                                ),
+                              );
+                            },
+                            tooltip: 'Not Kaydet',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      KeyboardListener(
+                        focusNode: FocusNode(skipTraversal: true),
+                        onKeyEvent: (event) {
+                          // TextField için tüm tuş olaylarını engelle (ESC hariç)
+                          if (event.logicalKey == LogicalKeyboardKey.escape) {
+                            return; // ESC'yi yukarı gönder
+                          }
+                          // Diğer tüm tuşları durdur
+                        },
+                        child: Focus(
+                          onFocusChange: (hasFocus) {
+                            debugPrint('TextField focus changed: $hasFocus');
+                          },
+                          child: TextField(
+                            controller: _notesController,
+                            focusNode: _notesFocusNode,
+                            maxLines: 6,
+                            style: const TextStyle(color: Colors.white, fontSize: 13),
+                            decoration: InputDecoration(
+                              hintText: 'Bu fotoğraf için notlarınızı buraya yazın...',
+                              hintStyle: TextStyle(color: Colors.white.withAlpha(128)),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: Colors.white.withAlpha(51)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: Colors.white.withAlpha(51)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(color: Colors.blue),
+                              ),
+                              filled: true,
+                              fillColor: Colors.black.withAlpha(77), // 0.3 opacity
+                              contentPadding: const EdgeInsets.all(12),
+                            ),
+                            onChanged: (value) {
+                              // Auto-save after a short delay
+                              Future.delayed(const Duration(milliseconds: 500), () {
+                                if (_notesController.text == value) {
+                                  _currentPhoto.updateNote(value);
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
           ],

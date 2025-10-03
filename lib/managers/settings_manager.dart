@@ -36,6 +36,7 @@ class SettingsManager extends ChangeNotifier {
   int get photosPerRow => _photosPerRow;
   bool get showImageInfo => _settingsBox?.getAt(0)?.showImageInfo ?? false;
   bool get fullscreenAutoNext => _settingsBox?.getAt(0)?.fullscreenAutoNext ?? false;
+  bool get showNotes => _settingsBox?.getAt(0)?.showNotes ?? false;
   double get dividerPosition => _dividerPosition;
   double get folderMenuWidth => _folderMenuWidth;
   bool get isFullscreen => _settingsBox?.getAt(0)?.isFullscreen ?? false;
@@ -90,6 +91,19 @@ class SettingsManager extends ChangeNotifier {
 
     if (_settingsBox?.getAt(0) != null) {
       _settingsBox!.getAt(0)!.fullscreenAutoNext = value;
+      _settingsBox!.getAt(0)!.save();
+      notifyListeners();
+    }
+  }
+
+  void setShowNotes(bool value) {
+    if (!_isInitialized) {
+      debugPrint('Cannot set showNotes: settings not initialized');
+      return;
+    }
+
+    if (_settingsBox?.getAt(0) != null) {
+      _settingsBox!.getAt(0)!.showNotes = value;
       _settingsBox!.getAt(0)!.save();
       notifyListeners();
     }

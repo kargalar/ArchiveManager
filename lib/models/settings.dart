@@ -45,6 +45,9 @@ class Settings extends HiveObject {
   @HiveField(9, defaultValue: 250)
   double folderMenuWidth;
 
+  @HiveField(10, defaultValue: false)
+  bool showNotes;
+
   Settings({
     this.photosPerRow = 4,
     this.showImageInfo = true,
@@ -56,5 +59,6 @@ class Settings extends HiveObject {
     this.windowTop,
     this.isFullscreen = false,
     this.folderMenuWidth = 250,
+    this.showNotes = false,
   });
 }

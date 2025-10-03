@@ -46,6 +46,10 @@ class Photo extends HiveObject {
   @HiveField(9, defaultValue: false)
   bool isViewed;
 
+  // User notes for the photo
+  @HiveField(10, defaultValue: '')
+  String note;
+
   // isSelected is a transient property (not stored in Hive)
   bool isSelected = false;
 
@@ -60,6 +64,7 @@ class Photo extends HiveObject {
     this.dateModified,
     this.dimensionsLoaded = false,
     this.isViewed = false,
+    this.note = '',
     this.isSelected = false,
   }) : tags = tags ?? [];
 
@@ -100,6 +105,17 @@ class Photo extends HiveObject {
       } catch (e) {
         debugPrint('Photo.markViewed ERROR: $e');
       }
+    }
+  }
+
+  // Update photo note
+  void updateNote(String newNote) {
+    note = newNote;
+    try {
+      save();
+      debugPrint('Photo.updateNote: Note updated for $path');
+    } catch (e) {
+      debugPrint('Photo.updateNote ERROR: $e');
     }
   }
 }

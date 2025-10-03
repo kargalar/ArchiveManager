@@ -34,3 +34,6 @@ yüzleri bulma
 klasör üsilince veya fotoğrafı silince birşeylero luyor kontol et düzeltelim
 
 resmin yüksek çözünlürlüklü versiyonun bul özlelliğ
+
+tag filter kısında tagın kısayol tuş da yazsın
+yeni bir etiket eklerken veya eski etiketlerde aynıo kısayol tuşu varsa uyarılsın
