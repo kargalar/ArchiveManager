@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math' as math;
 import 'package:archive_manager_v3/models/sort_state.dart';
 import 'package:archive_manager_v3/viewmodels/home_view_model.dart';
 import 'package:flutter/gestures.dart';
@@ -15,6 +14,7 @@ import '../../managers/photo_manager.dart';
 import '../../managers/tag_manager.dart';
 import '../../managers/settings_manager.dart';
 import '../../managers/filter_manager.dart';
+import '../../utils/photo_sorter.dart';
 import 'full_screen_image.dart';
 
 class PhotoGrid extends StatefulWidget {
@@ -58,7 +58,6 @@ class _PhotoGridState extends State<PhotoGrid> {
 
       // Force a sort on initial load if needed
       if (filterManager.resolutionSortState != SortState.none || filterManager.dateSortState != SortState.none || filterManager.ratingSortState != SortState.none) {
-        debugPrint('Initial sort state detected, will trigger sort on first build');
         setState(() {}); // Trigger a rebuild to apply sorting
       }
     });
@@ -97,21 +96,18 @@ class _PhotoGridState extends State<PhotoGrid> {
     if (_lastResolutionSortState != filterManager.resolutionSortState) {
       _lastResolutionSortState = filterManager.resolutionSortState;
       sortStateChanged = true;
-      debugPrint('Resolution sort state changed to: ${filterManager.resolutionSortState}');
     }
 
     // Tarih sıralaması değişti mi?
     if (_lastDateSortState != filterManager.dateSortState) {
       _lastDateSortState = filterManager.dateSortState;
       sortStateChanged = true;
-      debugPrint('Date sort state changed to: ${filterManager.dateSortState}');
     }
 
     // Puan sıralaması değişti mi?
     if (_lastRatingSortState != filterManager.ratingSortState) {
       _lastRatingSortState = filterManager.ratingSortState;
       sortStateChanged = true;
-      debugPrint('Rating sort state changed to: ${filterManager.ratingSortState}');
     }
 
     // Herhangi bir sıralama değiştiyse, yeniden render et
@@ -119,9 +115,7 @@ class _PhotoGridState extends State<PhotoGrid> {
       // Use Future.microtask to avoid setState during build
       Future.microtask(() {
         if (mounted) {
-          setState(() {
-            debugPrint('Sort state changed, triggering rebuild to apply new sort');
-          });
+          setState(() {});
         }
       });
     }
@@ -193,73 +187,13 @@ class _PhotoGridState extends State<PhotoGrid> {
     // Get filtered photos
     List<Photo> filteredPhotos = filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags);
 
-    // Create a copy of the filtered photos to sort
-    List<Photo> sortedPhotos = List.from(filteredPhotos);
-
-    // Sort photos directly here instead of using FilterManager
-    if (filterManager.ratingSortState != SortState.none) {
-      debugPrint('Sorting by rating: ${filterManager.ratingSortState}');
-
-      // Log some ratings before sort
-      if (sortedPhotos.isNotEmpty) {
-        debugPrint('Sample ratings before sort:');
-        for (int i = 0; i < math.min(5, sortedPhotos.length); i++) {
-          debugPrint('Photo ${i + 1}: rating=${sortedPhotos[i].rating}, path=${sortedPhotos[i].path}');
-        }
-      }
-
-      if (filterManager.ratingSortState == SortState.ascending) {
-        debugPrint('Sorting ratings ascending');
-        sortedPhotos.sort((a, b) => a.rating.compareTo(b.rating));
-      } else {
-        debugPrint('Sorting ratings descending');
-        sortedPhotos.sort((a, b) => b.rating.compareTo(a.rating));
-      }
-
-      // Log some ratings after sort
-      if (sortedPhotos.isNotEmpty) {
-        debugPrint('Sample ratings after sort:');
-        for (int i = 0; i < math.min(5, sortedPhotos.length); i++) {
-          debugPrint('Photo ${i + 1}: rating=${sortedPhotos[i].rating}, path=${sortedPhotos[i].path}');
-        }
-      }
-    } else if (filterManager.dateSortState != SortState.none) {
-      debugPrint('Sorting by date: ${filterManager.dateSortState}');
-
-      if (filterManager.dateSortState == SortState.ascending) {
-        debugPrint('Sorting dates ascending');
-        sortedPhotos.sort((a, b) {
-          final dateA = a.dateModified;
-          final dateB = b.dateModified;
-          if (dateA == null && dateB == null) return 0;
-          if (dateA == null) return -1;
-          if (dateB == null) return 1;
-          return dateA.compareTo(dateB);
-        });
-      } else {
-        debugPrint('Sorting dates descending');
-        sortedPhotos.sort((a, b) {
-          final dateA = a.dateModified;
-          final dateB = b.dateModified;
-          if (dateA == null && dateB == null) return 0;
-          if (dateA == null) return 1;
-          if (dateB == null) return -1;
-          return dateB.compareTo(dateA);
-        });
-      }
-    } else if (filterManager.resolutionSortState != SortState.none) {
-      debugPrint('Sorting by resolution: ${filterManager.resolutionSortState}');
-
-      if (filterManager.resolutionSortState == SortState.ascending) {
-        debugPrint('Sorting resolutions ascending');
-        sortedPhotos.sort((a, b) => a.resolution.compareTo(b.resolution));
-      } else {
-        debugPrint('Sorting resolutions descending');
-        sortedPhotos.sort((a, b) => b.resolution.compareTo(a.resolution));
-      }
-    } else {
-      debugPrint('No sorting applied, using default order');
-    }
+    // Use PhotoSorter utility to sort photos
+    List<Photo> sortedPhotos = PhotoSorter.sort(
+      filteredPhotos,
+      ratingSortState: filterManager.ratingSortState,
+      dateSortState: filterManager.dateSortState,
+      resolutionSortState: filterManager.resolutionSortState,
+    );
 
     return Column(
       children: [

@@ -47,10 +47,8 @@ class _HomePageState extends State<HomePage> {
         setState(() {
           _folderMenuWidth = settingsManager.folderMenuWidth;
         });
-        debugPrint('FolderMenuWidth updated from settings: $_folderMenuWidth');
       }
     });
-    debugPrint('Initial FolderMenuWidth: $_folderMenuWidth');
 
     // Klasör veya bölüm seçildiğinde fotoğrafları yükle - optimized version
     String? lastSelectedFolder;

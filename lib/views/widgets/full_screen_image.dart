@@ -10,10 +10,12 @@ import 'package:provider/provider.dart';
 import 'package:vector_math/vector_math_64.dart' hide Colors;
 import 'package:super_drag_and_drop/super_drag_and_drop.dart' as sdd;
 import '../../models/photo.dart';
-import '../../models/sort_state.dart';
 import '../../managers/photo_manager.dart';
 import '../../managers/settings_manager.dart';
 import '../../managers/filter_manager.dart';
+import '../../utils/photo_sorter.dart';
+import 'common/photo_action_buttons.dart';
+import 'common/tag_chips.dart';
 
 // Fotoğrafı tam ekranda gösteren widget.
 // Klavye ve mouse ile gezinme, etiketleme, puanlama ve bilgi gösterimi içerir.
@@ -72,10 +74,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
     _showNotes = context.read<SettingsManager>().showNotes;
     _autoNext = context.read<SettingsManager>().fullscreenAutoNext;
     _notesController.text = _currentPhoto.note;
-    _zenMode = false; // Set the static flag to indicate we're in fullscreen mode
+    _zenMode = false;
     FullScreenImage.isActive = true;
-    debugPrint('FullScreenImage: Setting isActive to true');
-    debugPrint('FullScreenImage: Frozen filtered photos count: ${_frozenFilteredPhotos.length}');
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
@@ -183,10 +183,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
 
   @override
   void dispose() {
-    // Clear the static flag when exiting fullscreen mode
     FullScreenImage.isActive = false;
-    debugPrint('FullScreenImage: Setting isActive to false');
-
     _focusNode.dispose();
     _notesFocusNode.dispose();
     _notesController.dispose();
@@ -199,47 +196,16 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
     final filterManager = Provider.of<FilterManager>(context);
     final homeViewModel = Provider.of<HomeViewModel>(context);
 
-    // Tam ekranda dondurulmuş filtrelenmiş listeyi kullan
-    // Filtreleme durumu değişse bile liste aynı kalacak
+    // Use frozen filtered list for consistent fullscreen experience
     List<Photo> filteredPhotos = _frozenFilteredPhotos;
 
-    // Sıralama uygula - PhotoGrid ile aynı sıralamayı kullan
-    List<Photo> sortedPhotos = List.from(filteredPhotos);
-
-    // Aktif sıralamaya göre fotoğrafları sırala
-    if (filterManager.ratingSortState != SortState.none) {
-      if (filterManager.ratingSortState == SortState.ascending) {
-        sortedPhotos.sort((a, b) => a.rating.compareTo(b.rating));
-      } else {
-        sortedPhotos.sort((a, b) => b.rating.compareTo(a.rating));
-      }
-    } else if (filterManager.dateSortState != SortState.none) {
-      if (filterManager.dateSortState == SortState.ascending) {
-        sortedPhotos.sort((a, b) {
-          final dateA = a.dateModified;
-          final dateB = b.dateModified;
-          if (dateA == null && dateB == null) return 0;
-          if (dateA == null) return -1;
-          if (dateB == null) return 1;
-          return dateA.compareTo(dateB);
-        });
-      } else {
-        sortedPhotos.sort((a, b) {
-          final dateA = a.dateModified;
-          final dateB = b.dateModified;
-          if (dateA == null && dateB == null) return 0;
-          if (dateA == null) return 1;
-          if (dateB == null) return -1;
-          return dateB.compareTo(dateA);
-        });
-      }
-    } else if (filterManager.resolutionSortState != SortState.none) {
-      if (filterManager.resolutionSortState == SortState.ascending) {
-        sortedPhotos.sort((a, b) => a.resolution.compareTo(b.resolution));
-      } else {
-        sortedPhotos.sort((a, b) => b.resolution.compareTo(a.resolution));
-      }
-    }
+    // Use PhotoSorter utility to sort photos - same as PhotoGrid
+    List<Photo> sortedPhotos = PhotoSorter.sort(
+      filteredPhotos,
+      ratingSortState: filterManager.ratingSortState,
+      dateSortState: filterManager.dateSortState,
+      resolutionSortState: filterManager.resolutionSortState,
+    );
 
     return _buildFullScreenView(sortedPhotos, homeViewModel);
   }
@@ -298,9 +264,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
           }
 
           // Not yazılıyorsa diğer kısayolları devre dışı bırak
-          // TextField aktifse hiçbir kısayol çalışmasın
           if (_notesFocusNode.hasFocus) {
-            debugPrint('TextField has focus, ignoring keyboard shortcuts');
             return;
           }
 
@@ -662,77 +626,26 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                     ),
                     Row(
                       children: [
-                        if (_currentPhoto.tags.isNotEmpty)
-                          Wrap(
-                            spacing: 4,
-                            runSpacing: 4,
-                            alignment: WrapAlignment.end,
-                            children: _currentPhoto.tags
-                                .map((tag) => Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: tag.color,
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(color: Colors.white24, width: 1),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black,
-                                            blurRadius: 2,
-                                            offset: const Offset(0, 1),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Text(
-                                        tag.name,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ))
-                                .toList(),
-                          ),
-                        if (_currentPhoto.rating > 0)
-                          Row(
-                            children: [
-                              const Icon(Icons.star, size: 18, color: Colors.amber),
-                              const SizedBox(width: 4),
-                              Text(
-                                _currentPhoto.rating.toString(),
-                                style: const TextStyle(color: Colors.amber),
-                              ),
-                            ],
-                          ),
+                        TagChips(tags: _currentPhoto.tags),
+                        RatingDisplay(rating: _currentPhoto.rating),
                         // Selection status icon
-                        IconButton(
-                          icon: Icon(
-                            _currentPhoto.isSelected ? Icons.check_circle : Icons.check_circle_outline,
-                            color: _currentPhoto.isSelected ? Colors.blue : Colors.white70,
-                          ),
+                        SelectionIconButton(
+                          photo: _currentPhoto,
                           onPressed: () => homeViewModel.togglePhotoSelection(_currentPhoto),
-                          tooltip: _currentPhoto.isSelected ? 'Seçimi Kaldır (Space/Enter)' : 'Seç (Space/Enter)',
                         ),
                         // Favorite icon
-                        IconButton(
-                          icon: Icon(
-                            _currentPhoto.isFavorite ? Icons.favorite : Icons.favorite_border,
-                            color: _currentPhoto.isFavorite ? Colors.red : Colors.white70,
-                          ),
+                        FavoriteIconButton(
+                          photo: _currentPhoto,
                           onPressed: () {
                             final photoManager = Provider.of<PhotoManager>(context, listen: false);
                             photoManager.toggleFavorite(_currentPhoto);
 
-                            // Tam ekranda da state'i güncelle
-                            setState(() {
-                              // Bu sadece UI'ı yeniden render etmek için
-                            });
+                            setState(() {});
 
                             // Eğer otomatik geçiş açıksa, sonraki fotoğrafa geç
                             if (_autoNext) {
                               final currentIndex = filteredPhotos.indexOf(_currentPhoto);
                               if (currentIndex < filteredPhotos.length - 1) {
-                                // Kısa bir gecikme ekleyerek kullanıcının favoriye eklediğini görmesini sağla
                                 Future.delayed(const Duration(milliseconds: 200), () {
                                   if (mounted) {
                                     _moveToNextPhoto(filteredPhotos);
@@ -741,10 +654,9 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                               }
                             }
                           },
-                          tooltip: 'Toggle Favorite (F)',
                         ),
-                        IconButton(
-                          icon: Icon(Icons.info_outline, color: _showInfo ? Colors.blue : Colors.white70),
+                        InfoIconButton(
+                          isActive: _showInfo,
                           onPressed: () {
                             final settingsManager = Provider.of<SettingsManager>(context, listen: false);
                             setState(() {
@@ -752,10 +664,9 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                               settingsManager.setShowImageInfo(_showInfo);
                             });
                           },
-                          tooltip: _showInfo ? 'Hide Info (Ctrl)' : 'Show Info (Ctrl)',
                         ),
-                        IconButton(
-                          icon: Icon(Icons.note_outlined, color: _showNotes ? Colors.blue : Colors.white70),
+                        NotesIconButton(
+                          isActive: _showNotes,
                           onPressed: () {
                             final settingsManager = Provider.of<SettingsManager>(context, listen: false);
                             setState(() {
@@ -763,7 +674,6 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                               settingsManager.setShowNotes(_showNotes);
                             });
                           },
-                          tooltip: _showNotes ? 'Hide Notes (N)' : 'Show Notes (N)',
                         ),
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.white70),
