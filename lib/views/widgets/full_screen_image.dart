@@ -21,7 +21,8 @@ import 'common/tag_chips.dart';
 // Klavye ve mouse ile gezinme, etiketleme, puanlama ve bilgi gösterimi içerir.
 class FullScreenImage extends StatefulWidget {
   final Photo photo;
-  final List<Photo> filteredPhotos; // Tam ekran moduna girdiğindeki filtrelenmiş liste
+  final List<Photo>
+      filteredPhotos; // Tam ekran moduna girdiğindeki filtrelenmiş liste
 
   // Static flag to track if we're in fullscreen mode
   static bool isActive = false;
@@ -36,9 +37,11 @@ class FullScreenImage extends StatefulWidget {
   State<FullScreenImage> createState() => _FullScreenImageState();
 }
 
-class _FullScreenImageState extends State<FullScreenImage> with TickerProviderStateMixin {
+class _FullScreenImageState extends State<FullScreenImage>
+    with TickerProviderStateMixin {
   late Photo _currentPhoto;
-  late List<Photo> _frozenFilteredPhotos; // Tam ekrana girdiğindeki dondurulmuş liste
+  late List<Photo>
+      _frozenFilteredPhotos; // Tam ekrana girdiğindeki dondurulmuş liste
   late bool _autoNext;
   late bool _showInfo;
   late bool _showNotes;
@@ -47,7 +50,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
   final FocusNode _notesFocusNode = FocusNode();
   final TextEditingController _notesController = TextEditingController();
   late final Box<Tag> _tagBox;
-  final TransformationController _transformationController = TransformationController();
+  final TransformationController _transformationController =
+      TransformationController();
   final double _minScale = 1.0;
   final double _maxScale = 20.0;
   double _currentScale = 1.0;
@@ -57,7 +61,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
   DateTime? _middleMouseDownTime;
 
   // Key to access this screen's DragItemWidget state for multi-item drag
-  final GlobalKey<sdd.DragItemWidgetState> _dragKey = GlobalKey<sdd.DragItemWidgetState>();
+  final GlobalKey<sdd.DragItemWidgetState> _dragKey =
+      GlobalKey<sdd.DragItemWidgetState>();
 
   // Artık sıralama durumunu takip etmeye gerek yok
 
@@ -68,7 +73,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
     _currentPhoto = widget.photo;
     // Mark initial photo as viewed when opening fullscreen
     _currentPhoto.markViewed();
-    _frozenFilteredPhotos = List.from(widget.filteredPhotos); // Filtrelenmiş listeyi dondur
+    _frozenFilteredPhotos =
+        List.from(widget.filteredPhotos); // Filtrelenmiş listeyi dondur
     _tagBox = Hive.box<Tag>('tags');
     _showInfo = context.read<SettingsManager>().showImageInfo;
     _showNotes = context.read<SettingsManager>().showNotes;
@@ -139,31 +145,31 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
     newTransformation.setTranslation(Vector3.zero());
 
     // 2. Fare pozisyonunu merkeze taşı
-    newTransformation.translate(
-      focalPointScene.dx,
-      focalPointScene.dy,
+    newTransformation.translateByVector3(
+      Vector3(focalPointScene.dx, focalPointScene.dy, 0.0),
     );
 
     // 3. Ölçekle
-    newTransformation.scale(scaleFactor);
+    newTransformation.scaleByVector3(Vector3(scaleFactor, scaleFactor, 1.0));
 
     // 4. Fare pozisyonunu geri taşı
-    newTransformation.translate(
-      -focalPointScene.dx,
-      -focalPointScene.dy,
+    newTransformation.translateByVector3(
+      Vector3(-focalPointScene.dx, -focalPointScene.dy, 0.0),
     );
 
     // 5. Mevcut kaydırma değerlerini geri ekle
-    newTransformation.translate(
-      currentTranslation.x,
-      currentTranslation.y,
+    newTransformation.translateByVector3(
+      Vector3(currentTranslation.x, currentTranslation.y, 0.0),
     );
 
     // 6. Fare pozisyonuna göre ek kaydırma ekle
     // Bu, zoom yaparken fare pozisyonunun sabit kalmasını sağlar
-    newTransformation.translate(
-      focalPointDelta.dx * (1 - scaleFactor),
-      focalPointDelta.dy * (1 - scaleFactor),
+    newTransformation.translateByVector3(
+      Vector3(
+        focalPointDelta.dx * (1 - scaleFactor),
+        focalPointDelta.dy * (1 - scaleFactor),
+        0.0,
+      ),
     );
 
     // Mevcut ölçeği güncelle
@@ -244,7 +250,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
     }
   }
 
-  Widget _buildFullScreenView(List<Photo> filteredPhotos, HomeViewModel homeViewModel) {
+  Widget _buildFullScreenView(
+      List<Photo> filteredPhotos, HomeViewModel homeViewModel) {
     final photoManager = Provider.of<PhotoManager>(context);
     final settingsManager = Provider.of<SettingsManager>(context);
 
@@ -270,7 +277,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
 
           final currentIndex = filteredPhotos.indexOf(_currentPhoto);
 
-          if (event.logicalKey == LogicalKeyboardKey.arrowLeft && currentIndex > 0) {
+          if (event.logicalKey == LogicalKeyboardKey.arrowLeft &&
+              currentIndex > 0) {
             final prevPhoto = filteredPhotos[currentIndex - 1];
             // HomeViewModel'deki seçili fotoğrafı güncelle
             homeViewModel.setSelectedPhoto(prevPhoto);
@@ -281,7 +289,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
               _notesController.text = prevPhoto.note;
               _resetZoom();
             });
-          } else if (event.logicalKey == LogicalKeyboardKey.arrowRight && currentIndex < filteredPhotos.length - 1) {
+          } else if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
+              currentIndex < filteredPhotos.length - 1) {
             final nextPhoto = filteredPhotos[currentIndex + 1];
             // HomeViewModel'deki seçili fotoğrafı güncelle
             homeViewModel.setSelectedPhoto(nextPhoto);
@@ -302,7 +311,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
 
               // Silme işleminden sonra filteredPhotos listesini güncelle
               // Silinen fotoğrafı listeden çıkar
-              filteredPhotos.removeWhere((photo) => photo.path == _currentPhoto.path);
+              filteredPhotos
+                  .removeWhere((photo) => photo.path == _currentPhoto.path);
 
               if (filteredPhotos.isEmpty) {
                 if (mounted) {
@@ -310,7 +320,10 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                 }
               } else if (mounted) {
                 // Aynı indeksi kullan, eğer son fotoğraf silindiyse bir öncekine geç
-                final nextPhoto = filteredPhotos[currentIndex < filteredPhotos.length ? currentIndex : filteredPhotos.length - 1];
+                final nextPhoto = filteredPhotos[
+                    currentIndex < filteredPhotos.length
+                        ? currentIndex
+                        : filteredPhotos.length - 1];
                 // HomeViewModel'deki seçili fotoğrafı güncelle
                 homeViewModel.setSelectedPhoto(nextPhoto);
                 // Mark as viewed when navigated to
@@ -344,7 +357,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
           } else if (event.logicalKey == LogicalKeyboardKey.f11) {
             // F11 tuşuna basıldığında tam ekran modunu aç/kapat
             settingsManager.toggleFullscreen();
-          } else if (event.logicalKey == LogicalKeyboardKey.space || event.logicalKey == LogicalKeyboardKey.enter) {
+          } else if (event.logicalKey == LogicalKeyboardKey.space ||
+              event.logicalKey == LogicalKeyboardKey.enter) {
             // Boşluk veya Enter tuşuna basıldığında seçim durumunu değiştir
             homeViewModel.togglePhotoSelection(_currentPhoto);
           } else {
@@ -354,9 +368,11 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
               final rating = int.parse(key);
               // Use Future.microtask to avoid setState during build
               Future.microtask(() {
-                // ignore: use_build_context_synchronously
-                final photoManager = Provider.of<PhotoManager>(context, listen: false);
-                photoManager.setRating(_currentPhoto, rating, allowToggle: false);
+                if (!mounted) return;
+                final photoManager =
+                    Provider.of<PhotoManager>(context, listen: false);
+                photoManager.setRating(_currentPhoto, rating,
+                    allowToggle: false);
                 // Current photo is being interacted with, mark viewed
                 _currentPhoto.markViewed();
                 // Tam ekranda da state'i güncelle
@@ -381,8 +397,10 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                         : _isZooming
                             ? SystemMouseCursors.basic
                             : _currentScale > _minScale
-                                ? SystemMouseCursors.basic // Zoom yapılmışsa grab cursor göster (sürüklenebilir)
-                                : SystemMouseCursors.basic, // Zoom yapılmamışsa normal cursor göster
+                                ? SystemMouseCursors
+                                    .basic // Zoom yapılmışsa grab cursor göster (sürüklenebilir)
+                                : SystemMouseCursors
+                                    .basic, // Zoom yapılmamışsa normal cursor göster
                 child: Listener(
                   onPointerDown: (event) {
                     if (event.buttons == kMiddleMouseButton) {
@@ -395,9 +413,12 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                   },
                   onPointerMove: (event) {
                     // Orta tuş basılı ve hareket varsa ve zoom yapılmışsa sürükleme başlat
-                    if (event.buttons == kMiddleMouseButton && _lastDragPosition != null && _currentScale > _minScale) {
+                    if (event.buttons == kMiddleMouseButton &&
+                        _lastDragPosition != null &&
+                        _currentScale > _minScale) {
                       // Hareket mesafesini hesapla
-                      final moveDistance = (event.position - _lastDragPosition!).distance;
+                      final moveDistance =
+                          (event.position - _lastDragPosition!).distance;
 
                       // Belirli bir eşik değerini aşarsa sürükleme moduna geç
                       if (moveDistance > 5.0) {
@@ -409,8 +430,12 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                       if (_isDragging) {
                         // Sürükleme hareketi
                         final delta = event.position - _lastDragPosition!;
-                        final Matrix4 matrix = Matrix4.copy(_transformationController.value);
-                        matrix.translate(delta.dx / _currentScale, delta.dy / _currentScale);
+                        final Matrix4 matrix =
+                            Matrix4.copy(_transformationController.value);
+                        matrix.translateByVector3(Vector3(
+                            delta.dx / _currentScale,
+                            delta.dy / _currentScale,
+                            0.0));
                         _transformationController.value = matrix;
                         _lastDragPosition = event.position;
                       }
@@ -462,10 +487,12 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                             final Offset focalPointScene = _lastDragPosition!;
 
                             // Ekranın merkezini hesapla
-                            final Offset viewCenter = Offset(viewSize.width / 2, viewSize.height / 2);
+                            final Offset viewCenter =
+                                Offset(viewSize.width / 2, viewSize.height / 2);
 
                             // Tıklama pozisyonunun merkeze göre farkını hesapla
-                            final Offset focalPointDelta = focalPointScene - viewCenter;
+                            final Offset focalPointDelta =
+                                focalPointScene - viewCenter;
 
                             // Yeni dönüşüm matrisini hesapla
                             final Matrix4 matrix = Matrix4.identity();
@@ -475,25 +502,29 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
 
                             // Tıklama pozisyonuna göre zoom yap
                             // 1. Tıklama pozisyonunu merkeze taşı
-                            matrix.translate(
-                              focalPointScene.dx,
-                              focalPointScene.dy,
+                            matrix.translateByVector3(
+                              Vector3(
+                                  focalPointScene.dx, focalPointScene.dy, 0.0),
                             );
 
                             // 2. Ölçekle
-                            matrix.scale(scaleFactor);
+                            matrix.scaleByVector3(
+                                Vector3(scaleFactor, scaleFactor, 1.0));
 
                             // 3. Tıklama pozisyonunu geri taşı
-                            matrix.translate(
-                              -focalPointScene.dx,
-                              -focalPointScene.dy,
+                            matrix.translateByVector3(
+                              Vector3(-focalPointScene.dx, -focalPointScene.dy,
+                                  0.0),
                             );
 
                             // 4. Tıklama pozisyonuna göre ek kaydırma ekle
                             // Bu, zoom yaparken tıklama pozisyonunun sabit kalmasını sağlar
-                            matrix.translate(
-                              focalPointDelta.dx * (1 - scaleFactor),
-                              focalPointDelta.dy * (1 - scaleFactor),
+                            matrix.translateByVector3(
+                              Vector3(
+                                focalPointDelta.dx * (1 - scaleFactor),
+                                focalPointDelta.dy * (1 - scaleFactor),
+                                0.0,
+                              ),
                             );
 
                             _transformationController.value = matrix;
@@ -501,7 +532,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                           } else {
                             // Eğer tıklama pozisyonu yoksa, merkeze zoom yap
                             final Matrix4 matrix = Matrix4.identity();
-                            matrix.scale(2.0);
+                            matrix.scaleByVector3(Vector3(2.0, 2.0, 1.0));
                             _transformationController.value = matrix;
                             _currentScale = 2.0;
                           }
@@ -517,8 +548,10 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                             final item = sdd.DragItem();
                             try {
                               // Her DragItem yalnızca mevcut fotoğrafı temsil eder
-                              debugPrint('Preparing drag item for current photo: ${_currentPhoto.path}');
-                              item.add(sdd.Formats.fileUri(Uri.file(_currentPhoto.path)));
+                              debugPrint(
+                                  'Preparing drag item for current photo: ${_currentPhoto.path}');
+                              item.add(sdd.Formats.fileUri(
+                                  Uri.file(_currentPhoto.path)));
                             } catch (e) {
                               debugPrint('DragItemProvider error: $e');
                               return null;
@@ -529,7 +562,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                           child: sdd.DraggableWidget(
                             // Provide multi-item drag when multiple photos are selected
                             dragItemsProvider: (ctx) {
-                              final vm = Provider.of<HomeViewModel>(ctx, listen: false);
+                              final vm = Provider.of<HomeViewModel>(ctx,
+                                  listen: false);
                               final List<sdd.DragItemWidgetState> items = [];
                               final self = _dragKey.currentState;
                               if (self != null) items.add(self);
@@ -543,12 +577,14 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                               return items;
                             },
                             child: InteractiveViewer(
-                              transformationController: _transformationController,
+                              transformationController:
+                                  _transformationController,
                               minScale: _minScale,
                               maxScale: _maxScale,
                               onInteractionEnd: (details) {
                                 // Güncellenen ölçeği kaydet
-                                final scale = _transformationController.value.getMaxScaleOnAxis();
+                                final scale = _transformationController.value
+                                    .getMaxScaleOnAxis();
                                 setState(() {
                                   _currentScale = scale;
                                   // Zoom durumuna göre cursor güncellenir
@@ -572,7 +608,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                 top: 60,
                 left: 16,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.blue.withAlpha(204), // 0.8 opacity
                     borderRadius: BorderRadius.circular(8),
@@ -587,7 +624,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.drag_handle, size: 16, color: Colors.white),
+                      const Icon(Icons.drag_handle,
+                          size: 16, color: Colors.white),
                       const SizedBox(width: 8),
                       Text(
                         'Sürükle bırak: ${homeViewModel.selectedPhotos.length} fotoğraf kopyalanacak',
@@ -606,7 +644,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
               left: 0,
               right: 0,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -616,7 +655,9 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                         color: _autoNext ? Colors.blue : Colors.white70,
                       ),
                       onPressed: () {
-                        final settingsManager = Provider.of<SettingsManager>(context, listen: false);
+                        final settingsManager = Provider.of<SettingsManager>(
+                            context,
+                            listen: false);
                         setState(() {
                           _autoNext = !_autoNext;
                           settingsManager.setFullscreenAutoNext(_autoNext);
@@ -631,22 +672,27 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                         // Selection status icon
                         SelectionIconButton(
                           photo: _currentPhoto,
-                          onPressed: () => homeViewModel.togglePhotoSelection(_currentPhoto),
+                          onPressed: () =>
+                              homeViewModel.togglePhotoSelection(_currentPhoto),
                         ),
                         // Favorite icon
                         FavoriteIconButton(
                           photo: _currentPhoto,
                           onPressed: () {
-                            final photoManager = Provider.of<PhotoManager>(context, listen: false);
+                            final photoManager = Provider.of<PhotoManager>(
+                                context,
+                                listen: false);
                             photoManager.toggleFavorite(_currentPhoto);
 
                             setState(() {});
 
                             // Eğer otomatik geçiş açıksa, sonraki fotoğrafa geç
                             if (_autoNext) {
-                              final currentIndex = filteredPhotos.indexOf(_currentPhoto);
+                              final currentIndex =
+                                  filteredPhotos.indexOf(_currentPhoto);
                               if (currentIndex < filteredPhotos.length - 1) {
-                                Future.delayed(const Duration(milliseconds: 200), () {
+                                Future.delayed(
+                                    const Duration(milliseconds: 200), () {
                                   if (mounted) {
                                     _moveToNextPhoto(filteredPhotos);
                                   }
@@ -658,7 +704,9 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                         InfoIconButton(
                           isActive: _showInfo,
                           onPressed: () {
-                            final settingsManager = Provider.of<SettingsManager>(context, listen: false);
+                            final settingsManager =
+                                Provider.of<SettingsManager>(context,
+                                    listen: false);
                             setState(() {
                               _showInfo = !_showInfo;
                               settingsManager.setShowImageInfo(_showInfo);
@@ -668,7 +716,9 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                         NotesIconButton(
                           isActive: _showNotes,
                           onPressed: () {
-                            final settingsManager = Provider.of<SettingsManager>(context, listen: false);
+                            final settingsManager =
+                                Provider.of<SettingsManager>(context,
+                                    listen: false);
                             setState(() {
                               _showNotes = !_showNotes;
                               settingsManager.setShowNotes(_showNotes);
@@ -697,10 +747,13 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                     File(_currentPhoto.path).length(),
                     () async {
                       final completer = Completer<ImageInfo>();
-                      final stream = Image.file(File(_currentPhoto.path)).image.resolve(const ImageConfiguration());
+                      final stream = Image.file(File(_currentPhoto.path))
+                          .image
+                          .resolve(const ImageConfiguration());
                       final listener = ImageStreamListener(
                         (info, _) => completer.complete(info),
-                        onError: (exception, stackTrace) => completer.completeError(exception),
+                        onError: (exception, stackTrace) =>
+                            completer.completeError(exception),
                       );
                       stream.addListener(listener);
                       try {
@@ -720,14 +773,17 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
 
                     String formatFileSize(int size) {
                       if (size < 1024) return '$size B';
-                      if (size < 1024 * 1024) return '${(size / 1024).toStringAsFixed(1)} KB';
+                      if (size < 1024 * 1024) {
+                        return '${(size / 1024).toStringAsFixed(1)} KB';
+                      }
                       return '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
                     }
 
                     final file = File(_currentPhoto.path);
                     final stat = file.statSync();
                     final creationDate = stat.changed.toLocal();
-                    final formattedDate = '${creationDate.day}/${creationDate.month}/${creationDate.year} ${creationDate.hour}:${creationDate.minute.toString().padLeft(2, '0')}';
+                    final formattedDate =
+                        '${creationDate.day}/${creationDate.month}/${creationDate.year} ${creationDate.hour}:${creationDate.minute.toString().padLeft(2, '0')}';
 
                     return Container(
                       padding: const EdgeInsets.all(16),
@@ -746,7 +802,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                           ),
                         ],
                       ),
-                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.3),
+                      constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width * 0.3),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
@@ -764,29 +821,37 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              const Icon(Icons.photo_size_select_actual_outlined, size: 14, color: Colors.white70),
+                              const Icon(
+                                  Icons.photo_size_select_actual_outlined,
+                                  size: 14,
+                                  color: Colors.white70),
                               const SizedBox(width: 4),
                               Text(
                                 '${width}x$height',
-                                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                style: const TextStyle(
+                                    color: Colors.white70, fontSize: 12),
                               ),
                               const SizedBox(width: 12),
-                              const Icon(Icons.sd_storage_outlined, size: 14, color: Colors.white70),
+                              const Icon(Icons.sd_storage_outlined,
+                                  size: 14, color: Colors.white70),
                               const SizedBox(width: 4),
                               Text(
                                 formatFileSize(fileSize),
-                                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                style: const TextStyle(
+                                    color: Colors.white70, fontSize: 12),
                               ),
                             ],
                           ),
                           const SizedBox(height: 4),
                           Row(
                             children: [
-                              const Icon(Icons.calendar_today_outlined, size: 14, color: Colors.white70),
+                              const Icon(Icons.calendar_today_outlined,
+                                  size: 14, color: Colors.white70),
                               const SizedBox(width: 4),
                               Text(
                                 formattedDate,
-                                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                style: const TextStyle(
+                                    color: Colors.white70, fontSize: 12),
                               ),
                             ],
                           ),
@@ -794,20 +859,27 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                           if (homeViewModel.hasSelectedPhotos) ...[
                             const SizedBox(height: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                 color: Colors.blue.withAlpha(51), // 0.2 opacity
                                 borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: Colors.blue.withAlpha(102)), // 0.4 opacity
+                                border: Border.all(
+                                    color: Colors.blue
+                                        .withAlpha(102)), // 0.4 opacity
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.photo_library, size: 12, color: Colors.blue),
+                                  const Icon(Icons.photo_library,
+                                      size: 12, color: Colors.blue),
                                   const SizedBox(width: 4),
                                   Text(
                                     '${homeViewModel.selectedPhotos.length} seçili',
-                                    style: const TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.w500),
+                                    style: const TextStyle(
+                                        color: Colors.blue,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500),
                                   ),
                                 ],
                               ),
@@ -862,7 +934,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                           ),
                           const Spacer(),
                           IconButton(
-                            icon: const Icon(Icons.save, color: Colors.white70, size: 18),
+                            icon: const Icon(Icons.save,
+                                color: Colors.white70, size: 18),
                             onPressed: () {
                               _currentPhoto.updateNote(_notesController.text);
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -896,29 +969,37 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                             controller: _notesController,
                             focusNode: _notesFocusNode,
                             maxLines: 6,
-                            style: const TextStyle(color: Colors.white, fontSize: 13),
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 13),
                             decoration: InputDecoration(
-                              hintText: 'Bu fotoğraf için notlarınızı buraya yazın...',
-                              hintStyle: TextStyle(color: Colors.white.withAlpha(128)),
+                              hintText:
+                                  'Bu fotoğraf için notlarınızı buraya yazın...',
+                              hintStyle:
+                                  TextStyle(color: Colors.white.withAlpha(128)),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: Colors.white.withAlpha(51)),
+                                borderSide: BorderSide(
+                                    color: Colors.white.withAlpha(51)),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: Colors.white.withAlpha(51)),
+                                borderSide: BorderSide(
+                                    color: Colors.white.withAlpha(51)),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(color: Colors.blue),
+                                borderSide:
+                                    const BorderSide(color: Colors.blue),
                               ),
                               filled: true,
-                              fillColor: Colors.black.withAlpha(77), // 0.3 opacity
+                              fillColor:
+                                  Colors.black.withAlpha(77), // 0.3 opacity
                               contentPadding: const EdgeInsets.all(12),
                             ),
                             onChanged: (value) {
                               // Auto-save after a short delay
-                              Future.delayed(const Duration(milliseconds: 500), () {
+                              Future.delayed(const Duration(milliseconds: 500),
+                                  () {
                                 if (_notesController.text == value) {
                                   _currentPhoto.updateNote(value);
                                 }

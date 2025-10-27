@@ -488,6 +488,7 @@ class FolderItem extends StatelessWidget {
                                   ),
                                   onTap: () {
                                     Future.delayed(Duration.zero, () {
+                                      // ignore: use_build_context_synchronously
                                       _showTagMenu(context, folder);
                                     });
                                   },

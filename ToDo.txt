@@ -17,13 +17,6 @@
 - Klasörler taşınabilsin.
 - Yeniden isimlendirilebilsin.
 
-### 5. Yenile Butonu
-- Uygulamada yenile butonu ekle.
-
-### 6. Film Öneri Sistemi
-- Kullanıcılar birbirlerine film önerileri gönderebilsinler.
-- Önerilen filmler "Önerilenler" klasöründe gözüksün.
-
 ### 7. ai yeniden çiz
 - Kullanıcılar fotoğraflarını seçip ai ile yeniden çizebilsinler.
 - benzerlerini üret diyebilsinler.
@@ -34,3 +27,5 @@ yüzleri bulma
 klasör üsilince veya fotoğrafı silince birşeylero luyor kontol et düzeltelim
 
 resmin yüksek çözünlürlüklü versiyonun bul özlelliğ
+
+fotoğrafda geçerken siyahlık oluyor çok rahatsız ediyor.
