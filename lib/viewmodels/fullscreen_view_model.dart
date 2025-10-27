@@ -23,11 +23,17 @@ class FullScreenViewModel extends ChangeNotifier {
   static const int CACHE_PREVIOUS_COUNT = 2; // Geçmiş 2 fotoğraf
   static const int CACHE_NEXT_COUNT = 5; // Gelecek 5 fotoğraf
 
+  // 🎯 Performans optimizasyonu: Tam ekran için maksimum çözünürlük
+  // 4K monitör için yeterli, ancak gereksiz büyük dosyaları küçültür
+  // Sadece width veriyoruz - Flutter otomatik olarak aspect ratio'yu korur!
+  static const int MAX_CACHE_WIDTH = 3840; // 4K genişlik
+
   // Şu anda cache'lenmiş fotoğrafların path'leri
   final Set<String> _cachedPhotoPaths = {};
 
   // 🔑 ÖNEMLI: Mevcut fotoğraf için ImageProvider - Cache'den okumak için aynı instance kullanılmalı!
-  FileImage? _currentImageProvider;
+  ResizeImage? _currentImageProvider;
+  String? _currentImageProviderPath; // Provider'ın path'ini tutmak için
 
   FullScreenViewModel({
     required Photo initialPhoto,
@@ -37,8 +43,13 @@ class FullScreenViewModel extends ChangeNotifier {
     // İlk fotoğraf zaten gösterilecek, cache'de say
     _cachedPhotoPaths.add(initialPhoto.path);
     _photoCacheStatus[initialPhoto.path] = true;
-    // İlk ImageProvider'ı oluştur
-    _currentImageProvider = FileImage(File(initialPhoto.path));
+    // İlk ImageProvider'ı oluştur (boyutlandırılmış, aspect ratio korunur)
+    _currentImageProvider = ResizeImage(
+      FileImage(File(initialPhoto.path)),
+      width: MAX_CACHE_WIDTH,
+      // height belirtilmedi - aspect ratio korunur!
+    );
+    _currentImageProviderPath = initialPhoto.path;
   }
 
   // Getters
@@ -51,10 +62,15 @@ class FullScreenViewModel extends ChangeNotifier {
   bool get canGoPrevious => currentIndex > 0;
 
   // 🔑 ÖNEMLI: Mevcut fotoğraf için ImageProvider - Cache'den yükleme için aynı instance'ı kullan
-  FileImage get currentImageProvider {
+  ImageProvider get currentImageProvider {
     // Eğer photo değiştiyse, yeni provider oluştur
-    if (_currentImageProvider == null || _currentImageProvider!.file.path != _currentPhoto.path) {
-      _currentImageProvider = FileImage(File(_currentPhoto.path));
+    if (_currentImageProvider == null || _currentImageProviderPath != _currentPhoto.path) {
+      _currentImageProvider = ResizeImage(
+        FileImage(File(_currentPhoto.path)),
+        width: MAX_CACHE_WIDTH,
+        // height belirtilmedi - aspect ratio korunur!
+      );
+      _currentImageProviderPath = _currentPhoto.path;
     }
     return _currentImageProvider!;
   }
@@ -174,8 +190,14 @@ class FullScreenViewModel extends ChangeNotifier {
 
         try {
           debugPrint('   📥 Caching: $fileName');
+          // 🎯 PERFORMANS: Boyutlandırılmış versiyonu cache'le (decode daha hızlı!)
+          // Sadece width belirtiliyor - aspect ratio korunur!
           await precacheImage(
-            FileImage(File(photoPath)),
+            ResizeImage(
+              FileImage(File(photoPath)),
+              width: MAX_CACHE_WIDTH,
+              // height belirtilmedi - aspect ratio korunur!
+            ),
             context,
           );
           _cachedPhotoPaths.add(photoPath);
