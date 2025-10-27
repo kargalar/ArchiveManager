@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:archive_manager_v3/models/tag.dart';
 import 'package:archive_manager_v3/viewmodels/home_view_model.dart';
 import 'package:archive_manager_v3/viewmodels/fullscreen_view_model.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -610,112 +611,113 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                   ),
                 ),
               ),
-            // Cache monitor overlay (sağ üst köşe) - DETAYLI
-            Positioned(
-              top: 60,
-              right: 16,
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 300),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.black.withAlpha(204), // 0.8 opacity
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.white.withAlpha(51), // 0.2 opacity
-                    width: 1,
+            // Cache monitor overlay (sağ üst köşe) - DETAYLI - SADECE DEBUG MODDA
+            if (kDebugMode)
+              Positioned(
+                top: 60,
+                right: 16,
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 300),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withAlpha(204), // 0.8 opacity
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withAlpha(51), // 0.2 opacity
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(77), // 0.3 opacity
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(77), // 0.3 opacity
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Başlık
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.memory, size: 16, color: Colors.greenAccent),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Cache Monitor',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Başlık
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.memory, size: 16, color: Colors.greenAccent),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Cache Monitor',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    // Genel bilgi
-                    Text(
-                      'Total: ${_viewModel.cachedImagesCount} images (${_viewModel.cachedImagesSizeMB}MB)',
-                      style: const TextStyle(color: Colors.white70, fontSize: 10),
-                    ),
-                    const Divider(color: Colors.white24, height: 16),
-                    // Detaylı liste
-                    ...() {
-                      final cacheStatus = _viewModel.getCacheStatusList();
-                      return cacheStatus.map((status) {
-                        final isCurrent = status['label'] == 'CURRENT';
-                        final isCached = status['isCached'] as bool;
-                        final label = status['label'] as String;
-                        final fileName = status['fileName'] as String;
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Genel bilgi
+                      Text(
+                        'Total: ${_viewModel.cachedImagesCount} images (${_viewModel.cachedImagesSizeMB}MB)',
+                        style: const TextStyle(color: Colors.white70, fontSize: 10),
+                      ),
+                      const Divider(color: Colors.white24, height: 16),
+                      // Detaylı liste
+                      ...() {
+                        final cacheStatus = _viewModel.getCacheStatusList();
+                        return cacheStatus.map((status) {
+                          final isCurrent = status['label'] == 'CURRENT';
+                          final isCached = status['isCached'] as bool;
+                          final label = status['label'] as String;
+                          final fileName = status['fileName'] as String;
 
-                        // Dosya adını kısalt
-                        final shortName = fileName.length > 20 ? '${fileName.substring(0, 17)}...' : fileName;
+                          // Dosya adını kısalt
+                          final shortName = fileName.length > 20 ? '${fileName.substring(0, 17)}...' : fileName;
 
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // Durum ikonu
-                              Icon(
-                                isCached ? Icons.check_circle : Icons.pending,
-                                size: 12,
-                                color: isCached ? Colors.green : Colors.orange,
-                              ),
-                              const SizedBox(width: 6),
-                              // Label
-                              SizedBox(
-                                width: 60,
-                                child: Text(
-                                  label,
-                                  style: TextStyle(
-                                    color: isCurrent ? Colors.blue : Colors.white70,
-                                    fontSize: 9,
-                                    fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Durum ikonu
+                                Icon(
+                                  isCached ? Icons.check_circle : Icons.pending,
+                                  size: 12,
+                                  color: isCached ? Colors.green : Colors.orange,
+                                ),
+                                const SizedBox(width: 6),
+                                // Label
+                                SizedBox(
+                                  width: 60,
+                                  child: Text(
+                                    label,
+                                    style: TextStyle(
+                                      color: isCurrent ? Colors.blue : Colors.white70,
+                                      fontSize: 9,
+                                      fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 4),
-                              // Dosya adı
-                              Flexible(
-                                child: Text(
-                                  shortName,
-                                  style: TextStyle(
-                                    color: isCurrent ? Colors.blue : Colors.white60,
-                                    fontSize: 9,
+                                const SizedBox(width: 4),
+                                // Dosya adı
+                                Flexible(
+                                  child: Text(
+                                    shortName,
+                                    style: TextStyle(
+                                      color: isCurrent ? Colors.blue : Colors.white60,
+                                      fontSize: 9,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList();
-                    }(),
-                  ],
+                              ],
+                            ),
+                          );
+                        }).toList();
+                      }(),
+                    ],
+                  ),
                 ),
               ),
-            ),
             Positioned(
               top: 0,
               left: 0,
