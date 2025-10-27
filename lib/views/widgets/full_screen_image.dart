@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:archive_manager_v3/models/tag.dart';
 import 'package:archive_manager_v3/viewmodels/home_view_model.dart';
+import 'package:archive_manager_v3/viewmodels/fullscreen_view_model.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -21,8 +22,7 @@ import 'common/tag_chips.dart';
 // Klavye ve mouse ile gezinme, etiketleme, puanlama ve bilgi gösterimi içerir.
 class FullScreenImage extends StatefulWidget {
   final Photo photo;
-  final List<Photo>
-      filteredPhotos; // Tam ekran moduna girdiğindeki filtrelenmiş liste
+  final List<Photo> filteredPhotos; // Tam ekran moduna girdiğindeki filtrelenmiş liste
 
   // Static flag to track if we're in fullscreen mode
   static bool isActive = false;
@@ -37,11 +37,9 @@ class FullScreenImage extends StatefulWidget {
   State<FullScreenImage> createState() => _FullScreenImageState();
 }
 
-class _FullScreenImageState extends State<FullScreenImage>
-    with TickerProviderStateMixin {
-  late Photo _currentPhoto;
-  late List<Photo>
-      _frozenFilteredPhotos; // Tam ekrana girdiğindeki dondurulmuş liste
+class _FullScreenImageState extends State<FullScreenImage> with TickerProviderStateMixin {
+  late FullScreenViewModel _viewModel;
+  late List<Photo> _frozenFilteredPhotos;
   late bool _autoNext;
   late bool _showInfo;
   late bool _showNotes;
@@ -50,8 +48,7 @@ class _FullScreenImageState extends State<FullScreenImage>
   final FocusNode _notesFocusNode = FocusNode();
   final TextEditingController _notesController = TextEditingController();
   late final Box<Tag> _tagBox;
-  final TransformationController _transformationController =
-      TransformationController();
+  final TransformationController _transformationController = TransformationController();
   final double _minScale = 1.0;
   final double _maxScale = 20.0;
   double _currentScale = 1.0;
@@ -61,31 +58,62 @@ class _FullScreenImageState extends State<FullScreenImage>
   DateTime? _middleMouseDownTime;
 
   // Key to access this screen's DragItemWidget state for multi-item drag
-  final GlobalKey<sdd.DragItemWidgetState> _dragKey =
-      GlobalKey<sdd.DragItemWidgetState>();
-
-  // Artık sıralama durumunu takip etmeye gerek yok
+  final GlobalKey<sdd.DragItemWidgetState> _dragKey = GlobalKey<sdd.DragItemWidgetState>();
 
   List<Tag> get tags => _tagBox.values.toList();
+
   @override
   void initState() {
     super.initState();
-    _currentPhoto = widget.photo;
-    // Mark initial photo as viewed when opening fullscreen
-    _currentPhoto.markViewed();
-    _frozenFilteredPhotos =
-        List.from(widget.filteredPhotos); // Filtrelenmiş listeyi dondur
+
+    // Sıralanmış listeyi al
+    final filterManager = context.read<FilterManager>();
+    _frozenFilteredPhotos = PhotoSorter.sort(
+      widget.filteredPhotos,
+      ratingSortState: filterManager.ratingSortState,
+      dateSortState: filterManager.dateSortState,
+      resolutionSortState: filterManager.resolutionSortState,
+    );
+
+    // ViewModel'i oluştur
+    _viewModel = FullScreenViewModel(
+      initialPhoto: widget.photo,
+      allPhotos: _frozenFilteredPhotos,
+    );
+
+    // Image cache'i yapılandır
+    _viewModel.configureImageCache(context);
+
     _tagBox = Hive.box<Tag>('tags');
     _showInfo = context.read<SettingsManager>().showImageInfo;
     _showNotes = context.read<SettingsManager>().showNotes;
     _autoNext = context.read<SettingsManager>().fullscreenAutoNext;
-    _notesController.text = _currentPhoto.note;
+    _notesController.text = _viewModel.currentPhoto.note;
     _zenMode = false;
     FullScreenImage.isActive = true;
 
+    // ViewModel'i dinle
+    _viewModel.addListener(_onViewModelChanged);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
+
+      // İlk cache yönetimini başlat
+      _viewModel.manageCacheForCurrentPhoto(context);
+
+      // Cache monitörünü başlat
+      _viewModel.startCacheMonitoring();
     });
+  }
+
+  // ViewModel değiştiğinde çağrılır
+  void _onViewModelChanged() {
+    if (mounted) {
+      setState(() {
+        // Not controller'ı güncelle
+        _notesController.text = _viewModel.currentPhoto.note;
+      });
+    }
   }
 
   // Zoom durumunu animasyonlu şekilde sıfırlar
@@ -190,6 +218,8 @@ class _FullScreenImageState extends State<FullScreenImage>
   @override
   void dispose() {
     FullScreenImage.isActive = false;
+    _viewModel.removeListener(_onViewModelChanged);
+    _viewModel.dispose();
     _focusNode.dispose();
     _notesFocusNode.dispose();
     _notesController.dispose();
@@ -217,28 +247,16 @@ class _FullScreenImageState extends State<FullScreenImage>
   }
 
   // Sonraki fotoğrafa geçme işlemini gerçekleştirir
-  void _moveToNextPhoto(List<Photo> filteredPhotos) {
-    final currentIndex = filteredPhotos.indexOf(_currentPhoto);
-    if (currentIndex < filteredPhotos.length - 1) {
-      final nextPhoto = filteredPhotos[currentIndex + 1];
-
-      // HomeViewModel'deki seçili fotoğrafı güncelle
-      final homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
-      homeViewModel.setSelectedPhoto(nextPhoto);
-
-      setState(() {
-        _currentPhoto = nextPhoto;
-        _notesController.text = nextPhoto.note;
-        _resetZoom();
-      });
-    }
+  void _moveToNextPhoto(List<Photo> filteredPhotos) async {
+    await _viewModel.moveToNext(context);
+    _resetZoom();
   }
 
   // Puan verme işlemini gerçekleştirir ve gerekirse sonraki fotoğrafa geçer
   void _handleRating(List<Photo> filteredPhotos) {
     // Eğer otomatik geçiş açıksa ve son fotoğraf değilse sonraki fotoğrafa geç
     if (_autoNext) {
-      final currentIndex = filteredPhotos.indexOf(_currentPhoto);
+      final currentIndex = filteredPhotos.indexOf(_viewModel.currentPhoto);
       if (currentIndex < filteredPhotos.length - 1) {
         // Kısa bir gecikme ekleyerek kullanıcının puanı görmesini sağla
         Future.delayed(const Duration(milliseconds: 200), () {
@@ -250,8 +268,7 @@ class _FullScreenImageState extends State<FullScreenImage>
     }
   }
 
-  Widget _buildFullScreenView(
-      List<Photo> filteredPhotos, HomeViewModel homeViewModel) {
+  Widget _buildFullScreenView(List<Photo> filteredPhotos, HomeViewModel homeViewModel) {
     final photoManager = Provider.of<PhotoManager>(context);
     final settingsManager = Provider.of<SettingsManager>(context);
 
@@ -275,64 +292,35 @@ class _FullScreenImageState extends State<FullScreenImage>
             return;
           }
 
-          final currentIndex = filteredPhotos.indexOf(_currentPhoto);
+          final currentIndex = filteredPhotos.indexOf(_viewModel.currentPhoto);
 
-          if (event.logicalKey == LogicalKeyboardKey.arrowLeft &&
-              currentIndex > 0) {
-            final prevPhoto = filteredPhotos[currentIndex - 1];
+          if (event.logicalKey == LogicalKeyboardKey.arrowLeft && _viewModel.canGoPrevious) {
             // HomeViewModel'deki seçili fotoğrafı güncelle
-            homeViewModel.setSelectedPhoto(prevPhoto);
-            // Mark as viewed when navigated to
-            prevPhoto.markViewed();
-            setState(() {
-              _currentPhoto = prevPhoto;
-              _notesController.text = prevPhoto.note;
-              _resetZoom();
-            });
-          } else if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
-              currentIndex < filteredPhotos.length - 1) {
-            final nextPhoto = filteredPhotos[currentIndex + 1];
+            homeViewModel.setSelectedPhoto(filteredPhotos[currentIndex - 1]);
+            _viewModel.moveToPrevious(context);
+            _resetZoom();
+          } else if (event.logicalKey == LogicalKeyboardKey.arrowRight && _viewModel.canGoNext) {
             // HomeViewModel'deki seçili fotoğrafı güncelle
-            homeViewModel.setSelectedPhoto(nextPhoto);
-            // Mark as viewed when navigated to
-            nextPhoto.markViewed();
-            setState(() {
-              _currentPhoto = nextPhoto;
-              _notesController.text = nextPhoto.note;
-              _resetZoom();
-            });
+            homeViewModel.setSelectedPhoto(filteredPhotos[currentIndex + 1]);
+            _viewModel.moveToNext(context);
+            _resetZoom();
           } else if (event.logicalKey == LogicalKeyboardKey.delete) {
             // Use Future.microtask to avoid setState during build
-            Future.microtask(() {
-              final currentIndex = filteredPhotos.indexOf(_currentPhoto);
-
+            Future.microtask(() async {
               // Fotoğrafı sil
-              photoManager.deletePhoto(_currentPhoto);
+              photoManager.deletePhoto(_viewModel.currentPhoto);
 
-              // Silme işleminden sonra filteredPhotos listesini güncelle
-              // Silinen fotoğrafı listeden çıkar
-              filteredPhotos
-                  .removeWhere((photo) => photo.path == _currentPhoto.path);
+              // ViewModel'de silme işlemi ve cache güncelleme
+              // ignore: use_build_context_synchronously
+              await _viewModel.deleteCurrentAndMoveNext(context);
 
-              if (filteredPhotos.isEmpty) {
-                if (mounted) {
-                  Navigator.of(context).pop();
-                }
+              // Eğer tüm fotoğraflar silindiyse çık
+              if (_viewModel.allPhotos.isEmpty && mounted) {
+                Navigator.of(context).pop();
               } else if (mounted) {
-                // Aynı indeksi kullan, eğer son fotoğraf silindiyse bir öncekine geç
-                final nextPhoto = filteredPhotos[
-                    currentIndex < filteredPhotos.length
-                        ? currentIndex
-                        : filteredPhotos.length - 1];
-                // HomeViewModel'deki seçili fotoğrafı güncelle
-                homeViewModel.setSelectedPhoto(nextPhoto);
-                // Mark as viewed when navigated to
-                nextPhoto.markViewed();
-                setState(() {
-                  _currentPhoto = nextPhoto;
-                  _notesController.text = nextPhoto.note;
-                  _resetZoom();
-                });
+                // HomeViewModel'i güncelle
+                homeViewModel.setSelectedPhoto(_viewModel.currentPhoto);
+                _resetZoom();
               }
             });
           } else if (event.logicalKey == LogicalKeyboardKey.controlLeft) {
@@ -357,10 +345,9 @@ class _FullScreenImageState extends State<FullScreenImage>
           } else if (event.logicalKey == LogicalKeyboardKey.f11) {
             // F11 tuşuna basıldığında tam ekran modunu aç/kapat
             settingsManager.toggleFullscreen();
-          } else if (event.logicalKey == LogicalKeyboardKey.space ||
-              event.logicalKey == LogicalKeyboardKey.enter) {
+          } else if (event.logicalKey == LogicalKeyboardKey.space || event.logicalKey == LogicalKeyboardKey.enter) {
             // Boşluk veya Enter tuşuna basıldığında seçim durumunu değiştir
-            homeViewModel.togglePhotoSelection(_currentPhoto);
+            homeViewModel.togglePhotoSelection(_viewModel.currentPhoto);
           } else {
             // Handle number keys for rating (0-9)
             final key = event.logicalKey.keyLabel;
@@ -369,12 +356,10 @@ class _FullScreenImageState extends State<FullScreenImage>
               // Use Future.microtask to avoid setState during build
               Future.microtask(() {
                 if (!mounted) return;
-                final photoManager =
-                    Provider.of<PhotoManager>(context, listen: false);
-                photoManager.setRating(_currentPhoto, rating,
-                    allowToggle: false);
+                final photoManager = Provider.of<PhotoManager>(context, listen: false);
+                photoManager.setRating(_viewModel.currentPhoto, rating, allowToggle: false);
                 // Current photo is being interacted with, mark viewed
-                _currentPhoto.markViewed();
+                _viewModel.currentPhoto.markViewed();
                 // Tam ekranda da state'i güncelle
                 setState(() {
                   // Bu sadece UI'ı yeniden render etmek için
@@ -397,10 +382,8 @@ class _FullScreenImageState extends State<FullScreenImage>
                         : _isZooming
                             ? SystemMouseCursors.basic
                             : _currentScale > _minScale
-                                ? SystemMouseCursors
-                                    .basic // Zoom yapılmışsa grab cursor göster (sürüklenebilir)
-                                : SystemMouseCursors
-                                    .basic, // Zoom yapılmamışsa normal cursor göster
+                                ? SystemMouseCursors.basic // Zoom yapılmışsa grab cursor göster (sürüklenebilir)
+                                : SystemMouseCursors.basic, // Zoom yapılmamışsa normal cursor göster
                 child: Listener(
                   onPointerDown: (event) {
                     if (event.buttons == kMiddleMouseButton) {
@@ -413,12 +396,9 @@ class _FullScreenImageState extends State<FullScreenImage>
                   },
                   onPointerMove: (event) {
                     // Orta tuş basılı ve hareket varsa ve zoom yapılmışsa sürükleme başlat
-                    if (event.buttons == kMiddleMouseButton &&
-                        _lastDragPosition != null &&
-                        _currentScale > _minScale) {
+                    if (event.buttons == kMiddleMouseButton && _lastDragPosition != null && _currentScale > _minScale) {
                       // Hareket mesafesini hesapla
-                      final moveDistance =
-                          (event.position - _lastDragPosition!).distance;
+                      final moveDistance = (event.position - _lastDragPosition!).distance;
 
                       // Belirli bir eşik değerini aşarsa sürükleme moduna geç
                       if (moveDistance > 5.0) {
@@ -430,12 +410,8 @@ class _FullScreenImageState extends State<FullScreenImage>
                       if (_isDragging) {
                         // Sürükleme hareketi
                         final delta = event.position - _lastDragPosition!;
-                        final Matrix4 matrix =
-                            Matrix4.copy(_transformationController.value);
-                        matrix.translateByVector3(Vector3(
-                            delta.dx / _currentScale,
-                            delta.dy / _currentScale,
-                            0.0));
+                        final Matrix4 matrix = Matrix4.copy(_transformationController.value);
+                        matrix.translateByVector3(Vector3(delta.dx / _currentScale, delta.dy / _currentScale, 0.0));
                         _transformationController.value = matrix;
                         _lastDragPosition = event.position;
                       }
@@ -487,12 +463,10 @@ class _FullScreenImageState extends State<FullScreenImage>
                             final Offset focalPointScene = _lastDragPosition!;
 
                             // Ekranın merkezini hesapla
-                            final Offset viewCenter =
-                                Offset(viewSize.width / 2, viewSize.height / 2);
+                            final Offset viewCenter = Offset(viewSize.width / 2, viewSize.height / 2);
 
                             // Tıklama pozisyonunun merkeze göre farkını hesapla
-                            final Offset focalPointDelta =
-                                focalPointScene - viewCenter;
+                            final Offset focalPointDelta = focalPointScene - viewCenter;
 
                             // Yeni dönüşüm matrisini hesapla
                             final Matrix4 matrix = Matrix4.identity();
@@ -503,18 +477,15 @@ class _FullScreenImageState extends State<FullScreenImage>
                             // Tıklama pozisyonuna göre zoom yap
                             // 1. Tıklama pozisyonunu merkeze taşı
                             matrix.translateByVector3(
-                              Vector3(
-                                  focalPointScene.dx, focalPointScene.dy, 0.0),
+                              Vector3(focalPointScene.dx, focalPointScene.dy, 0.0),
                             );
 
                             // 2. Ölçekle
-                            matrix.scaleByVector3(
-                                Vector3(scaleFactor, scaleFactor, 1.0));
+                            matrix.scaleByVector3(Vector3(scaleFactor, scaleFactor, 1.0));
 
                             // 3. Tıklama pozisyonunu geri taşı
                             matrix.translateByVector3(
-                              Vector3(-focalPointScene.dx, -focalPointScene.dy,
-                                  0.0),
+                              Vector3(-focalPointScene.dx, -focalPointScene.dy, 0.0),
                             );
 
                             // 4. Tıklama pozisyonuna göre ek kaydırma ekle
@@ -548,10 +519,8 @@ class _FullScreenImageState extends State<FullScreenImage>
                             final item = sdd.DragItem();
                             try {
                               // Her DragItem yalnızca mevcut fotoğrafı temsil eder
-                              debugPrint(
-                                  'Preparing drag item for current photo: ${_currentPhoto.path}');
-                              item.add(sdd.Formats.fileUri(
-                                  Uri.file(_currentPhoto.path)));
+                              debugPrint('Preparing drag item for current photo: ${_viewModel.currentPhoto.path}');
+                              item.add(sdd.Formats.fileUri(Uri.file(_viewModel.currentPhoto.path)));
                             } catch (e) {
                               debugPrint('DragItemProvider error: $e');
                               return null;
@@ -562,8 +531,7 @@ class _FullScreenImageState extends State<FullScreenImage>
                           child: sdd.DraggableWidget(
                             // Provide multi-item drag when multiple photos are selected
                             dragItemsProvider: (ctx) {
-                              final vm = Provider.of<HomeViewModel>(ctx,
-                                  listen: false);
+                              final vm = Provider.of<HomeViewModel>(ctx, listen: false);
                               final List<sdd.DragItemWidgetState> items = [];
                               final self = _dragKey.currentState;
                               if (self != null) items.add(self);
@@ -577,23 +545,33 @@ class _FullScreenImageState extends State<FullScreenImage>
                               return items;
                             },
                             child: InteractiveViewer(
-                              transformationController:
-                                  _transformationController,
+                              transformationController: _transformationController,
                               minScale: _minScale,
                               maxScale: _maxScale,
                               onInteractionEnd: (details) {
                                 // Güncellenen ölçeği kaydet
-                                final scale = _transformationController.value
-                                    .getMaxScaleOnAxis();
+                                final scale = _transformationController.value.getMaxScaleOnAxis();
                                 setState(() {
                                   _currentScale = scale;
                                   // Zoom durumuna göre cursor güncellenir
                                   // (MouseRegion widget'inin cursor özelliği otomatik olarak güncellenecek)
                                 });
                               },
-                              child: Image.file(
-                                File(_currentPhoto.path),
+                              child: Image(
+                                image: FileImage(File(_viewModel.currentPhoto.path)),
                                 fit: BoxFit.contain,
+                                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                                  if (wasSynchronouslyLoaded) {
+                                    return child;
+                                  }
+                                  // Yüklenirken loading göster
+                                  return AnimatedOpacity(
+                                    opacity: frame == null ? 0.0 : 1.0,
+                                    duration: const Duration(milliseconds: 200),
+                                    curve: Curves.easeIn,
+                                    child: child,
+                                  );
+                                },
                               ),
                             ),
                           ),
@@ -608,8 +586,7 @@ class _FullScreenImageState extends State<FullScreenImage>
                 top: 60,
                 left: 16,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.blue.withAlpha(204), // 0.8 opacity
                     borderRadius: BorderRadius.circular(8),
@@ -624,8 +601,7 @@ class _FullScreenImageState extends State<FullScreenImage>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.drag_handle,
-                          size: 16, color: Colors.white),
+                      const Icon(Icons.drag_handle, size: 16, color: Colors.white),
                       const SizedBox(width: 8),
                       Text(
                         'Sürükle bırak: ${homeViewModel.selectedPhotos.length} fotoğraf kopyalanacak',
@@ -639,13 +615,118 @@ class _FullScreenImageState extends State<FullScreenImage>
                   ),
                 ),
               ),
+            // Cache monitor overlay (sağ üst köşe) - DETAYLI
+            Positioned(
+              top: 60,
+              right: 16,
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 300),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.black.withAlpha(204), // 0.8 opacity
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withAlpha(51), // 0.2 opacity
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(77), // 0.3 opacity
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Başlık
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.memory, size: 16, color: Colors.greenAccent),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Cache Monitor',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // Genel bilgi
+                    Text(
+                      'Total: ${_viewModel.cachedImagesCount} images (${_viewModel.cachedImagesSizeMB}MB)',
+                      style: const TextStyle(color: Colors.white70, fontSize: 10),
+                    ),
+                    const Divider(color: Colors.white24, height: 16),
+                    // Detaylı liste
+                    ...() {
+                      final cacheStatus = _viewModel.getCacheStatusList();
+                      return cacheStatus.map((status) {
+                        final isCurrent = status['label'] == 'CURRENT';
+                        final isCached = status['isCached'] as bool;
+                        final label = status['label'] as String;
+                        final fileName = status['fileName'] as String;
+
+                        // Dosya adını kısalt
+                        final shortName = fileName.length > 20 ? '${fileName.substring(0, 17)}...' : fileName;
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Durum ikonu
+                              Icon(
+                                isCached ? Icons.check_circle : Icons.pending,
+                                size: 12,
+                                color: isCached ? Colors.green : Colors.orange,
+                              ),
+                              const SizedBox(width: 6),
+                              // Label
+                              SizedBox(
+                                width: 60,
+                                child: Text(
+                                  label,
+                                  style: TextStyle(
+                                    color: isCurrent ? Colors.blue : Colors.white70,
+                                    fontSize: 9,
+                                    fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              // Dosya adı
+                              Flexible(
+                                child: Text(
+                                  shortName,
+                                  style: TextStyle(
+                                    color: isCurrent ? Colors.blue : Colors.white60,
+                                    fontSize: 9,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList();
+                    }(),
+                  ],
+                ),
+              ),
+            ),
             Positioned(
               top: 0,
               left: 0,
               right: 0,
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -655,9 +736,7 @@ class _FullScreenImageState extends State<FullScreenImage>
                         color: _autoNext ? Colors.blue : Colors.white70,
                       ),
                       onPressed: () {
-                        final settingsManager = Provider.of<SettingsManager>(
-                            context,
-                            listen: false);
+                        final settingsManager = Provider.of<SettingsManager>(context, listen: false);
                         setState(() {
                           _autoNext = !_autoNext;
                           settingsManager.setFullscreenAutoNext(_autoNext);
@@ -667,32 +746,27 @@ class _FullScreenImageState extends State<FullScreenImage>
                     ),
                     Row(
                       children: [
-                        TagChips(tags: _currentPhoto.tags),
-                        RatingDisplay(rating: _currentPhoto.rating),
+                        TagChips(tags: _viewModel.currentPhoto.tags),
+                        RatingDisplay(rating: _viewModel.currentPhoto.rating),
                         // Selection status icon
                         SelectionIconButton(
-                          photo: _currentPhoto,
-                          onPressed: () =>
-                              homeViewModel.togglePhotoSelection(_currentPhoto),
+                          photo: _viewModel.currentPhoto,
+                          onPressed: () => homeViewModel.togglePhotoSelection(_viewModel.currentPhoto),
                         ),
                         // Favorite icon
                         FavoriteIconButton(
-                          photo: _currentPhoto,
+                          photo: _viewModel.currentPhoto,
                           onPressed: () {
-                            final photoManager = Provider.of<PhotoManager>(
-                                context,
-                                listen: false);
-                            photoManager.toggleFavorite(_currentPhoto);
+                            final photoManager = Provider.of<PhotoManager>(context, listen: false);
+                            photoManager.toggleFavorite(_viewModel.currentPhoto);
 
                             setState(() {});
 
                             // Eğer otomatik geçiş açıksa, sonraki fotoğrafa geç
                             if (_autoNext) {
-                              final currentIndex =
-                                  filteredPhotos.indexOf(_currentPhoto);
+                              final currentIndex = filteredPhotos.indexOf(_viewModel.currentPhoto);
                               if (currentIndex < filteredPhotos.length - 1) {
-                                Future.delayed(
-                                    const Duration(milliseconds: 200), () {
+                                Future.delayed(const Duration(milliseconds: 200), () {
                                   if (mounted) {
                                     _moveToNextPhoto(filteredPhotos);
                                   }
@@ -704,9 +778,7 @@ class _FullScreenImageState extends State<FullScreenImage>
                         InfoIconButton(
                           isActive: _showInfo,
                           onPressed: () {
-                            final settingsManager =
-                                Provider.of<SettingsManager>(context,
-                                    listen: false);
+                            final settingsManager = Provider.of<SettingsManager>(context, listen: false);
                             setState(() {
                               _showInfo = !_showInfo;
                               settingsManager.setShowImageInfo(_showInfo);
@@ -716,9 +788,7 @@ class _FullScreenImageState extends State<FullScreenImage>
                         NotesIconButton(
                           isActive: _showNotes,
                           onPressed: () {
-                            final settingsManager =
-                                Provider.of<SettingsManager>(context,
-                                    listen: false);
+                            final settingsManager = Provider.of<SettingsManager>(context, listen: false);
                             setState(() {
                               _showNotes = !_showNotes;
                               settingsManager.setShowNotes(_showNotes);
@@ -744,16 +814,13 @@ class _FullScreenImageState extends State<FullScreenImage>
                 right: 16,
                 child: FutureBuilder<List<Object>>(
                   future: Future.wait([
-                    File(_currentPhoto.path).length(),
+                    File(_viewModel.currentPhoto.path).length(),
                     () async {
                       final completer = Completer<ImageInfo>();
-                      final stream = Image.file(File(_currentPhoto.path))
-                          .image
-                          .resolve(const ImageConfiguration());
+                      final stream = Image.file(File(_viewModel.currentPhoto.path)).image.resolve(const ImageConfiguration());
                       final listener = ImageStreamListener(
                         (info, _) => completer.complete(info),
-                        onError: (exception, stackTrace) =>
-                            completer.completeError(exception),
+                        onError: (exception, stackTrace) => completer.completeError(exception),
                       );
                       stream.addListener(listener);
                       try {
@@ -779,11 +846,10 @@ class _FullScreenImageState extends State<FullScreenImage>
                       return '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
                     }
 
-                    final file = File(_currentPhoto.path);
+                    final file = File(_viewModel.currentPhoto.path);
                     final stat = file.statSync();
                     final creationDate = stat.changed.toLocal();
-                    final formattedDate =
-                        '${creationDate.day}/${creationDate.month}/${creationDate.year} ${creationDate.hour}:${creationDate.minute.toString().padLeft(2, '0')}';
+                    final formattedDate = '${creationDate.day}/${creationDate.month}/${creationDate.year} ${creationDate.hour}:${creationDate.minute.toString().padLeft(2, '0')}';
 
                     return Container(
                       padding: const EdgeInsets.all(16),
@@ -802,14 +868,13 @@ class _FullScreenImageState extends State<FullScreenImage>
                           ),
                         ],
                       ),
-                      constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.3),
+                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.3),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            _currentPhoto.path.split('\\').last,
+                            _viewModel.currentPhoto.path.split('\\').last,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 14,
@@ -821,37 +886,29 @@ class _FullScreenImageState extends State<FullScreenImage>
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              const Icon(
-                                  Icons.photo_size_select_actual_outlined,
-                                  size: 14,
-                                  color: Colors.white70),
+                              const Icon(Icons.photo_size_select_actual_outlined, size: 14, color: Colors.white70),
                               const SizedBox(width: 4),
                               Text(
                                 '${width}x$height',
-                                style: const TextStyle(
-                                    color: Colors.white70, fontSize: 12),
+                                style: const TextStyle(color: Colors.white70, fontSize: 12),
                               ),
                               const SizedBox(width: 12),
-                              const Icon(Icons.sd_storage_outlined,
-                                  size: 14, color: Colors.white70),
+                              const Icon(Icons.sd_storage_outlined, size: 14, color: Colors.white70),
                               const SizedBox(width: 4),
                               Text(
                                 formatFileSize(fileSize),
-                                style: const TextStyle(
-                                    color: Colors.white70, fontSize: 12),
+                                style: const TextStyle(color: Colors.white70, fontSize: 12),
                               ),
                             ],
                           ),
                           const SizedBox(height: 4),
                           Row(
                             children: [
-                              const Icon(Icons.calendar_today_outlined,
-                                  size: 14, color: Colors.white70),
+                              const Icon(Icons.calendar_today_outlined, size: 14, color: Colors.white70),
                               const SizedBox(width: 4),
                               Text(
                                 formattedDate,
-                                style: const TextStyle(
-                                    color: Colors.white70, fontSize: 12),
+                                style: const TextStyle(color: Colors.white70, fontSize: 12),
                               ),
                             ],
                           ),
@@ -859,27 +916,20 @@ class _FullScreenImageState extends State<FullScreenImage>
                           if (homeViewModel.hasSelectedPhotos) ...[
                             const SizedBox(height: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                 color: Colors.blue.withAlpha(51), // 0.2 opacity
                                 borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                    color: Colors.blue
-                                        .withAlpha(102)), // 0.4 opacity
+                                border: Border.all(color: Colors.blue.withAlpha(102)), // 0.4 opacity
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.photo_library,
-                                      size: 12, color: Colors.blue),
+                                  const Icon(Icons.photo_library, size: 12, color: Colors.blue),
                                   const SizedBox(width: 4),
                                   Text(
                                     '${homeViewModel.selectedPhotos.length} seçili',
-                                    style: const TextStyle(
-                                        color: Colors.blue,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w500),
+                                    style: const TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.w500),
                                   ),
                                 ],
                               ),
@@ -934,10 +984,9 @@ class _FullScreenImageState extends State<FullScreenImage>
                           ),
                           const Spacer(),
                           IconButton(
-                            icon: const Icon(Icons.save,
-                                color: Colors.white70, size: 18),
+                            icon: const Icon(Icons.save, color: Colors.white70, size: 18),
                             onPressed: () {
-                              _currentPhoto.updateNote(_notesController.text);
+                              _viewModel.currentPhoto.updateNote(_notesController.text);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('Not kaydedildi'),
@@ -969,39 +1018,31 @@ class _FullScreenImageState extends State<FullScreenImage>
                             controller: _notesController,
                             focusNode: _notesFocusNode,
                             maxLines: 6,
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 13),
+                            style: const TextStyle(color: Colors.white, fontSize: 13),
                             decoration: InputDecoration(
-                              hintText:
-                                  'Bu fotoğraf için notlarınızı buraya yazın...',
-                              hintStyle:
-                                  TextStyle(color: Colors.white.withAlpha(128)),
+                              hintText: 'Bu fotoğraf için notlarınızı buraya yazın...',
+                              hintStyle: TextStyle(color: Colors.white.withAlpha(128)),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(
-                                    color: Colors.white.withAlpha(51)),
+                                borderSide: BorderSide(color: Colors.white.withAlpha(51)),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(
-                                    color: Colors.white.withAlpha(51)),
+                                borderSide: BorderSide(color: Colors.white.withAlpha(51)),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
-                                borderSide:
-                                    const BorderSide(color: Colors.blue),
+                                borderSide: const BorderSide(color: Colors.blue),
                               ),
                               filled: true,
-                              fillColor:
-                                  Colors.black.withAlpha(77), // 0.3 opacity
+                              fillColor: Colors.black.withAlpha(77), // 0.3 opacity
                               contentPadding: const EdgeInsets.all(12),
                             ),
                             onChanged: (value) {
                               // Auto-save after a short delay
-                              Future.delayed(const Duration(milliseconds: 500),
-                                  () {
+                              Future.delayed(const Duration(milliseconds: 500), () {
                                 if (_notesController.text == value) {
-                                  _currentPhoto.updateNote(value);
+                                  _viewModel.currentPhoto.updateNote(value);
                                 }
                               });
                             },
