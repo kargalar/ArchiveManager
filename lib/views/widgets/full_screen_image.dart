@@ -558,18 +558,13 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                                 });
                               },
                               child: Image(
-                                image: FileImage(File(_viewModel.currentPhoto.path)),
+                                // 🔑 ÖNEMLI: Cache'den okumak için aynı ImageProvider instance'ını kullan!
+                                image: _viewModel.currentImageProvider,
                                 fit: BoxFit.contain,
-                                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                                  if (wasSynchronouslyLoaded) {
-                                    return child;
-                                  }
-                                  // Yüklenirken loading göster
-                                  return AnimatedOpacity(
-                                    opacity: frame == null ? 0.0 : 1.0,
-                                    duration: const Duration(milliseconds: 200),
-                                    curve: Curves.easeIn,
-                                    child: child,
+                                // frameBuilder kaldırıldı - cache'den gelirse anında gösterir
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Center(
+                                    child: Icon(Icons.error, size: 50, color: Colors.red),
                                   );
                                 },
                               ),
@@ -817,7 +812,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                     File(_viewModel.currentPhoto.path).length(),
                     () async {
                       final completer = Completer<ImageInfo>();
-                      final stream = Image.file(File(_viewModel.currentPhoto.path)).image.resolve(const ImageConfiguration());
+                      final stream = _viewModel.currentImageProvider.resolve(const ImageConfiguration());
                       final listener = ImageStreamListener(
                         (info, _) => completer.complete(info),
                         onError: (exception, stackTrace) => completer.completeError(exception),

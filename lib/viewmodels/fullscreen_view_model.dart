@@ -26,6 +26,9 @@ class FullScreenViewModel extends ChangeNotifier {
   // Şu anda cache'lenmiş fotoğrafların path'leri
   final Set<String> _cachedPhotoPaths = {};
 
+  // 🔑 ÖNEMLI: Mevcut fotoğraf için ImageProvider - Cache'den okumak için aynı instance kullanılmalı!
+  FileImage? _currentImageProvider;
+
   FullScreenViewModel({
     required Photo initialPhoto,
     required List<Photo> allPhotos,
@@ -34,6 +37,8 @@ class FullScreenViewModel extends ChangeNotifier {
     // İlk fotoğraf zaten gösterilecek, cache'de say
     _cachedPhotoPaths.add(initialPhoto.path);
     _photoCacheStatus[initialPhoto.path] = true;
+    // İlk ImageProvider'ı oluştur
+    _currentImageProvider = FileImage(File(initialPhoto.path));
   }
 
   // Getters
@@ -44,6 +49,15 @@ class FullScreenViewModel extends ChangeNotifier {
   int get currentIndex => _allPhotos.indexOf(_currentPhoto);
   bool get canGoNext => currentIndex < _allPhotos.length - 1;
   bool get canGoPrevious => currentIndex > 0;
+
+  // 🔑 ÖNEMLI: Mevcut fotoğraf için ImageProvider - Cache'den yükleme için aynı instance'ı kullan
+  FileImage get currentImageProvider {
+    // Eğer photo değiştiyse, yeni provider oluştur
+    if (_currentImageProvider == null || _currentImageProvider!.file.path != _currentPhoto.path) {
+      _currentImageProvider = FileImage(File(_currentPhoto.path));
+    }
+    return _currentImageProvider!;
+  }
 
   // Cache status bilgileri
   List<Map<String, dynamic>> getCacheStatusList() {
@@ -93,10 +107,8 @@ class FullScreenViewModel extends ChangeNotifier {
     imageCache.maximumSize = 100;
     imageCache.maximumSizeBytes = 500 * 1024 * 1024; // 500 MB
 
-    debugPrint(
-        '🖼️ Image Cache Configured: maxSize=${imageCache.maximumSize}, maxBytes=${imageCache.maximumSizeBytes ~/ (1024 * 1024)}MB');
-    debugPrint(
-        '📊 Current Cache: ${imageCache.currentSize} images, ${imageCache.currentSizeBytes ~/ (1024 * 1024)}MB');
+    debugPrint('🖼️ Image Cache Configured: maxSize=${imageCache.maximumSize}, maxBytes=${imageCache.maximumSizeBytes ~/ (1024 * 1024)}MB');
+    debugPrint('📊 Current Cache: ${imageCache.currentSize} images, ${imageCache.currentSizeBytes ~/ (1024 * 1024)}MB');
   }
 
   /// Cache monitörünü başlat
@@ -114,8 +126,7 @@ class FullScreenViewModel extends ChangeNotifier {
   Future<void> manageCacheForCurrentPhoto(BuildContext context) async {
     final idx = currentIndex;
 
-    debugPrint(
-        '\n🔄 Managing cache for: ${_currentPhoto.path.split('\\').last}');
+    debugPrint('\n🔄 Managing cache for: ${_currentPhoto.path.split('\\').last}');
     debugPrint('📍 Current index: $idx / ${_allPhotos.length}');
 
     // Hangi fotoğrafların cache'de olması gerektiğini belirle
@@ -139,14 +150,12 @@ class FullScreenViewModel extends ChangeNotifier {
     }
 
     debugPrint('📋 Required in cache: ${requiredPhotoPaths.length} photos');
-    debugPrint(
-        '   Range: ${idx - CACHE_PREVIOUS_COUNT} to ${idx + CACHE_NEXT_COUNT}');
+    debugPrint('   Range: ${idx - CACHE_PREVIOUS_COUNT} to ${idx + CACHE_NEXT_COUNT}');
 
     // Gereksiz cache'leri temizle (opsiyonel - Flutter bunu otomatik yapar ama biz kontrol ediyoruz)
     final unnecessaryPaths = _cachedPhotoPaths.difference(requiredPhotoPaths);
     if (unnecessaryPaths.isNotEmpty) {
-      debugPrint(
-          '🗑️ Removing ${unnecessaryPaths.length} unnecessary cached images');
+      debugPrint('🗑️ Removing ${unnecessaryPaths.length} unnecessary cached images');
       // Flutter'ın cache'ini direkt temizleyemeyiz, ama takip listesini güncelleyebiliriz
       _cachedPhotoPaths.removeAll(unnecessaryPaths);
     }
@@ -157,8 +166,7 @@ class FullScreenViewModel extends ChangeNotifier {
       debugPrint('➕ Caching ${photosToCache.length} new photos');
 
       final imageCache = PaintingBinding.instance.imageCache;
-      debugPrint(
-          '📊 Before cache: ${imageCache.currentSize} images, ${imageCache.currentSizeBytes ~/ (1024 * 1024)}MB');
+      debugPrint('📊 Before cache: ${imageCache.currentSize} images, ${imageCache.currentSizeBytes ~/ (1024 * 1024)}MB');
 
       // SIRA İLE her bir fotoğrafı cache'le ve BEKLE!
       for (final photoPath in photosToCache) {
@@ -180,14 +188,12 @@ class FullScreenViewModel extends ChangeNotifier {
         }
       }
 
-      debugPrint(
-          '📊 After cache: ${imageCache.currentSize} images, ${imageCache.currentSizeBytes ~/ (1024 * 1024)}MB');
+      debugPrint('📊 After cache: ${imageCache.currentSize} images, ${imageCache.currentSizeBytes ~/ (1024 * 1024)}MB');
     } else {
       debugPrint('✅ All required photos already cached');
     }
 
-    debugPrint(
-        '📋 Total tracked in cache: ${_cachedPhotoPaths.length} photos\n');
+    debugPrint('📋 Total tracked in cache: ${_cachedPhotoPaths.length} photos\n');
   }
 
   /// Sonraki fotoğrafa geç
