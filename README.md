@@ -17,12 +17,7 @@ Still, it is quite sufficient for personal use.
 
 - ⭐ **Rating**: You can rate the photos.
 - 🔦 **Filter & Sort**: You can filter and sort it to manage and review it more easily.
-
-## 🛠️ Built With
-
-- **Flutter** - UI framework
-- **Trae, Augment, Copilot AI** - Development assistants
-
+- 
 ## 📝 Development Notes
 
 This project was created to test the potential of AI-assisted development. Approximately 95% of the code was written using Trae, Augment, Copilot AI prompts, with only minor manual adjustments. Since the main focus was on testing rapid development with the help of AI, clean code principles and architecture were not considered.
