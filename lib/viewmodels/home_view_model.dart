@@ -1,4 +1,5 @@
 import 'package:archive_manager_v3/views/widgets/full_screen_image.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -262,6 +263,12 @@ class HomeViewModel extends ChangeNotifier {
         photoManager.toggleFavorite(_selectedPhoto!);
       }
       return;
+    } else if (event.logicalKey == LogicalKeyboardKey.space) {
+      // Set as wallpaper with Space key
+      if (_selectedPhoto != null) {
+        setAsWallpaper(context, _selectedPhoto!.path);
+      }
+      return;
     } else if (event.logicalKey == LogicalKeyboardKey.escape) {
       // Clear all selections with Escape key only if we're in grid view (not in fullscreen)
       // Check if we're in fullscreen mode using the static flag
@@ -373,6 +380,61 @@ class HomeViewModel extends ChangeNotifier {
     if (_selectedPhoto != photo) {
       _selectedPhoto = photo;
       notifyListeners();
+    }
+  }
+
+  void setAsWallpaper(BuildContext context, String imagePath) async {
+    try {
+      final file = File(imagePath);
+      if (!await file.exists()) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Resim dosyası bulunamadı')),
+          );
+        }
+        return;
+      }
+
+      // Windows yolu formatına çevir (ters slash)
+      final absolutePath = file.absolute.path.replaceAll('/', '\\');
+
+      // PowerShell ile daha güvenilir yöntem
+      final script = '''
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class Wallpaper {
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    public static extern int SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);
+}
+"@
+[Wallpaper]::SystemParametersInfo(20, 0, "$absolutePath", 3)
+''';
+
+      final result = await Process.run(
+        'powershell',
+        ['-ExecutionPolicy', 'Bypass', '-Command', script],
+      );
+
+      if (result.exitCode == 0) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Masaüstü arkaplanı başarıyla ayarlandı')),
+          );
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Hata: ${result.stderr}')),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata: $e')),
+        );
+      }
     }
   }
 }

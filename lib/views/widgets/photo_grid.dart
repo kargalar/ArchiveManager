@@ -130,56 +130,16 @@ class _PhotoGridState extends State<PhotoGrid> {
     final homeViewModel = Provider.of<HomeViewModel>(context);
     final filterManager = Provider.of<FilterManager>(context);
 
-    return KeyboardListener(
-      focusNode: FocusNode(),
-      autofocus: true,
-      onKeyEvent: (event) {
-        if (event is KeyDownEvent) {
-          if (homeViewModel.selectedPhoto != null) {
-            if (event.logicalKey == LogicalKeyboardKey.delete) {
-              // Use Future.microtask to avoid setState during build
-              Future.microtask(() {
-                photoManager.deletePhoto(homeViewModel.selectedPhoto!);
-              });
-            } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
-              // Use Future.microtask to avoid setState during build
-              Future.microtask(() {
-                photoManager.toggleFavorite(homeViewModel.selectedPhoto!);
-              });
-            } else {
-              final key = event.logicalKey.keyLabel;
-              if (key.length == 1 && RegExp(r'[0-9]').hasMatch(key)) {
-                // Use Future.microtask to avoid setState during build
-                Future.microtask(() {
-                  photoManager.setRating(homeViewModel.selectedPhoto!, int.parse(key));
-                });
-              }
-
-              final tags = tagManager.tags;
-              for (var tag in tags) {
-                if (event.logicalKey == tag.shortcutKey) {
-                  // Use Future.microtask to avoid setState during build
-                  Future.microtask(() {
-                    tagManager.toggleTag(homeViewModel.selectedPhoto!, tag);
-                  });
-                  break;
-                }
-              }
-            }
-          }
+    return Builder(
+      builder: (context) {
+        if (folderManager.selectedFolder == null && folderManager.selectedSection == null) {
+          return const Center(
+            child: Text('Select a folder to view images'),
+          );
         }
-      },
-      child: Builder(
-        builder: (context) {
-          if (folderManager.selectedFolder == null && folderManager.selectedSection == null) {
-            return const Center(
-              child: Text('Select a folder to view images'),
-            );
-          }
 
-          return _buildGrid(context, folderManager, photoManager, tagManager, settingsManager, filterManager, homeViewModel);
-        },
-      ),
+        return _buildGrid(context, folderManager, photoManager, tagManager, settingsManager, filterManager, homeViewModel);
+      },
     );
   }
 
@@ -784,7 +744,10 @@ class _PhotoGridState extends State<PhotoGrid> {
               const Text('Masaüstü Arkaplanı Olarak Ayarla'),
             ],
           ),
-          onTap: () => _setAsWallpaper(photo.path),
+          onTap: () {
+            final homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
+            homeViewModel.setAsWallpaper(context, photo.path);
+          },
         ),
         PopupMenuItem(
           child: Row(
@@ -847,61 +810,6 @@ class _PhotoGridState extends State<PhotoGrid> {
             ),
       ],
     );
-  }
-
-  void _setAsWallpaper(String imagePath) async {
-    try {
-      final file = File(imagePath);
-      if (!await file.exists()) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Resim dosyası bulunamadı')),
-          );
-        }
-        return;
-      }
-
-      // Windows yolu formatına çevir (ters slash)
-      final absolutePath = file.absolute.path.replaceAll('/', '\\');
-
-      // PowerShell ile daha güvenilir yöntem
-      final script = '''
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-public class Wallpaper {
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
-    public static extern int SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);
-}
-"@
-[Wallpaper]::SystemParametersInfo(20, 0, "$absolutePath", 3)
-''';
-
-      final result = await Process.run(
-        'powershell',
-        ['-ExecutionPolicy', 'Bypass', '-Command', script],
-      );
-
-      if (result.exitCode == 0) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Masaüstü arkaplanı başarıyla ayarlandı')),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Hata: ${result.stderr}')),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e')),
-        );
-      }
-    }
   }
 
   Widget _buildPhotoOverlay(Photo photo, TagManager tagManager) {
