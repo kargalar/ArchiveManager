@@ -28,6 +28,9 @@ class _PhotoGridState extends State<PhotoGrid> {
   // Scroll controller to enable programmatic scrolling
   final ScrollController _scrollController = ScrollController();
 
+  // Focus node to keep focus within the photo grid
+  late final FocusNode _focusNode;
+
   // Keep a DragItemWidgetState key per photo so we can build multi-item drags
   final Map<String, GlobalKey<sdd.DragItemWidgetState>> _dragKeysByPath = {};
 
@@ -42,6 +45,10 @@ class _PhotoGridState extends State<PhotoGrid> {
   @override
   void initState() {
     super.initState();
+
+    // Initialize focus node and request focus to keep focus within the grid
+    _focusNode = FocusNode();
+    _focusNode.requestFocus();
 
     // Delay setting up the timer to ensure the widget is fully initialized
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -65,6 +72,9 @@ class _PhotoGridState extends State<PhotoGrid> {
 
   @override
   void dispose() {
+    // Dispose focus node
+    _focusNode.dispose();
+
     // Cancel timer and dispose scroll controller when widget is disposed
     _cleanupTimer?.cancel();
     _scrollController.dispose();
@@ -130,16 +140,24 @@ class _PhotoGridState extends State<PhotoGrid> {
     final homeViewModel = Provider.of<HomeViewModel>(context);
     final filterManager = Provider.of<FilterManager>(context);
 
-    return Builder(
-      builder: (context) {
-        if (folderManager.selectedFolder == null && folderManager.selectedSection == null) {
-          return const Center(
-            child: Text('Select a folder to view images'),
-          );
+    return Focus(
+      focusNode: _focusNode,
+      onFocusChange: (hasFocus) {
+        if (!hasFocus) {
+          _focusNode.requestFocus();
         }
-
-        return _buildGrid(context, folderManager, photoManager, tagManager, settingsManager, filterManager, homeViewModel);
       },
+      child: Builder(
+        builder: (context) {
+          if (folderManager.selectedFolder == null && folderManager.selectedSection == null) {
+            return const Center(
+              child: Text('Select a folder to view images'),
+            );
+          }
+
+          return _buildGrid(context, folderManager, photoManager, tagManager, settingsManager, filterManager, homeViewModel);
+        },
+      ),
     );
   }
 
