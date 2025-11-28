@@ -775,6 +775,23 @@ class _PhotoGridState extends State<PhotoGrid> {
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
+                  color: Colors.green.withAlpha(30),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Icon(Icons.wallpaper, size: 16, color: Colors.green),
+              ),
+              const SizedBox(width: 12),
+              const Text('Masaüstü Arkaplanı Olarak Ayarla'),
+            ],
+          ),
+          onTap: () => _setAsWallpaper(photo.path),
+        ),
+        PopupMenuItem(
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
                   color: Colors.blue.withAlpha(30),
                   borderRadius: BorderRadius.circular(4),
                 ),
@@ -830,6 +847,61 @@ class _PhotoGridState extends State<PhotoGrid> {
             ),
       ],
     );
+  }
+
+  void _setAsWallpaper(String imagePath) async {
+    try {
+      final file = File(imagePath);
+      if (!await file.exists()) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Resim dosyası bulunamadı')),
+          );
+        }
+        return;
+      }
+
+      // Windows yolu formatına çevir (ters slash)
+      final absolutePath = file.absolute.path.replaceAll('/', '\\');
+
+      // PowerShell ile daha güvenilir yöntem
+      final script = '''
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class Wallpaper {
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    public static extern int SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);
+}
+"@
+[Wallpaper]::SystemParametersInfo(20, 0, "$absolutePath", 3)
+''';
+
+      final result = await Process.run(
+        'powershell',
+        ['-ExecutionPolicy', 'Bypass', '-Command', script],
+      );
+
+      if (result.exitCode == 0) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Masaüstü arkaplanı başarıyla ayarlandı')),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Hata: ${result.stderr}')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata: $e')),
+        );
+      }
+    }
   }
 
   Widget _buildPhotoOverlay(Photo photo, TagManager tagManager) {
