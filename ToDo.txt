@@ -38,3 +38,5 @@ yeni fotoğrafları analiz ederken renklere göre filtremek için de bir analiz 
 fotoğrafları seçtim ve sürükleyip masaüstüne atacağım diyelim. çalışıyor ama eksik çalışıyor. sadece o sayfada görünen seçili fotoğrafları üsürkleyip kopyalayabiliyorum. diğer kopyalanmıyorlar
 
 tüm sorunların çözüldüğünden emin ol
+
+ui gizle tab

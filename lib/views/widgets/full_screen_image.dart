@@ -722,7 +722,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                 ),
               ),
             // Cache monitor overlay (sağ üst köşe) - DETAYLI - SADECE DEBUG MODDA
-            if (kDebugMode)
+            if (kDebugMode && !_zenMode)
               Positioned(
                 top: 60,
                 right: 16,
@@ -828,91 +828,92 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                   ),
                 ),
               ),
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        _autoNext ? Icons.skip_next : Icons.skip_next_outlined,
-                        color: _autoNext ? Colors.blue : Colors.white70,
+            if (!_zenMode)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          _autoNext ? Icons.skip_next : Icons.skip_next_outlined,
+                          color: _autoNext ? Colors.blue : Colors.white70,
+                        ),
+                        onPressed: () {
+                          final settingsManager = Provider.of<SettingsManager>(context, listen: false);
+                          setState(() {
+                            _autoNext = !_autoNext;
+                            settingsManager.setFullscreenAutoNext(_autoNext);
+                          });
+                        },
+                        tooltip: 'Auto Next (Shift)',
                       ),
-                      onPressed: () {
-                        final settingsManager = Provider.of<SettingsManager>(context, listen: false);
-                        setState(() {
-                          _autoNext = !_autoNext;
-                          settingsManager.setFullscreenAutoNext(_autoNext);
-                        });
-                      },
-                      tooltip: 'Auto Next (Shift)',
-                    ),
-                    Row(
-                      children: [
-                        TagChips(tags: _viewModel.currentPhoto.tags),
-                        RatingDisplay(rating: _viewModel.currentPhoto.rating),
-                        // Selection status icon
-                        SelectionIconButton(
-                          photo: _viewModel.currentPhoto,
-                          onPressed: () => homeViewModel.togglePhotoSelection(_viewModel.currentPhoto),
-                        ),
-                        // Favorite icon
-                        FavoriteIconButton(
-                          photo: _viewModel.currentPhoto,
-                          onPressed: () {
-                            final photoManager = Provider.of<PhotoManager>(context, listen: false);
-                            photoManager.toggleFavorite(_viewModel.currentPhoto);
+                      Row(
+                        children: [
+                          TagChips(tags: _viewModel.currentPhoto.tags),
+                          RatingDisplay(rating: _viewModel.currentPhoto.rating),
+                          // Selection status icon
+                          SelectionIconButton(
+                            photo: _viewModel.currentPhoto,
+                            onPressed: () => homeViewModel.togglePhotoSelection(_viewModel.currentPhoto),
+                          ),
+                          // Favorite icon
+                          FavoriteIconButton(
+                            photo: _viewModel.currentPhoto,
+                            onPressed: () {
+                              final photoManager = Provider.of<PhotoManager>(context, listen: false);
+                              photoManager.toggleFavorite(_viewModel.currentPhoto);
 
-                            setState(() {});
+                              setState(() {});
 
-                            // Eğer otomatik geçiş açıksa, sonraki fotoğrafa geç
-                            if (_autoNext) {
-                              final currentIndex = filteredPhotos.indexOf(_viewModel.currentPhoto);
-                              if (currentIndex < filteredPhotos.length - 1) {
-                                Future.delayed(const Duration(milliseconds: 200), () {
-                                  if (mounted) {
-                                    _moveToNextPhoto(filteredPhotos);
-                                  }
-                                });
+                              // Eğer otomatik geçiş açıksa, sonraki fotoğrafa geç
+                              if (_autoNext) {
+                                final currentIndex = filteredPhotos.indexOf(_viewModel.currentPhoto);
+                                if (currentIndex < filteredPhotos.length - 1) {
+                                  Future.delayed(const Duration(milliseconds: 200), () {
+                                    if (mounted) {
+                                      _moveToNextPhoto(filteredPhotos);
+                                    }
+                                  });
+                                }
                               }
-                            }
-                          },
-                        ),
-                        InfoIconButton(
-                          isActive: _showInfo,
-                          onPressed: () {
-                            final settingsManager = Provider.of<SettingsManager>(context, listen: false);
-                            setState(() {
-                              _showInfo = !_showInfo;
-                              settingsManager.setShowImageInfo(_showInfo);
-                            });
-                          },
-                        ),
-                        NotesIconButton(
-                          isActive: _showNotes,
-                          onPressed: () {
-                            final settingsManager = Provider.of<SettingsManager>(context, listen: false);
-                            setState(() {
-                              _showNotes = !_showNotes;
-                              settingsManager.setShowNotes(_showNotes);
-                            });
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white70),
-                          onPressed: () => Navigator.of(context).pop(),
-                          tooltip: 'Close (ESC)',
-                        ),
-                      ],
-                    ),
-                  ],
+                            },
+                          ),
+                          InfoIconButton(
+                            isActive: _showInfo,
+                            onPressed: () {
+                              final settingsManager = Provider.of<SettingsManager>(context, listen: false);
+                              setState(() {
+                                _showInfo = !_showInfo;
+                                settingsManager.setShowImageInfo(_showInfo);
+                              });
+                            },
+                          ),
+                          NotesIconButton(
+                            isActive: _showNotes,
+                            onPressed: () {
+                              final settingsManager = Provider.of<SettingsManager>(context, listen: false);
+                              setState(() {
+                                _showNotes = !_showNotes;
+                                settingsManager.setShowNotes(_showNotes);
+                              });
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white70),
+                            onPressed: () => Navigator.of(context).pop(),
+                            tooltip: 'Close (ESC)',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
             if (_showInfo && !_zenMode)
               AnimatedPositioned(
                 duration: const Duration(milliseconds: 200),
