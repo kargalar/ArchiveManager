@@ -50,6 +50,13 @@ class Photo extends HiveObject {
   @HiveField(10, defaultValue: '')
   String note;
 
+  // Dominant color category analysis for filtering.
+  // null: not analyzed yet (backfill will compute)
+  // -1: analyzed but unknown/failed
+  // >=0: PhotoColorCategory.code
+  @HiveField(11)
+  int? colorCategoryCode;
+
   // isSelected is a transient property (not stored in Hive)
   bool isSelected = false;
 
@@ -65,11 +72,16 @@ class Photo extends HiveObject {
     this.dimensionsLoaded = false,
     this.isViewed = false,
     this.note = '',
+    this.colorCategoryCode,
     this.isSelected = false,
   }) : tags = tags ?? [];
 
   // Calculate resolution (total pixels)
   int get resolution => width * height;
+
+  PhotoColorCategory? get colorCategory => PhotoColorCategory.fromStoredCode(colorCategoryCode);
+
+  bool get isColorAnalyzed => colorCategoryCode != null;
 
   void toggleFavorite() {
     isFavorite = !isFavorite;
@@ -117,5 +129,30 @@ class Photo extends HiveObject {
     } catch (e) {
       debugPrint('Photo.updateNote ERROR: $e');
     }
+  }
+}
+
+enum PhotoColorCategory {
+  red(0),
+  orange(1),
+  yellow(2),
+  green(3),
+  blue(4),
+  purple(5),
+  pink(6),
+  brown(7),
+  black(8),
+  white(9),
+  gray(10);
+
+  final int code;
+  const PhotoColorCategory(this.code);
+
+  static PhotoColorCategory? fromStoredCode(int? code) {
+    if (code == null || code < 0) return null;
+    for (final value in PhotoColorCategory.values) {
+      if (value.code == code) return value;
+    }
+    return null;
   }
 }

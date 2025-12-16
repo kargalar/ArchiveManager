@@ -28,13 +28,14 @@ class PhotoAdapter extends TypeAdapter<Photo> {
       dimensionsLoaded: fields[8] == null ? false : fields[8] as bool,
       isViewed: fields[9] == null ? false : fields[9] as bool,
       note: fields[10] == null ? '' : fields[10] as String,
+      colorCategoryCode: fields[11] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Photo obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.path)
       ..writeByte(1)
@@ -56,7 +57,9 @@ class PhotoAdapter extends TypeAdapter<Photo> {
       ..writeByte(9)
       ..write(obj.isViewed)
       ..writeByte(10)
-      ..write(obj.note);
+      ..write(obj.note)
+      ..writeByte(11)
+      ..write(obj.colorCategoryCode);
   }
 
   @override

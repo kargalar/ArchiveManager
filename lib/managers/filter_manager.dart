@@ -7,6 +7,7 @@ import '../models/sort_state.dart';
 import '../models/tag.dart';
 import 'photo_manager.dart';
 import '../main.dart';
+import '../utils/photo_color_analyzer.dart';
 
 class FilterManager extends ChangeNotifier {
   // Sorting
@@ -22,6 +23,9 @@ class FilterManager extends ChangeNotifier {
   bool _showUntaggedOnly = false;
   double _minRatingFilter = 0;
   double _maxRatingFilter = 9;
+
+  // Color filtering (single selection)
+  PhotoColorCategory? _colorFilter;
 
   // Tag tri-state filtering
   final List<Tag> _positiveTagFilters = [];
@@ -45,6 +49,7 @@ class FilterManager extends ChangeNotifier {
   bool get showUntaggedOnly => _showUntaggedOnly;
   double get minRatingFilter => _minRatingFilter;
   double get maxRatingFilter => _maxRatingFilter;
+  PhotoColorCategory? get colorFilter => _colorFilter;
 
   // Loading state getters
   bool get isLoadingDimensions => _isLoadingDimensions;
@@ -719,6 +724,35 @@ class FilterManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setColorFilter(PhotoColorCategory? color) {
+    _colorFilter = color;
+    notifyListeners();
+  }
+
+  void resetColorFilter() {
+    _colorFilter = null;
+    notifyListeners();
+  }
+
+  Future<void> analyzeColorIfNeeded(Photo photo) async {
+    try {
+      if (photo.colorCategoryCode != null) return;
+
+      final code = await PhotoColorAnalyzer.computeColorCategoryCode(photo.path);
+      photo.colorCategoryCode = code;
+      await photo.save();
+    } catch (e) {
+      // Persist unknown to avoid retry loops.
+      try {
+        photo.colorCategoryCode = -1;
+        await photo.save();
+      } catch (_) {
+        // ignore
+      }
+      debugPrint('FilterManager.analyzeColorIfNeeded ERROR: $e');
+    }
+  }
+
   /// Tag'a tıklanınca üçlü döngü: yok -> pozitif -> negatif -> yok
   void toggleTagTriState(Tag tag) {
     if (_positiveTagFilters.contains(tag)) {
@@ -786,6 +820,11 @@ class FilterManager extends ChangeNotifier {
             if (photo.tags.isEmpty) return false;
             break;
         }
+      }
+
+      // Handle color filter
+      if (_colorFilter != null) {
+        if (photo.colorCategoryCode != _colorFilter!.code) return false;
       }
 
       if (photo.rating < _minRatingFilter || photo.rating > _maxRatingFilter) return false;

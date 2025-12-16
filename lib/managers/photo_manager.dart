@@ -96,12 +96,16 @@ class PhotoManager extends ChangeNotifier {
 
   // Start the indexing process in the background
   void _startIndexing(List<Photo> photos) {
-    // First filter out photos that already have dimensions loaded
-    final List<Photo> photosNeedingDimensions = photos.where((photo) => !photo.dimensionsLoaded || photo.width <= 0 || photo.height <= 0).toList();
+    // Filter out photos that already have required analysis data
+    final List<Photo> photosNeedingAnalysis = photos
+        .where(
+          (photo) => (!photo.dimensionsLoaded || photo.width <= 0 || photo.height <= 0) || photo.colorCategoryCode == null,
+        )
+        .toList();
 
-    // If no photos need dimensions, return early
-    if (photosNeedingDimensions.isEmpty) {
-      debugPrint('No photos need dimensions, skipping indexing');
+    // If no photos need analysis, return early
+    if (photosNeedingAnalysis.isEmpty) {
+      debugPrint('No photos need analysis, skipping indexing');
       _isIndexing = false;
       _indexingProgress = 1.0;
 
@@ -115,7 +119,7 @@ class PhotoManager extends ChangeNotifier {
     // Set indexing state
     _isIndexing = true;
     _indexingProgress = 0.0;
-    _totalPhotosToIndex = photosNeedingDimensions.length;
+    _totalPhotosToIndex = photosNeedingAnalysis.length;
     _indexedPhotosCount = 0;
 
     // Update the stream with initial state
@@ -123,10 +127,10 @@ class PhotoManager extends ChangeNotifier {
 
     // İndeksleme başladığında sadece stream'i güncelle, notifyListeners() çağırma
 
-    debugPrint('Starting indexing for ${photosNeedingDimensions.length} photos');
+    debugPrint('Starting indexing for ${photosNeedingAnalysis.length} photos');
 
     // Process photos one by one
-    _processPhotosOneByOne(photosNeedingDimensions);
+    _processPhotosOneByOne(photosNeedingAnalysis);
   }
 
   // Load dimensions one by one to prevent UI freezing and memory leaks
@@ -155,7 +159,11 @@ class PhotoManager extends ChangeNotifier {
 
       // Process this photo
       if (_filterManager != null) {
+        // Load dimensions if needed
         await _filterManager!.loadActualDimensions(photo);
+
+        // Analyze color if needed (new feature)
+        await _filterManager!.analyzeColorIfNeeded(photo);
       }
 
       // Increment cache cleanup counter
@@ -515,8 +523,8 @@ class PhotoManager extends ChangeNotifier {
     if (!_isIndexing) {
       debugPrint('Starting global indexing for all photos in the database');
 
-      // Sadece indexlenmemiş fotoğrafları al
-      final unindexedPhotos = _photoBox.values.where((photo) => !photo.dimensionsLoaded || photo.width <= 0 || photo.height <= 0).toList();
+      // Backfill: dimensions OR color analysis missing
+      final unindexedPhotos = _photoBox.values.where((photo) => (!photo.dimensionsLoaded || photo.width <= 0 || photo.height <= 0) || photo.colorCategoryCode == null).toList();
 
       if (unindexedPhotos.isNotEmpty) {
         debugPrint('Found ${unindexedPhotos.length} unindexed photos, starting indexing');

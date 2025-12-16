@@ -9,6 +9,7 @@ import '../../managers/tag_manager.dart';
 import '../../managers/filter_manager.dart';
 import '../../managers/photo_manager.dart';
 import '../../models/indexing_state.dart';
+import '../../models/photo.dart';
 import '../dialogs/settings_dialog.dart';
 
 // Extension to add darken method to Color
@@ -162,6 +163,50 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                     tooltip: _getNewTooltip(filterManager.newFilterMode),
                   ),
                 ),
+
+                // Color filter (dominant color category)
+                GestureDetector(
+                  onSecondaryTap: () => filterManager.resetColorFilter(),
+                  child: PopupMenuButton<PhotoColorCategory?>(
+                    tooltip: filterManager.colorFilter == null ? 'Renk Filtresi' : 'Renk: ${_colorLabel(filterManager.colorFilter!)}',
+                    icon: Icon(
+                      Icons.palette,
+                      color: filterManager.colorFilter == null ? Colors.white70 : _colorSwatch(filterManager.colorFilter!),
+                    ),
+                    onSelected: (value) {
+                      filterManager.setColorFilter(value);
+                    },
+                    itemBuilder: (context) {
+                      return <PopupMenuEntry<PhotoColorCategory?>>[
+                        const PopupMenuItem<PhotoColorCategory?>(
+                          value: null,
+                          child: Text('Tümü'),
+                        ),
+                        const PopupMenuDivider(),
+                        ...PhotoColorCategory.values.map(
+                          (c) => PopupMenuItem<PhotoColorCategory?>(
+                            value: c,
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 12,
+                                  height: 12,
+                                  decoration: BoxDecoration(
+                                    color: _colorSwatch(c),
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(_colorLabel(c)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ];
+                    },
+                  ),
+                ),
+
                 GestureDetector(
                   onSecondaryTap: () {
                     filterManager.resetTagFilter();
@@ -388,6 +433,60 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
         return 'Sadece görülenler';
       default:
         return 'Yenileri göster';
+    }
+  }
+
+  static String _colorLabel(PhotoColorCategory c) {
+    switch (c) {
+      case PhotoColorCategory.red:
+        return 'Kırmızı';
+      case PhotoColorCategory.orange:
+        return 'Turuncu';
+      case PhotoColorCategory.yellow:
+        return 'Sarı';
+      case PhotoColorCategory.green:
+        return 'Yeşil';
+      case PhotoColorCategory.blue:
+        return 'Mavi';
+      case PhotoColorCategory.purple:
+        return 'Mor';
+      case PhotoColorCategory.pink:
+        return 'Pembe';
+      case PhotoColorCategory.brown:
+        return 'Kahverengi';
+      case PhotoColorCategory.black:
+        return 'Siyah';
+      case PhotoColorCategory.white:
+        return 'Beyaz';
+      case PhotoColorCategory.gray:
+        return 'Gri';
+    }
+  }
+
+  static Color _colorSwatch(PhotoColorCategory c) {
+    switch (c) {
+      case PhotoColorCategory.red:
+        return Colors.red;
+      case PhotoColorCategory.orange:
+        return Colors.orange;
+      case PhotoColorCategory.yellow:
+        return Colors.yellow;
+      case PhotoColorCategory.green:
+        return Colors.green;
+      case PhotoColorCategory.blue:
+        return Colors.blue;
+      case PhotoColorCategory.purple:
+        return Colors.purple;
+      case PhotoColorCategory.pink:
+        return Colors.pink;
+      case PhotoColorCategory.brown:
+        return Colors.brown;
+      case PhotoColorCategory.black:
+        return Colors.black;
+      case PhotoColorCategory.white:
+        return Colors.white;
+      case PhotoColorCategory.gray:
+        return Colors.grey;
     }
   }
 }
