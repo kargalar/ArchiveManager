@@ -28,4 +28,13 @@ klasör üsilince veya fotoğrafı silince birşeylero luyor kontol et düzeltel
 
 resmin yüksek çözünlürlüklü versiyonun bul özlelliğ
 
-fotoğrafda geçerken siyahlık oluyor çok rahatsız ediyor.
+uygulamayı sadece f11e basınca görüyorum. yoksa pencere gelmyor.
+
+butonlara basma ilevi full screen imageden kaldır. home_view_model den olsun. tıpkı photo griddeki gibi olsun.
+şuan fullscreenimage sayfasından esc ile çıkamıyorum. sağ sol yön tuşlarıyla fotoğrafar arası geçiş yapamıyorum
+
+yeni fotoğrafları analiz ederken renklere göre filtremek için de bir analiz yap. filtrelerden renk seçilebilisn.
+
+fotoğrafları seçtim ve sürükleyip masaüstüne atacağım diyelim. çalışıyor ama eksik çalışıyor. sadece o sayfada görünen seçili fotoğrafları üsürkleyip kopyalayabiliyorum. diğer kopyalanmıyorlar
+
+tüm sorunların çözüldüğünden emin ol

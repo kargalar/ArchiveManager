@@ -63,6 +63,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
 
   List<Tag> get tags => _tagBox.values.toList();
 
+  bool _keyboardHandlerRegistered = false;
+
   @override
   void initState() {
     super.initState();
@@ -92,6 +94,11 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
     _notesController.text = _viewModel.currentPhoto.note;
     _zenMode = false;
     FullScreenImage.isActive = true;
+
+    // Fullscreen'de ESC/oklar gibi tuşların her zaman çalışması için
+    // (focus başka widget'a kayabilse bile) global handler ekle.
+    ServicesBinding.instance.keyboard.addHandler(_handleGlobalKeyboardEvent);
+    _keyboardHandlerRegistered = true;
 
     // ViewModel'i dinle
     _viewModel.addListener(_onViewModelChanged);
@@ -219,6 +226,11 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
   @override
   void dispose() {
     FullScreenImage.isActive = false;
+
+    if (_keyboardHandlerRegistered) {
+      ServicesBinding.instance.keyboard.removeHandler(_handleGlobalKeyboardEvent);
+      _keyboardHandlerRegistered = false;
+    }
     _viewModel.removeListener(_onViewModelChanged);
     _viewModel.dispose();
     _focusNode.dispose();
@@ -226,6 +238,104 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
     _notesController.dispose();
     _transformationController.dispose();
     super.dispose();
+  }
+
+  bool _handleGlobalKeyboardEvent(KeyEvent event) {
+    if (!mounted) return false;
+
+    // Sadece bu route ekrandayken yakala.
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) return false;
+    if (!FullScreenImage.isActive) return false;
+
+    final isArrowKey = event.logicalKey == LogicalKeyboardKey.arrowLeft || event.logicalKey == LogicalKeyboardKey.arrowRight || event.logicalKey == LogicalKeyboardKey.arrowUp || event.logicalKey == LogicalKeyboardKey.arrowDown;
+
+    // Ok tuşlarında repeat'e izin ver, diğerlerinde KeyDown.
+    if (event is! KeyDownEvent && !(event is KeyRepeatEvent && isArrowKey)) {
+      return false;
+    }
+
+    // ESC her zaman çalışsın (notes yazarken bile)
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      Future.microtask(() {
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+      });
+      return true;
+    }
+
+    // Not alanı focus'taysa diğer kısayolları engelle
+    if (_notesFocusNode.hasFocus) {
+      return false;
+    }
+
+    final settingsManager = context.read<SettingsManager>();
+    final homeViewModel = context.read<HomeViewModel>();
+
+    // TAB: UI gizle/göster (zen mode). Tab'ın focus değiştirmesini engelle.
+    if (event.logicalKey == LogicalKeyboardKey.tab) {
+      setState(() {
+        _zenMode = !_zenMode;
+      });
+      return true;
+    }
+
+    // SHIFT: auto-next aç/kapat (sol/sağ shift destekle)
+    if (event.logicalKey == LogicalKeyboardKey.shiftLeft || event.logicalKey == LogicalKeyboardKey.shiftRight) {
+      setState(() {
+        _autoNext = !_autoNext;
+        settingsManager.setFullscreenAutoNext(_autoNext);
+      });
+      return true;
+    }
+
+    // Ok tuşları: fotoğraflar arasında gezin
+    if (event.logicalKey == LogicalKeyboardKey.arrowLeft && _viewModel.canGoPrevious) {
+      final currentIndex = _viewModel.allPhotos.indexOf(_viewModel.currentPhoto);
+      if (currentIndex > 0) {
+        homeViewModel.setSelectedPhoto(_viewModel.allPhotos[currentIndex - 1]);
+      }
+      _viewModel.moveToPrevious(context);
+      _resetZoom();
+      return true;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowRight && _viewModel.canGoNext) {
+      final currentIndex = _viewModel.allPhotos.indexOf(_viewModel.currentPhoto);
+      if (currentIndex >= 0 && currentIndex < _viewModel.allPhotos.length - 1) {
+        homeViewModel.setSelectedPhoto(_viewModel.allPhotos[currentIndex + 1]);
+      }
+      _viewModel.moveToNext(context);
+      _resetZoom();
+      return true;
+    }
+
+    // Ctrl: info toggle (mevcut davranışı koru)
+    if (event.logicalKey == LogicalKeyboardKey.controlLeft || event.logicalKey == LogicalKeyboardKey.controlRight) {
+      setState(() {
+        _showInfo = !_showInfo;
+        settingsManager.setShowImageInfo(_showInfo);
+      });
+      return true;
+    }
+
+    // N (veya Ctrl+N): notes toggle
+    if (event.logicalKey == LogicalKeyboardKey.keyN) {
+      setState(() {
+        _showNotes = !_showNotes;
+        settingsManager.setShowNotes(_showNotes);
+      });
+      return true;
+    }
+
+    // Enter / Space: fullscreen içinde seçimi toggle et (grid wallpaper logic'ine düşmesin)
+    if (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.space) {
+      homeViewModel.togglePhotoSelection(_viewModel.currentPhoto);
+      return true;
+    }
+
+    return false;
   }
 
   @override

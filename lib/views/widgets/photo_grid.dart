@@ -14,6 +14,7 @@ import '../../managers/photo_manager.dart';
 import '../../managers/tag_manager.dart';
 import '../../managers/settings_manager.dart';
 import '../../managers/filter_manager.dart';
+import '../../services/input_controller.dart';
 import '../../utils/photo_sorter.dart';
 import 'full_screen_image.dart';
 
@@ -763,8 +764,8 @@ class _PhotoGridState extends State<PhotoGrid> {
             ],
           ),
           onTap: () {
-            final homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
-            homeViewModel.setAsWallpaper(context, photo.path);
+            final inputController = Provider.of<InputController>(context, listen: false);
+            inputController.setAsWallpaper(context, photo.path);
           },
         ),
         PopupMenuItem(

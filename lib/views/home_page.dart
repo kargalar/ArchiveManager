@@ -5,12 +5,11 @@ import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../managers/folder_manager.dart';
 import '../managers/photo_manager.dart';
-import '../managers/tag_manager.dart';
 import '../managers/settings_manager.dart';
-import '../managers/filter_manager.dart';
 import '../viewmodels/home_view_model.dart';
-import 'widgets/photo_grid.dart';
+import '../services/input_controller.dart';
 import 'widgets/full_screen_image.dart';
+import 'widgets/photo_grid.dart';
 import 'dialogs/missing_folders_dialog.dart';
 import 'widgets/home_app_bar.dart';
 import 'widgets/folder_menu.dart';
@@ -24,6 +23,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late HomeViewModel _homeViewModel;
+  late InputController _inputController;
   bool _isMenuExpanded = true;
   double _folderMenuWidth = 250; // Fixed initial width for folder menu
 
@@ -31,6 +31,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _homeViewModel = Provider.of<HomeViewModel>(context, listen: false);
+    _inputController = InputController();
     ServicesBinding.instance.keyboard.addHandler(_handleKeyboardEvent);
     GestureBinding.instance.pointerRouter.addGlobalRoute(_handlePointerEvent);
 
@@ -101,53 +102,23 @@ class _HomePageState extends State<HomePage> {
   }
 
   bool _handleKeyboardEvent(KeyEvent event) {
-    _handleKeyEvent(event);
+    // Fullscreen açıkken klavye event'lerini HomePage tarafında işlemeyelim.
+    // Aksi halde Space/Arrow/Esc gibi tuşlar grid logic'ine düşüyor.
+    if (FullScreenImage.isActive) {
+      return false;
+    }
+    // InputController ile handle et
+    _inputController.processKeyEvent(event, context, _homeViewModel);
     return false; // Let other handlers process the event too
   }
 
-  void _handleKeyEvent(KeyEvent event) {
-    // Allow repeats only for arrow navigation; others should fire on initial KeyDown only
-    final isArrowKey = event.logicalKey == LogicalKeyboardKey.arrowLeft || event.logicalKey == LogicalKeyboardKey.arrowRight || event.logicalKey == LogicalKeyboardKey.arrowUp || event.logicalKey == LogicalKeyboardKey.arrowDown;
-    if (event is KeyDownEvent || (event is KeyRepeatEvent && isArrowKey)) {
-      final folderManager = context.read<FolderManager>();
-      final photoManager = context.read<PhotoManager>();
-      final tagManager = context.read<TagManager>();
-      final settingsManager = context.read<SettingsManager>();
-
-      // F11 tuşuna basıldığında tam ekran modunu aç/kapat
-      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.f11) {
-        settingsManager.toggleFullscreen();
-        return;
-      }
-
-      _homeViewModel.handleKeyEvent(event, context, folderManager, photoManager, tagManager); // Only open fullscreen view if we're not already in one
-      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter && _homeViewModel.selectedPhoto != null && !FullScreenImage.isActive) {
-        final filterManager = context.read<FilterManager>();
-        final filteredPhotos = filterManager.filterPhotos(photoManager.photos, tagManager.selectedTags);
-
-        Navigator.of(context).push(
-          PageRouteBuilder(
-            settings: const RouteSettings(name: 'fullscreen_image'),
-            pageBuilder: (context, animation, secondaryAnimation) => FullScreenImage(
-              photo: _homeViewModel.selectedPhoto!,
-              filteredPhotos: filteredPhotos,
-            ),
-          ),
-        );
-      }
-    }
-  }
-
   void _handlePointerEvent(PointerEvent event) {
-    if (event is PointerScrollEvent && HardwareKeyboard.instance.isControlPressed) {
-      final delta = event.scrollDelta.dy;
-      final settingsManager = Provider.of<SettingsManager>(context, listen: false);
-      if (delta < 0) {
-        settingsManager.setPhotosPerRow(settingsManager.photosPerRow + 1);
-      } else if (delta > 0) {
-        settingsManager.setPhotosPerRow(settingsManager.photosPerRow - 1);
-      }
+    // Fullscreen açıkken pointer (Ctrl+Scroll) grid ayarlarını değiştirmesin.
+    if (FullScreenImage.isActive) {
+      return;
     }
+    final settingsManager = Provider.of<SettingsManager>(context, listen: false);
+    _inputController.handlePointerEvent(event, context, settingsManager);
   }
 
   @override
