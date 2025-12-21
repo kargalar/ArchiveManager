@@ -15,6 +15,7 @@ import '../../models/photo.dart';
 import '../../managers/photo_manager.dart';
 import '../../managers/settings_manager.dart';
 import '../../managers/filter_manager.dart';
+import '../../managers/tag_manager.dart';
 import '../../utils/photo_sorter.dart';
 import 'common/photo_action_buttons.dart';
 import 'common/tag_chips.dart';
@@ -272,6 +273,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
 
     final settingsManager = context.read<SettingsManager>();
     final homeViewModel = context.read<HomeViewModel>();
+    final photoManager = context.read<PhotoManager>();
+    final tagManager = context.read<TagManager>();
 
     // TAB: UI gizle/göster (zen mode). Tab'ın focus değiştirmesini engelle.
     if (event.logicalKey == LogicalKeyboardKey.tab) {
@@ -335,6 +338,78 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
       return true;
     }
 
+    // Delete: mevcut fotoğrafı sil ve otomatik sonraki/önceki fotoğrafa geç
+    if (event.logicalKey == LogicalKeyboardKey.delete) {
+      Future.microtask(() async {
+        if (!mounted) return;
+        final wasLastPhoto = _viewModel.allPhotos.length == 1;
+
+        photoManager.deletePhoto(_viewModel.currentPhoto);
+        // ignore: use_build_context_synchronously
+        await _viewModel.deleteCurrentAndMoveNext(context);
+
+        if (!mounted) return;
+        if (wasLastPhoto || _viewModel.allPhotos.isEmpty) {
+          Navigator.of(context).pop();
+          return;
+        }
+
+        homeViewModel.setSelectedPhoto(_viewModel.currentPhoto);
+        _resetZoom();
+      });
+      return true;
+    }
+
+    // F: favori toggle
+    if (event.logicalKey == LogicalKeyboardKey.keyF) {
+      photoManager.toggleFavorite(_viewModel.currentPhoto);
+      setState(() {});
+
+      if (_autoNext && _viewModel.canGoNext) {
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (!mounted) return;
+          _viewModel.moveToNext(context);
+          homeViewModel.setSelectedPhoto(_viewModel.currentPhoto);
+          _resetZoom();
+        });
+      }
+      return true;
+    }
+
+    // 0-9: rating (grid ile aynı davranış: aynı puana tekrar basınca temizle)
+    final keyLabel = event.logicalKey.keyLabel;
+    if (keyLabel.length == 1 && RegExp(r'[0-9]').hasMatch(keyLabel)) {
+      final rating = int.parse(keyLabel);
+      photoManager.setRating(_viewModel.currentPhoto, rating, allowToggle: true);
+      _viewModel.currentPhoto.markViewed();
+      setState(() {});
+
+      if (_autoNext && _viewModel.canGoNext) {
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (!mounted) return;
+          _viewModel.moveToNext(context);
+          homeViewModel.setSelectedPhoto(_viewModel.currentPhoto);
+          _resetZoom();
+        });
+      }
+      return true;
+    }
+
+    // Tag kısayolları: Tag.shortcutKey
+    for (final tag in tagManager.tags) {
+      if (event.logicalKey == tag.shortcutKey) {
+        tagManager.toggleTag(_viewModel.currentPhoto, tag);
+        setState(() {});
+        return true;
+      }
+    }
+
+    // F11: tam ekran modunu aç/kapat
+    if (event.logicalKey == LogicalKeyboardKey.f11) {
+      settingsManager.toggleFullscreen();
+      return true;
+    }
+
     return false;
   }
 
@@ -367,8 +442,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
   void _handleRating(List<Photo> filteredPhotos) {
     // Eğer otomatik geçiş açıksa ve son fotoğraf değilse sonraki fotoğrafa geç
     if (_autoNext) {
-      final currentIndex = filteredPhotos.indexOf(_viewModel.currentPhoto);
-      if (currentIndex < filteredPhotos.length - 1) {
+      final currentIndex = _viewModel.currentIndex;
+      if (currentIndex >= 0 && currentIndex < _viewModel.allPhotos.length - 1) {
         // Kısa bir gecikme ekleyerek kullanıcının puanı görmesini sağla
         Future.delayed(const Duration(milliseconds: 200), () {
           if (mounted) {
@@ -403,21 +478,29 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
             return;
           }
 
-          final currentIndex = filteredPhotos.indexOf(_viewModel.currentPhoto);
+          // Use ViewModel as the source of truth.
+          // Photo does not override ==, so list.indexOf can return -1 if instances differ.
+          final currentIndex = _viewModel.currentIndex;
 
           if (event.logicalKey == LogicalKeyboardKey.arrowLeft && _viewModel.canGoPrevious) {
             // HomeViewModel'deki seçili fotoğrafı güncelle
-            homeViewModel.setSelectedPhoto(filteredPhotos[currentIndex - 1]);
+            if (currentIndex > 0) {
+              homeViewModel.setSelectedPhoto(_viewModel.allPhotos[currentIndex - 1]);
+            }
             _viewModel.moveToPrevious(context);
             _resetZoom();
           } else if (event.logicalKey == LogicalKeyboardKey.arrowRight && _viewModel.canGoNext) {
             // HomeViewModel'deki seçili fotoğrafı güncelle
-            homeViewModel.setSelectedPhoto(filteredPhotos[currentIndex + 1]);
+            if (currentIndex >= 0 && currentIndex < _viewModel.allPhotos.length - 1) {
+              homeViewModel.setSelectedPhoto(_viewModel.allPhotos[currentIndex + 1]);
+            }
             _viewModel.moveToNext(context);
             _resetZoom();
           } else if (event.logicalKey == LogicalKeyboardKey.delete) {
             // Use Future.microtask to avoid setState during build
             Future.microtask(() async {
+              final wasLastPhoto = _viewModel.allPhotos.length == 1;
+
               // Fotoğrafı sil
               photoManager.deletePhoto(_viewModel.currentPhoto);
 
@@ -426,7 +509,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
               await _viewModel.deleteCurrentAndMoveNext(context);
 
               // Eğer tüm fotoğraflar silindiyse çık
-              if (_viewModel.allPhotos.isEmpty && mounted) {
+              if ((wasLastPhoto || _viewModel.allPhotos.isEmpty) && mounted) {
                 Navigator.of(context).pop();
               } else if (mounted) {
                 // HomeViewModel'i güncelle
@@ -468,7 +551,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
               Future.microtask(() {
                 if (!mounted) return;
                 final photoManager = Provider.of<PhotoManager>(context, listen: false);
-                photoManager.setRating(_viewModel.currentPhoto, rating, allowToggle: false);
+                photoManager.setRating(_viewModel.currentPhoto, rating);
                 // Current photo is being interacted with, mark viewed
                 _viewModel.currentPhoto.markViewed();
                 // Tam ekranda da state'i güncelle
@@ -872,8 +955,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
 
                               // Eğer otomatik geçiş açıksa, sonraki fotoğrafa geç
                               if (_autoNext) {
-                                final currentIndex = filteredPhotos.indexOf(_viewModel.currentPhoto);
-                                if (currentIndex < filteredPhotos.length - 1) {
+                                final currentIndex = _viewModel.currentIndex;
+                                if (currentIndex >= 0 && currentIndex < _viewModel.allPhotos.length - 1) {
                                   Future.delayed(const Duration(milliseconds: 200), () {
                                     if (mounted) {
                                       _moveToNextPhoto(filteredPhotos);

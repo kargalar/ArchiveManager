@@ -40,16 +40,23 @@ class FullScreenViewModel extends ChangeNotifier {
     required List<Photo> allPhotos,
   })  : _currentPhoto = initialPhoto,
         _allPhotos = allPhotos {
+    // Ensure _currentPhoto is the same instance as the one in _allPhotos.
+    // Photo does not override ==, so relying on identity breaks indexOf-based navigation.
+    final normalizedIndex = _indexOfPath(initialPhoto.path);
+    if (normalizedIndex >= 0) {
+      _currentPhoto = _allPhotos[normalizedIndex];
+    }
+
     // İlk fotoğraf zaten gösterilecek, cache'de say
-    _cachedPhotoPaths.add(initialPhoto.path);
-    _photoCacheStatus[initialPhoto.path] = true;
+    _cachedPhotoPaths.add(_currentPhoto.path);
+    _photoCacheStatus[_currentPhoto.path] = true;
     // İlk ImageProvider'ı oluştur (boyutlandırılmış, aspect ratio korunur)
     _currentImageProvider = ResizeImage(
-      FileImage(File(initialPhoto.path)),
+      FileImage(File(_currentPhoto.path)),
       width: MAX_CACHE_WIDTH,
       // height belirtilmedi - aspect ratio korunur!
     );
-    _currentImageProviderPath = initialPhoto.path;
+    _currentImageProviderPath = _currentPhoto.path;
   }
 
   // Getters
@@ -57,9 +64,13 @@ class FullScreenViewModel extends ChangeNotifier {
   List<Photo> get allPhotos => _allPhotos;
   int get cachedImagesCount => _cachedImagesCount;
   int get cachedImagesSizeMB => _cachedImagesSizeMB;
-  int get currentIndex => _allPhotos.indexOf(_currentPhoto);
-  bool get canGoNext => currentIndex < _allPhotos.length - 1;
+  int get currentIndex => _indexOfPath(_currentPhoto.path);
+  bool get canGoNext => currentIndex >= 0 && currentIndex < _allPhotos.length - 1;
   bool get canGoPrevious => currentIndex > 0;
+
+  int _indexOfPath(String path) {
+    return _allPhotos.indexWhere((p) => p.path == path);
+  }
 
   // 🔑 ÖNEMLI: Mevcut fotoğraf için ImageProvider - Cache'den yükleme için aynı instance'ı kullan
   ImageProvider get currentImageProvider {
@@ -220,9 +231,10 @@ class FullScreenViewModel extends ChangeNotifier {
 
   /// Sonraki fotoğrafa geç
   Future<void> moveToNext(BuildContext context) async {
-    if (!canGoNext) return;
+    final idx = currentIndex;
+    if (idx < 0 || idx >= _allPhotos.length - 1) return;
 
-    _currentPhoto = _allPhotos[currentIndex + 1];
+    _currentPhoto = _allPhotos[idx + 1];
     _currentPhoto.markViewed();
     notifyListeners();
 
@@ -232,9 +244,10 @@ class FullScreenViewModel extends ChangeNotifier {
 
   /// Önceki fotoğrafa geç
   Future<void> moveToPrevious(BuildContext context) async {
-    if (!canGoPrevious) return;
+    final idx = currentIndex;
+    if (idx <= 0) return;
 
-    _currentPhoto = _allPhotos[currentIndex - 1];
+    _currentPhoto = _allPhotos[idx - 1];
     _currentPhoto.markViewed();
     notifyListeners();
 
@@ -244,9 +257,10 @@ class FullScreenViewModel extends ChangeNotifier {
 
   /// Belirli bir fotoğrafa geç
   Future<void> moveToPhoto(BuildContext context, Photo photo) async {
-    if (!_allPhotos.contains(photo)) return;
+    final idx = _indexOfPath(photo.path);
+    if (idx < 0) return;
 
-    _currentPhoto = photo;
+    _currentPhoto = _allPhotos[idx];
     _currentPhoto.markViewed();
     notifyListeners();
 
@@ -257,8 +271,14 @@ class FullScreenViewModel extends ChangeNotifier {
   /// Mevcut fotoğrafı sil ve bir sonrakine geç
   Future<void> deleteCurrentAndMoveNext(BuildContext context) async {
     final idx = currentIndex;
+    if (idx < 0 || idx >= _allPhotos.length) {
+      return;
+    }
+
+    final deletedPath = _currentPhoto.path;
     _allPhotos.removeAt(idx);
-    _cachedPhotoPaths.remove(_currentPhoto.path);
+    _cachedPhotoPaths.remove(deletedPath);
+    _photoCacheStatus.remove(deletedPath);
 
     if (_allPhotos.isEmpty) {
       return; // View'da handle edilecek
