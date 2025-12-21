@@ -168,7 +168,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                 GestureDetector(
                   onSecondaryTap: () => filterManager.resetColorFilter(),
                   child: PopupMenuButton<PhotoColorCategory?>(
-                    tooltip: filterManager.colorFilter == null ? 'Renk Filtresi' : 'Renk: ${_colorLabel(filterManager.colorFilter!)}',
+                    tooltip: 'Renk Filtresi (sağ tık: temizle)',
                     icon: Icon(
                       Icons.palette,
                       color: filterManager.colorFilter == null ? Colors.white70 : _colorSwatch(filterManager.colorFilter!),
@@ -177,28 +177,44 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                       filterManager.setColorFilter(value);
                     },
                     itemBuilder: (context) {
+                      const gridColumns = 6;
+                      const gridSpacing = 8.0;
+                      const gridWidth = 240.0;
+                      final colorCount = PhotoColorCategory.values.length;
+                      final gridRows = (colorCount / gridColumns).ceil();
+                      final tileSize = (gridWidth - (gridColumns - 1) * gridSpacing) / gridColumns;
+                      final gridHeight = gridRows * tileSize + (gridRows - 1) * gridSpacing;
+
                       return <PopupMenuEntry<PhotoColorCategory?>>[
-                        const PopupMenuItem<PhotoColorCategory?>(
-                          value: null,
-                          child: Text('Tümü'),
-                        ),
-                        const PopupMenuDivider(),
-                        ...PhotoColorCategory.values.map(
-                          (c) => PopupMenuItem<PhotoColorCategory?>(
-                            value: c,
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 12,
-                                  height: 12,
-                                  decoration: BoxDecoration(
-                                    color: _colorSwatch(c),
-                                    borderRadius: BorderRadius.circular(2),
+                        PopupMenuItem<PhotoColorCategory?>(
+                          enabled: false,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          child: SizedBox(
+                            width: gridWidth,
+                            height: gridHeight,
+                            child: GridView.count(
+                              crossAxisCount: 6,
+                              mainAxisSpacing: 8,
+                              crossAxisSpacing: 8,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              children: PhotoColorCategory.values.map((c) {
+                                final isSelected = filterManager.colorFilter == c;
+                                return InkWell(
+                                  onTap: () => Navigator.of(context).pop<PhotoColorCategory?>(c),
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: _colorSwatch(c),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: isSelected ? Colors.white : Colors.white24,
+                                        width: isSelected ? 2 : 1,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(_colorLabel(c)),
-                              ],
+                                );
+                              }).toList(),
                             ),
                           ),
                         ),
@@ -433,33 +449,6 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
         return 'Sadece görülenler';
       default:
         return 'Yenileri göster';
-    }
-  }
-
-  static String _colorLabel(PhotoColorCategory c) {
-    switch (c) {
-      case PhotoColorCategory.red:
-        return 'Kırmızı';
-      case PhotoColorCategory.orange:
-        return 'Turuncu';
-      case PhotoColorCategory.yellow:
-        return 'Sarı';
-      case PhotoColorCategory.green:
-        return 'Yeşil';
-      case PhotoColorCategory.blue:
-        return 'Mavi';
-      case PhotoColorCategory.purple:
-        return 'Mor';
-      case PhotoColorCategory.pink:
-        return 'Pembe';
-      case PhotoColorCategory.brown:
-        return 'Kahverengi';
-      case PhotoColorCategory.black:
-        return 'Siyah';
-      case PhotoColorCategory.white:
-        return 'Beyaz';
-      case PhotoColorCategory.gray:
-        return 'Gri';
     }
   }
 

@@ -37,6 +37,7 @@ class SettingsManager extends ChangeNotifier {
   bool get showImageInfo => _settingsBox?.getAt(0)?.showImageInfo ?? false;
   bool get fullscreenAutoNext => _settingsBox?.getAt(0)?.fullscreenAutoNext ?? false;
   bool get showNotes => _settingsBox?.getAt(0)?.showNotes ?? false;
+  bool get fullscreenZenMode => _settingsBox?.getAt(0)?.fullscreenZenMode ?? false;
   double get dividerPosition => _dividerPosition;
   double get folderMenuWidth => _folderMenuWidth;
   bool get isFullscreen => _settingsBox?.getAt(0)?.isFullscreen ?? false;
@@ -104,6 +105,19 @@ class SettingsManager extends ChangeNotifier {
 
     if (_settingsBox?.getAt(0) != null) {
       _settingsBox!.getAt(0)!.showNotes = value;
+      _settingsBox!.getAt(0)!.save();
+      notifyListeners();
+    }
+  }
+
+  void setFullscreenZenMode(bool value) {
+    if (!_isInitialized) {
+      debugPrint('Cannot set fullscreenZenMode: settings not initialized');
+      return;
+    }
+
+    if (_settingsBox?.getAt(0) != null) {
+      _settingsBox!.getAt(0)!.fullscreenZenMode = value;
       _settingsBox!.getAt(0)!.save();
       notifyListeners();
     }

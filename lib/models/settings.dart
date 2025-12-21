@@ -48,6 +48,10 @@ class Settings extends HiveObject {
   @HiveField(10, defaultValue: false)
   bool showNotes;
 
+  // Fullscreen UI hide/show (zen mode)
+  @HiveField(11, defaultValue: false)
+  bool fullscreenZenMode;
+
   Settings({
     this.photosPerRow = 4,
     this.showImageInfo = true,
@@ -60,5 +64,6 @@ class Settings extends HiveObject {
     this.isFullscreen = false,
     this.folderMenuWidth = 250,
     this.showNotes = false,
+    this.fullscreenZenMode = false,
   });
 }

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../models/tag.dart';
 import '../../managers/tag_manager.dart';
+import '../../utils/keyboard_key_label.dart';
 
 class AddTagDialog extends StatefulWidget {
   const AddTagDialog({super.key});
@@ -252,7 +253,7 @@ class _EditTagDialogState extends State<EditTagDialog> {
                 children: [
                   const Text('Shortcut Key: '),
                   const SizedBox(width: 8),
-                  Text(selectedShortcutKey.keyLabel),
+                  Text(selectedShortcutKey.displayLabel),
                   const SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: () {

@@ -1,8 +1,21 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import '../models/photo.dart';
+
+class _SingleDigestSink implements Sink<Digest> {
+  Digest? value;
+
+  @override
+  void add(Digest data) {
+    value = data;
+  }
+
+  @override
+  void close() {}
+}
 
 class DuplicateGroup {
   final String hash;
@@ -91,6 +104,7 @@ class DuplicateManager extends ChangeNotifier {
   List<DuplicateGroup> _duplicateGroups = [];
   bool _isScanning = false;
   bool _shouldCancelScan = false;
+  int _scanRunId = 0;
   double _scanProgress = 0.0;
   String _scanStatus = '';
   int _totalFilesToScan = 0;
@@ -104,11 +118,16 @@ class DuplicateManager extends ChangeNotifier {
   int get duplicateGroupsCount => _duplicateGroups.length;
 
   void cancelScan() {
+    if (!_isScanning) return;
     _shouldCancelScan = true;
+    _scanStatus = 'Tarama iptal ediliyor...';
+    notifyListeners();
   }
 
   Future<void> scanForDuplicates(List<Photo> photos) async {
     if (_isScanning) return;
+
+    final int runId = ++_scanRunId;
 
     _isScanning = true;
     _shouldCancelScan = false;
@@ -122,21 +141,35 @@ class DuplicateManager extends ChangeNotifier {
     try {
       final Map<String, List<Photo>> hashGroups = {};
 
-      for (int i = 0; i < photos.length && !_shouldCancelScan; i++) {
+      for (int i = 0; i < photos.length; i++) {
+        if (_shouldCancelScan || runId != _scanRunId) {
+          break;
+        }
+
         final photo = photos[i];
         _scanStatus = 'Taranıyor: ${photo.path.split('\\').last}';
         _scannedFiles = i + 1;
         _scanProgress = _scannedFiles / _totalFilesToScan;
         try {
           final hash = await _calculateImageHash(photo.path);
+          if (_shouldCancelScan || runId != _scanRunId) {
+            break;
+          }
           if (hash != null) {
             // Mevcut hash'ler ile benzerlik kontrolü yap
             String? matchingKey;
             for (final existingKey in hashGroups.keys) {
+              if (_shouldCancelScan || runId != _scanRunId) {
+                break;
+              }
               if (_areHashesSimilar(existingKey, hash)) {
                 matchingKey = existingKey;
                 break;
               }
+            }
+
+            if (_shouldCancelScan || runId != _scanRunId) {
+              break;
             }
 
             if (matchingKey != null) {
@@ -161,7 +194,7 @@ class DuplicateManager extends ChangeNotifier {
         }
       }
 
-      if (_shouldCancelScan) {
+      if (_shouldCancelScan || runId != _scanRunId) {
         _scanStatus = 'Tarama iptal edildi';
       } else {
         // Final güncelleme - sadece birden fazla fotoğrafı olan grupları al
@@ -172,12 +205,16 @@ class DuplicateManager extends ChangeNotifier {
       _scanStatus = 'Tarama hatası: $e';
       debugPrint('Duplicate scan error: $e');
     } finally {
-      _isScanning = false;
-      _shouldCancelScan = false;
-      if (!_shouldCancelScan) {
-        _scanProgress = 1.0;
+      // Eski (iptal edilmiş / superseded) taramalar yeni tarama state'ini ezmesin.
+      if (runId == _scanRunId) {
+        final wasCancelled = _shouldCancelScan;
+        _isScanning = false;
+        if (!wasCancelled) {
+          _scanProgress = 1.0;
+        }
+        _shouldCancelScan = false;
+        notifyListeners();
       }
-      notifyListeners();
     }
   }
 
@@ -192,16 +229,34 @@ class DuplicateManager extends ChangeNotifier {
   // Gelişmiş duplicate detection - hem file hash hem de perceptual hash kullanıyor
   Future<String?> _calculateImageHash(String filePath) async {
     try {
+      if (_shouldCancelScan) return null;
       final file = File(filePath);
       if (!await file.exists()) return null;
 
-      // Önce dosya hash'ini hesapla (tam kopya tespiti için)
-      final bytes = await file.readAsBytes();
-      final fileHash = md5.convert(bytes).toString();
+      // Dosyayı chunk'lar halinde oku: hem MD5 hesapla hem de perceptual hash için bytes biriktir.
+      final bytesBuilder = BytesBuilder(copy: false);
+      final digestSink = _SingleDigestSink();
+      final md5Sink = md5.startChunkedConversion(digestSink);
 
+      await for (final chunk in file.openRead()) {
+        if (_shouldCancelScan) {
+          md5Sink.close();
+          digestSink.close();
+          return null;
+        }
+        bytesBuilder.add(chunk);
+        md5Sink.add(chunk);
+      }
+      md5Sink.close();
+      final fileHash = digestSink.value?.toString();
+      if (fileHash == null) return null;
+
+      if (_shouldCancelScan) return null;
+      final Uint8List bytes = bytesBuilder.takeBytes();
       // Perceptual hash hesapla (benzer görüntü tespiti için)
       String? perceptualHash;
       try {
+        if (_shouldCancelScan) return null;
         final image = img.decodeImage(bytes);
         if (image != null) {
           perceptualHash = _calculatePerceptualHash(image);

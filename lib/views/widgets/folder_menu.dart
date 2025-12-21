@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../managers/folder_manager.dart';
 import '../../managers/tag_manager.dart';
 import '../../managers/filter_manager.dart';
+import '../../utils/keyboard_key_label.dart';
 import 'folder_item.dart';
 import '../dialogs/missing_folders_dialog.dart';
 
@@ -586,7 +587,7 @@ class _FolderMenuState extends State<FolderMenu> {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  "(${tag.shortcutKey.keyLabel.toUpperCase()})",
+                                  "(${tag.shortcutKey.displayLabel.toUpperCase()})",
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: textColor.withAlpha(180),

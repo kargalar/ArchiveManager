@@ -28,13 +28,14 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       isFullscreen: fields[8] == null ? false : fields[8] as bool,
       folderMenuWidth: fields[9] == null ? 250 : fields[9] as double,
       showNotes: fields[10] == null ? false : fields[10] as bool,
+      fullscreenZenMode: fields[11] == null ? false : fields[11] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, Settings obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.photosPerRow)
       ..writeByte(1)
@@ -56,16 +57,14 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       ..writeByte(9)
       ..write(obj.folderMenuWidth)
       ..writeByte(10)
-      ..write(obj.showNotes);
+      ..write(obj.showNotes)
+      ..writeByte(11)
+      ..write(obj.fullscreenZenMode);
   }
 
   @override
   int get hashCode => typeId.hashCode;
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is SettingsAdapter &&
-          runtimeType == other.runtimeType &&
-          typeId == other.typeId;
+  bool operator ==(Object other) => identical(this, other) || other is SettingsAdapter && runtimeType == other.runtimeType && typeId == other.typeId;
 }

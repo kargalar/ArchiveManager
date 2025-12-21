@@ -84,6 +84,22 @@ class _DuplicatePhotosDialogState extends State<DuplicatePhotosDialog> {
                         children: [
                           ElevatedButton.icon(
                             onPressed: () {
+                              final photoManager = Provider.of<PhotoManager>(context, listen: false);
+                              duplicateManager.clearResults();
+                              Future.microtask(() {
+                                duplicateManager.scanForDuplicates(photoManager.photos);
+                              });
+                            },
+                            icon: const Icon(Icons.refresh, size: 16),
+                            label: const Text('Tekrar Tara'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            onPressed: () {
                               duplicateManager.selectAllExceptLargestInAllGroups();
                             },
                             icon: const Icon(Icons.photo_size_select_large, size: 16),

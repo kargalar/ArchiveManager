@@ -93,7 +93,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
     _showNotes = context.read<SettingsManager>().showNotes;
     _autoNext = context.read<SettingsManager>().fullscreenAutoNext;
     _notesController.text = _viewModel.currentPhoto.note;
-    _zenMode = false;
+    _zenMode = context.read<SettingsManager>().fullscreenZenMode;
     FullScreenImage.isActive = true;
 
     // Fullscreen'de ESC/oklar gibi tuşların her zaman çalışması için
@@ -127,7 +127,10 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
 
   // Zoom durumunu animasyonlu şekilde sıfırlar
   void _resetZoom() {
-    _currentScale = 1.0;
+    _transformationController.value = Matrix4.identity();
+    _currentScale = _minScale;
+    _isDragging = false;
+    _lastDragPosition = null;
   }
 
   // Fare tekerleği ile zoom yapma işlemini gerçekleştirir
@@ -280,6 +283,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
     if (event.logicalKey == LogicalKeyboardKey.tab) {
       setState(() {
         _zenMode = !_zenMode;
+        settingsManager.setFullscreenZenMode(_zenMode);
       });
       return true;
     }
@@ -530,6 +534,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
           } else if (event.logicalKey == LogicalKeyboardKey.tab) {
             setState(() {
               _zenMode = !_zenMode;
+              settingsManager.setFullscreenZenMode(_zenMode);
             });
           } else if (event.logicalKey == LogicalKeyboardKey.shiftLeft) {
             setState(() {
@@ -635,75 +640,31 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                       _handleMouseScroll(pointerSignal);
                     }
                   },
-                  child: GestureDetector(
-                    onDoubleTapDown: (details) {
-                      // Çift tıklama pozisyonunu kaydet
-                      _lastDragPosition = details.localPosition;
+                  child: InkWell(
+                    // delete effect
+                    enableFeedback: false,
+                    splashColor: Colors.transparent,
+                    hoverColor: Colors.transparent,
+
+                    onTap: () {
+                      final currentIndex = _viewModel.currentIndex;
+
+                      // HomeViewModel'deki seçili fotoğrafı güncelle
+                      if (currentIndex > 0) {
+                        homeViewModel.setSelectedPhoto(_viewModel.allPhotos[currentIndex - 1]);
+                      }
+                      _viewModel.moveToPrevious(context);
+                      _resetZoom();
                     },
-                    onDoubleTap: () {
-                      setState(() {
-                        if (_currentScale > _minScale) {
-                          // Eğer zoom yapılmışsa, sıfırla
-                          _transformationController.value = Matrix4.identity();
-                          _currentScale = _minScale;
-                          // Cursor durumu otomatik olarak güncellenecek
-                        } else {
-                          // Eğer zoom yapılmamışsa, tıklanan noktaya zoom yap
-                          if (_lastDragPosition != null) {
-                            // Ekran boyutlarını al
-                            final Size viewSize = MediaQuery.of(context).size;
+                    onSecondaryTap: () {
+                      final currentIndex = _viewModel.currentIndex;
 
-                            // Tıklama pozisyonunu al
-                            final Offset focalPointScene = _lastDragPosition!;
-
-                            // Ekranın merkezini hesapla
-                            final Offset viewCenter = Offset(viewSize.width / 2, viewSize.height / 2);
-
-                            // Tıklama pozisyonunun merkeze göre farkını hesapla
-                            final Offset focalPointDelta = focalPointScene - viewCenter;
-
-                            // Yeni dönüşüm matrisini hesapla
-                            final Matrix4 matrix = Matrix4.identity();
-
-                            // Ölçekleme faktörünü hesapla
-                            final double scaleFactor = 2.0;
-
-                            // Tıklama pozisyonuna göre zoom yap
-                            // 1. Tıklama pozisyonunu merkeze taşı
-                            matrix.translateByVector3(
-                              Vector3(focalPointScene.dx, focalPointScene.dy, 0.0),
-                            );
-
-                            // 2. Ölçekle
-                            matrix.scaleByVector3(Vector3(scaleFactor, scaleFactor, 1.0));
-
-                            // 3. Tıklama pozisyonunu geri taşı
-                            matrix.translateByVector3(
-                              Vector3(-focalPointScene.dx, -focalPointScene.dy, 0.0),
-                            );
-
-                            // 4. Tıklama pozisyonuna göre ek kaydırma ekle
-                            // Bu, zoom yaparken tıklama pozisyonunun sabit kalmasını sağlar
-                            matrix.translateByVector3(
-                              Vector3(
-                                focalPointDelta.dx * (1 - scaleFactor),
-                                focalPointDelta.dy * (1 - scaleFactor),
-                                0.0,
-                              ),
-                            );
-
-                            _transformationController.value = matrix;
-                            _currentScale = scaleFactor;
-                          } else {
-                            // Eğer tıklama pozisyonu yoksa, merkeze zoom yap
-                            final Matrix4 matrix = Matrix4.identity();
-                            matrix.scaleByVector3(Vector3(2.0, 2.0, 1.0));
-                            _transformationController.value = matrix;
-                            _currentScale = 2.0;
-                          }
-                          // Cursor durumu otomatik olarak güncellenecek
-                        }
-                      });
+                      // HomeViewModel'deki seçili fotoğrafı güncelle
+                      if (currentIndex >= 0 && currentIndex < _viewModel.allPhotos.length - 1) {
+                        homeViewModel.setSelectedPhoto(_viewModel.allPhotos[currentIndex + 1]);
+                      }
+                      _viewModel.moveToNext(context);
+                      _resetZoom();
                     },
                     child: Center(
                       child: SizedBox.expand(
