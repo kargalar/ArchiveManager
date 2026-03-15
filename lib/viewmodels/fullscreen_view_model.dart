@@ -31,8 +31,11 @@ class FullScreenViewModel extends ChangeNotifier {
   // Şu anda cache'lenmiş fotoğrafların path'leri
   final Set<String> _cachedPhotoPaths = {};
 
+  // ÖNEMLİ: Provider referanslarını hafızada tutarak tam eşleşme (instance identity) sağlıyoruz
+  final Map<String, ImageProvider> _imageProviders = {};
+
   // 🔑 ÖNEMLI: Mevcut fotoğraf için ImageProvider - Cache'den okumak için aynı instance kullanılmalı!
-  ResizeImage? _currentImageProvider;
+  ImageProvider? _currentImageProvider;
   String? _currentImageProviderPath; // Provider'ın path'ini tutmak için
 
   FullScreenViewModel({
@@ -50,12 +53,15 @@ class FullScreenViewModel extends ChangeNotifier {
     // İlk fotoğraf zaten gösterilecek, cache'de say
     _cachedPhotoPaths.add(_currentPhoto.path);
     _photoCacheStatus[_currentPhoto.path] = true;
+
     // İlk ImageProvider'ı oluştur (boyutlandırılmış, aspect ratio korunur)
-    _currentImageProvider = ResizeImage(
+    final initialProvider = ResizeImage(
       FileImage(File(_currentPhoto.path)),
       width: MAX_CACHE_WIDTH,
       // height belirtilmedi - aspect ratio korunur!
     );
+    _imageProviders[_currentPhoto.path] = initialProvider;
+    _currentImageProvider = initialProvider;
     _currentImageProviderPath = _currentPhoto.path;
   }
 
@@ -74,13 +80,19 @@ class FullScreenViewModel extends ChangeNotifier {
 
   // 🔑 ÖNEMLI: Mevcut fotoğraf için ImageProvider - Cache'den yükleme için aynı instance'ı kullan
   ImageProvider get currentImageProvider {
-    // Eğer photo değiştiyse, yeni provider oluştur
+    // Eğer photo değiştiyse, yeni provider oluştur veya cache'den al
     if (_currentImageProvider == null || _currentImageProviderPath != _currentPhoto.path) {
-      _currentImageProvider = ResizeImage(
-        FileImage(File(_currentPhoto.path)),
-        width: MAX_CACHE_WIDTH,
-        // height belirtilmedi - aspect ratio korunur!
-      );
+      if (_imageProviders.containsKey(_currentPhoto.path)) {
+        _currentImageProvider = _imageProviders[_currentPhoto.path];
+      } else {
+        final newProvider = ResizeImage(
+          FileImage(File(_currentPhoto.path)),
+          width: MAX_CACHE_WIDTH,
+          // height belirtilmedi - aspect ratio korunur!
+        );
+        _imageProviders[_currentPhoto.path] = newProvider;
+        _currentImageProvider = newProvider;
+      }
       _currentImageProviderPath = _currentPhoto.path;
     }
     return _currentImageProvider!;
@@ -185,6 +197,10 @@ class FullScreenViewModel extends ChangeNotifier {
       debugPrint('🗑️ Removing ${unnecessaryPaths.length} unnecessary cached images');
       // Flutter'ın cache'ini direkt temizleyemeyiz, ama takip listesini güncelleyebiliriz
       _cachedPhotoPaths.removeAll(unnecessaryPaths);
+      // Provider bellek referanslarını temizle
+      for (final path in unnecessaryPaths) {
+        _imageProviders.remove(path);
+      }
     }
 
     // Yeni fotoğrafları cache'le - HEPSİNİ AWAIT ET!
@@ -201,14 +217,18 @@ class FullScreenViewModel extends ChangeNotifier {
 
         try {
           debugPrint('   📥 Caching: $fileName');
+
+          // ImageProvider instance'ını oluştur ve sakla
+          final provider = ResizeImage(
+            FileImage(File(photoPath)),
+            width: MAX_CACHE_WIDTH,
+          );
+          _imageProviders[photoPath] = provider;
+
           // 🎯 PERFORMANS: Boyutlandırılmış versiyonu cache'le (decode daha hızlı!)
-          // Sadece width belirtiliyor - aspect ratio korunur!
+          // Sakladığımız özdeş instance üzerinden cache'i çağırıyoruz
           await precacheImage(
-            ResizeImage(
-              FileImage(File(photoPath)),
-              width: MAX_CACHE_WIDTH,
-              // height belirtilmedi - aspect ratio korunur!
-            ),
+            provider,
             context,
           );
           _cachedPhotoPaths.add(photoPath);

@@ -757,6 +757,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                                 // 🔑 ÖNEMLI: Cache'den okumak için aynı ImageProvider instance'ını kullan!
                                 image: _viewModel.currentImageProvider,
                                 fit: BoxFit.contain,
+                                gaplessPlayback: true, // Siyah ekranı / yükleme parlaklığını engeller!
                                 // frameBuilder kaldırıldı - cache'den gelirse anında gösterir
                                 errorBuilder: (context, error, stackTrace) {
                                   return const Center(
