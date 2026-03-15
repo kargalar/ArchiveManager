@@ -52,7 +52,13 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
         },
         child: Stack(
           children: [
-            DragToMoveArea(child: Container()),
+            Positioned.fill(
+              child: DragToMoveArea(
+                child: Container(
+                  color: Colors.transparent,
+                ),
+              ),
+            ),
             Align(
               alignment: Alignment.centerLeft,
               child: Consumer4<FolderManager, TagManager, FilterManager, PhotoManager>(
@@ -62,20 +68,24 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                     child: Row(
                       children: [
                         const SizedBox(width: 15),
-                        Text(
-                          folderManager.selectedFolder != null ? folderManager.getFolderName(folderManager.selectedFolder!) : 'Photo Archive Manager',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                        DragToMoveArea(
+                          child: Text(
+                            folderManager.selectedFolder != null ? folderManager.getFolderName(folderManager.selectedFolder!) : 'Photo Archive Manager',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                         // Fotoğraf sayısı göstergesi
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Text(
-                            '$filteredCount fotoğraf',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                        DragToMoveArea(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Text(
+                              '$filteredCount fotoğraf',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                            ),
                           ),
                         ),
                         // Yenile butonu

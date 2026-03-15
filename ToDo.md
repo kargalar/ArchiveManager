@@ -40,4 +40,4 @@ yön tuşlarıyla basılı tutarak ilerlem çok hızı havaşla
 
 görsellerin üstünde fooğrafın çözünürlüğü ve boyutu show hide diye ayarlardan ayaralnabilecek. aynı şekild eetiket ve puan ve tarih için de byapılabilsin.
 
-sonraki görsel cacahe düzgün değil. hala siyahlık görüyorumç
+tag filtersi sol alttan kaldır
