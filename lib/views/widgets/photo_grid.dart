@@ -13,6 +13,7 @@ import '../../managers/folder_manager.dart';
 import '../../managers/photo_manager.dart';
 import '../../managers/tag_manager.dart';
 import '../../managers/settings_manager.dart';
+import '../../models/settings.dart';
 import '../../managers/filter_manager.dart';
 import '../../services/input_controller.dart';
 import '../../utils/photo_sorter.dart';
@@ -39,6 +40,8 @@ class _PhotoGridState extends State<PhotoGrid> {
   SortState? _lastResolutionSortState;
   SortState? _lastDateSortState;
   SortState? _lastRatingSortState;
+  SortState? _lastFileNameSortState;
+  SortState? _lastFileSizeSortState;
 
   // Timer for periodic memory cleanup
   Timer? _cleanupTimer;
@@ -63,9 +66,11 @@ class _PhotoGridState extends State<PhotoGrid> {
       _lastResolutionSortState = filterManager.resolutionSortState;
       _lastDateSortState = filterManager.dateSortState;
       _lastRatingSortState = filterManager.ratingSortState;
+      _lastFileNameSortState = filterManager.fileNameSortState;
+      _lastFileSizeSortState = filterManager.fileSizeSortState;
 
       // Force a sort on initial load if needed
-      if (filterManager.resolutionSortState != SortState.none || filterManager.dateSortState != SortState.none || filterManager.ratingSortState != SortState.none) {
+      if (filterManager.resolutionSortState != SortState.none || filterManager.dateSortState != SortState.none || filterManager.ratingSortState != SortState.none || filterManager.fileNameSortState != SortState.none || filterManager.fileSizeSortState != SortState.none) {
         setState(() {}); // Trigger a rebuild to apply sorting
       }
     });
@@ -121,6 +126,18 @@ class _PhotoGridState extends State<PhotoGrid> {
       sortStateChanged = true;
     }
 
+    // İsim sıralaması değişti mi?
+    if (_lastFileNameSortState != filterManager.fileNameSortState) {
+      _lastFileNameSortState = filterManager.fileNameSortState;
+      sortStateChanged = true;
+    }
+
+    // Boyut sıralaması değişti mi?
+    if (_lastFileSizeSortState != filterManager.fileSizeSortState) {
+      _lastFileSizeSortState = filterManager.fileSizeSortState;
+      sortStateChanged = true;
+    }
+
     // Herhangi bir sıralama değiştiyse, yeniden render et
     if (sortStateChanged) {
       // Use Future.microtask to avoid setState during build
@@ -172,6 +189,8 @@ class _PhotoGridState extends State<PhotoGrid> {
       ratingSortState: filterManager.ratingSortState,
       dateSortState: filterManager.dateSortState,
       resolutionSortState: filterManager.resolutionSortState,
+      fileNameSortState: filterManager.fileNameSortState,
+      fileSizeSortState: filterManager.fileSizeSortState,
     );
 
     return Column(
@@ -288,16 +307,41 @@ class _PhotoGridState extends State<PhotoGrid> {
 
       if (selectedIndex >= 0 && _scrollController.hasClients) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          // Compute tile height (square tiles with default aspectRatio=1)
-          final photosPerRow = settingsManager.photosPerRow;
-          // Grid padding and spacing
+          // Calculate crossAxisCount based on itemSize
+          final double targetItemSize = settingsManager.itemSize;
           const double horizontalPadding = 16; // EdgeInsets.all(8)
+          final double availableWidth = constraints.maxWidth - horizontalPadding;
+          int crossAxisCount = (availableWidth / targetItemSize).floor();
+          if (crossAxisCount < 1) crossAxisCount = 1;
+
+          // Compute aspect ratio
+          double aspectRatio = 1.0;
+          switch (settingsManager.gridAspectMode) {
+            case GridAspectMode.square:
+              aspectRatio = 1.0;
+              break;
+            case GridAspectMode.portrait:
+              aspectRatio = 3.0 / 4.0;
+              break;
+            case GridAspectMode.landscape:
+              aspectRatio = 4.0 / 3.0;
+              break;
+            case GridAspectMode.wide:
+            case GridAspectMode.video:
+              aspectRatio = 16.0 / 9.0;
+              break;
+            case GridAspectMode.original:
+              aspectRatio = 1.0;
+              break;
+          }
+
+          // Grid padding and spacing
           const double topPadding = 8;
           const double mainAxisSpacing = 0;
-          final double tileWidth = (constraints.maxWidth - horizontalPadding) / photosPerRow;
-          final double tileHeight = tileWidth; // aspect ratio 1.0
+          final double tileWidth = availableWidth / crossAxisCount;
+          final double tileHeight = tileWidth / aspectRatio;
 
-          final int row = selectedIndex ~/ photosPerRow;
+          final int row = selectedIndex ~/ crossAxisCount;
           final double itemTop = topPadding + row * (tileHeight + mainAxisSpacing);
           final double itemBottom = itemTop + tileHeight;
 
@@ -330,11 +374,39 @@ class _PhotoGridState extends State<PhotoGrid> {
         });
       }
 
+      // Calculate crossAxisCount and aspectRatio for the GridView builder outside the postFrameCallback
+      final double targetItemSize = settingsManager.itemSize;
+      const double horizontalPadding = 16;
+      final double availableWidth = constraints.maxWidth - horizontalPadding;
+      int crossAxisCount = (availableWidth / targetItemSize).floor();
+      if (crossAxisCount < 1) crossAxisCount = 1;
+
+      double childAspectRatio = 1.0;
+      switch (settingsManager.gridAspectMode) {
+        case GridAspectMode.square:
+          childAspectRatio = 1.0;
+          break;
+        case GridAspectMode.portrait:
+          childAspectRatio = 3.0 / 4.0;
+          break;
+        case GridAspectMode.landscape:
+          childAspectRatio = 4.0 / 3.0;
+          break;
+        case GridAspectMode.wide:
+        case GridAspectMode.video:
+          childAspectRatio = 16.0 / 9.0;
+          break;
+        case GridAspectMode.original:
+          childAspectRatio = 1.0;
+          break;
+      }
+
       return GridView.builder(
         controller: _scrollController,
         padding: const EdgeInsets.all(8),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: settingsManager.photosPerRow,
+          crossAxisCount: crossAxisCount,
+          childAspectRatio: childAspectRatio,
           // Add some spacing between grid items
           crossAxisSpacing: 0,
           mainAxisSpacing: 0,
@@ -503,7 +575,7 @@ class _PhotoGridState extends State<PhotoGrid> {
                 borderRadius: BorderRadius.circular(6),
                 child: _optimizedImage(
                   photo: photo,
-                  photosPerRow: settingsManager.photosPerRow,
+                  itemSize: settingsManager.itemSize,
                 ),
               ),
 
@@ -549,23 +621,9 @@ class _PhotoGridState extends State<PhotoGrid> {
   }
 
   // Optimized image widget with memory caching and memory leak prevention
-  Widget _optimizedImage({required Photo photo, required int photosPerRow}) {
+  Widget _optimizedImage({required Photo photo, required double itemSize}) {
     // Calculate appropriate cache size based on grid size - use higher values for better quality
-    final int cacheHeight = photosPerRow == 1
-        ? 2000
-        : photosPerRow == 2
-            ? 1500
-            : photosPerRow == 3
-                ? 1000
-                : photosPerRow == 4
-                    ? 800
-                    : photosPerRow == 5
-                        ? 600
-                        : photosPerRow == 6
-                            ? 500
-                            : photosPerRow == 7
-                                ? 400
-                                : 300;
+    final int cacheHeight = (itemSize * 2).clamp(300, 2000).toInt();
 
     // Create a unique key for each image to help with memory management
     final Key imageKey = ValueKey('img_${photo.path}_$cacheHeight');

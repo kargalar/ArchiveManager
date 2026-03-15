@@ -47,9 +47,11 @@ class InputController {
     if (event is PointerScrollEvent && HardwareKeyboard.instance.isControlPressed) {
       final delta = event.scrollDelta.dy;
       if (delta < 0) {
-        settingsManager.setPhotosPerRow(settingsManager.photosPerRow + 1);
+        // Zoom in - larger items
+        settingsManager.setItemSize(settingsManager.itemSize + 50.0);
       } else if (delta > 0) {
-        settingsManager.setPhotosPerRow(settingsManager.photosPerRow - 1);
+        // Zoom out - smaller items
+        settingsManager.setItemSize(settingsManager.itemSize - 50.0);
       }
     }
   }

@@ -64,6 +64,7 @@ void main() async {
   Hive.registerAdapter(TagAdapter());
   Hive.registerAdapter(LogicalKeyboardKeyAdapter());
   Hive.registerAdapter(SettingsAdapter());
+  Hive.registerAdapter(GridAspectModeAdapter());
   final photoBox = await Hive.openBox<Photo>('photos');
   final folderBox = await Hive.openBox<Folder>('folders');
   runApp(MyApp(photoBox: photoBox, folderBox: folderBox));

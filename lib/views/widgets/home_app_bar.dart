@@ -344,6 +344,44 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                     ),
                   ),
                 ),
+                GestureDetector(
+                  onSecondaryTap: () {
+                    filterManager.resetFileNameSort();
+                  },
+                  child: TextButton.icon(
+                    onPressed: () => filterManager.toggleFileNameSort(),
+                    icon: Icon(
+                        filterManager.fileNameSortState == SortState.ascending
+                            ? Icons.arrow_upward
+                            : filterManager.fileNameSortState == SortState.descending
+                                ? Icons.arrow_downward
+                                : Icons.remove,
+                        size: 16),
+                    label: const Text('Name'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: filterManager.fileNameSortState != SortState.none ? Colors.blue : Colors.white,
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onSecondaryTap: () {
+                    filterManager.resetFileSizeSort();
+                  },
+                  child: TextButton.icon(
+                    onPressed: () => filterManager.toggleFileSizeSort(),
+                    icon: Icon(
+                        filterManager.fileSizeSortState == SortState.ascending
+                            ? Icons.arrow_upward
+                            : filterManager.fileSizeSortState == SortState.descending
+                                ? Icons.arrow_downward
+                                : Icons.remove,
+                        size: 16),
+                    label: const Text('Size'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: filterManager.fileSizeSortState != SortState.none ? Colors.blue : Colors.white,
+                    ),
+                  ),
+                ),
               ],
             );
           },

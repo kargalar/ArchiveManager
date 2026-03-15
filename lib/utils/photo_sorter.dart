@@ -11,6 +11,8 @@ class PhotoSorter {
     SortState ratingSortState = SortState.none,
     SortState dateSortState = SortState.none,
     SortState resolutionSortState = SortState.none,
+    SortState fileNameSortState = SortState.none,
+    SortState fileSizeSortState = SortState.none,
   }) {
     // Create a copy to avoid modifying the original list
     final sortedPhotos = List<Photo>.from(photos);
@@ -22,6 +24,10 @@ class PhotoSorter {
       _sortByDate(sortedPhotos, dateSortState);
     } else if (resolutionSortState != SortState.none) {
       _sortByResolution(sortedPhotos, resolutionSortState);
+    } else if (fileNameSortState != SortState.none) {
+      _sortByFileName(sortedPhotos, fileNameSortState);
+    } else if (fileSizeSortState != SortState.none) {
+      _sortByFileSize(sortedPhotos, fileSizeSortState);
     }
 
     return sortedPhotos;
@@ -65,6 +71,32 @@ class PhotoSorter {
       photos.sort((a, b) => a.resolution.compareTo(b.resolution));
     } else {
       photos.sort((a, b) => b.resolution.compareTo(a.resolution));
+    }
+  }
+
+  /// Sorts photos by file name
+  static void _sortByFileName(List<Photo> photos, SortState sortState) {
+    if (sortState == SortState.ascending) {
+      photos.sort((a, b) => a.fileName.toLowerCase().compareTo(b.fileName.toLowerCase()));
+    } else {
+      photos.sort((a, b) => b.fileName.toLowerCase().compareTo(a.fileName.toLowerCase()));
+    }
+  }
+
+  /// Sorts photos by file size
+  static void _sortByFileSize(List<Photo> photos, SortState sortState) {
+    if (sortState == SortState.ascending) {
+      photos.sort((a, b) {
+        final sizeA = a.fileSizeCache ?? 0;
+        final sizeB = b.fileSizeCache ?? 0;
+        return sizeA.compareTo(sizeB);
+      });
+    } else {
+      photos.sort((a, b) {
+        final sizeA = a.fileSizeCache ?? 0;
+        final sizeB = b.fileSizeCache ?? 0;
+        return sizeB.compareTo(sizeA);
+      });
     }
   }
 }

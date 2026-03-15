@@ -10,10 +10,12 @@ import '../main.dart';
 import '../utils/photo_color_analyzer.dart';
 
 class FilterManager extends ChangeNotifier {
-  // Sorting
-  SortState _dateSortState = SortState.none;
+  // Sorting - Default is Date descending (newest to oldest)
+  SortState _dateSortState = SortState.descending;
   SortState _ratingSortState = SortState.none;
   SortState _resolutionSortState = SortState.none;
+  SortState _fileNameSortState = SortState.none;
+  SortState _fileSizeSortState = SortState.none;
 
   // Filtering
   String _filterType = 'all';
@@ -42,6 +44,8 @@ class FilterManager extends ChangeNotifier {
   SortState get dateSortState => _dateSortState;
   SortState get ratingSortState => _ratingSortState;
   SortState get resolutionSortState => _resolutionSortState;
+  SortState get fileNameSortState => _fileNameSortState;
+  SortState get fileSizeSortState => _fileSizeSortState;
   String get filterType => _filterType;
   String get favoriteFilterMode => _favoriteFilterMode;
   String get newFilterMode => _newFilterMode;
@@ -58,8 +62,7 @@ class FilterManager extends ChangeNotifier {
 
   // Sorting methods
   void resetDateSort() {
-    _dateSortState = SortState.none;
-    notifyListeners();
+    // Disabled intentionally to ensure a sorting mode is always active.
   }
 
   void toggleDateSort() {
@@ -68,22 +71,25 @@ class FilterManager extends ChangeNotifier {
         _dateSortState = SortState.descending;
         _ratingSortState = SortState.none;
         _resolutionSortState = SortState.none;
+        _fileNameSortState = SortState.none;
+        _fileSizeSortState = SortState.none;
         break;
       case SortState.descending:
         _dateSortState = SortState.ascending;
         _ratingSortState = SortState.none;
         _resolutionSortState = SortState.none;
+        _fileNameSortState = SortState.none;
+        _fileSizeSortState = SortState.none;
         break;
       case SortState.ascending:
-        _dateSortState = SortState.none;
+        _dateSortState = SortState.descending;
         break;
     }
     notifyListeners();
   }
 
   void resetRatingSort() {
-    _ratingSortState = SortState.none;
-    notifyListeners();
+    // Disabled intentionally to ensure a sorting mode is always active.
   }
 
   void toggleRatingSort() {
@@ -92,22 +98,25 @@ class FilterManager extends ChangeNotifier {
         _ratingSortState = SortState.descending;
         _dateSortState = SortState.none;
         _resolutionSortState = SortState.none;
+        _fileNameSortState = SortState.none;
+        _fileSizeSortState = SortState.none;
         break;
       case SortState.descending:
         _ratingSortState = SortState.ascending;
         _dateSortState = SortState.none;
         _resolutionSortState = SortState.none;
+        _fileNameSortState = SortState.none;
+        _fileSizeSortState = SortState.none;
         break;
       case SortState.ascending:
-        _ratingSortState = SortState.none;
+        _ratingSortState = SortState.descending;
         break;
     }
     notifyListeners();
   }
 
   void resetResolutionSort() {
-    _resolutionSortState = SortState.none;
-    notifyListeners();
+    // Disabled intentionally to ensure a sorting mode is always active.
   }
 
   void toggleResolutionSort() {
@@ -130,14 +139,72 @@ class FilterManager extends ChangeNotifier {
         _resolutionSortState = SortState.descending;
         _dateSortState = SortState.none;
         _ratingSortState = SortState.none;
+        _fileNameSortState = SortState.none;
+        _fileSizeSortState = SortState.none;
         break;
       case SortState.descending:
         _resolutionSortState = SortState.ascending;
         _dateSortState = SortState.none;
         _ratingSortState = SortState.none;
+        _fileNameSortState = SortState.none;
+        _fileSizeSortState = SortState.none;
         break;
       case SortState.ascending:
+        _resolutionSortState = SortState.descending;
+        break;
+    }
+    notifyListeners();
+  }
+
+  void resetFileNameSort() {
+    // Disabled intentionally to ensure a sorting mode is always active.
+  }
+
+  void toggleFileNameSort() {
+    switch (_fileNameSortState) {
+      case SortState.none:
+        _fileNameSortState = SortState.descending;
+        _dateSortState = SortState.none;
+        _ratingSortState = SortState.none;
         _resolutionSortState = SortState.none;
+        _fileSizeSortState = SortState.none;
+        break;
+      case SortState.descending:
+        _fileNameSortState = SortState.ascending;
+        _dateSortState = SortState.none;
+        _ratingSortState = SortState.none;
+        _resolutionSortState = SortState.none;
+        _fileSizeSortState = SortState.none;
+        break;
+      case SortState.ascending:
+        _fileNameSortState = SortState.descending;
+        break;
+    }
+    notifyListeners();
+  }
+
+  void resetFileSizeSort() {
+    // Disabled intentionally to ensure a sorting mode is always active.
+  }
+
+  void toggleFileSizeSort() {
+    switch (_fileSizeSortState) {
+      case SortState.none:
+        _fileSizeSortState = SortState.descending;
+        _dateSortState = SortState.none;
+        _ratingSortState = SortState.none;
+        _resolutionSortState = SortState.none;
+        _fileNameSortState = SortState.none;
+        break;
+      case SortState.descending:
+        _fileSizeSortState = SortState.ascending;
+        _dateSortState = SortState.none;
+        _ratingSortState = SortState.none;
+        _resolutionSortState = SortState.none;
+        _fileNameSortState = SortState.none;
+        break;
+      case SortState.ascending:
+        _fileSizeSortState = SortState.descending;
         break;
     }
     notifyListeners();
@@ -394,7 +461,39 @@ class FilterManager extends ChangeNotifier {
       }
     }
   }
+  // Check if all photos have file size data
+  bool allPhotosHaveFileSize(List<Photo> photos) {
+    return photos.every((photo) => photo.fileSizeCache != null);
+  }
 
+  // Load file sizes for all photos that don't have it yet
+  Future<void> loadAllFileSizes(List<Photo> photos) async {
+    final List<Photo> photosNeedingSize = photos.where((photo) => photo.fileSizeCache == null).toList();
+    if (photosNeedingSize.isEmpty) return;
+
+    const int batchSize = 100;
+    for (int i = 0; i < photosNeedingSize.length; i += batchSize) {
+      final int end = (i + batchSize < photosNeedingSize.length) ? i + batchSize : photosNeedingSize.length;
+      final batch = photosNeedingSize.sublist(i, end);
+
+      for (var photo in batch) {
+        try {
+          final file = File(photo.path);
+          if (file.existsSync()) {
+            photo.fileSizeCache = file.lengthSync();
+          } else {
+            photo.fileSizeCache = 0;
+          }
+        } catch (e) {
+          photo.fileSizeCache = 0;
+        }
+      }
+
+      if (i + batchSize < photosNeedingSize.length) {
+        await Future.delayed(Duration.zero);
+      }
+    }
+  }
   // Reference to PhotoManager for checking indexing state
   PhotoManager? _photoManager;
 
@@ -529,6 +628,34 @@ class FilterManager extends ChangeNotifier {
           case SortState.none:
             break;
         }
+      } else if (_fileNameSortState != SortState.none) {
+        debugPrint('Sorting by filename: $_fileNameSortState');
+        switch (_fileNameSortState) {
+          case SortState.ascending:
+            photos.sort((a, b) => a.fileName.toLowerCase().compareTo(b.fileName.toLowerCase()));
+            break;
+          case SortState.descending:
+            photos.sort((a, b) => b.fileName.toLowerCase().compareTo(a.fileName.toLowerCase()));
+            break;
+          case SortState.none:
+            break;
+        }
+      } else if (_fileSizeSortState != SortState.none) {
+        debugPrint('Sorting by file size: $_fileSizeSortState');
+        if (!allPhotosHaveFileSize(photos)) {
+          debugPrint('Loading file sizes for photos first');
+          await loadAllFileSizes(photos);
+        }
+        switch (_fileSizeSortState) {
+          case SortState.ascending:
+            photos.sort((a, b) => (a.fileSizeCache ?? 0).compareTo(b.fileSizeCache ?? 0));
+            break;
+          case SortState.descending:
+            photos.sort((a, b) => (b.fileSizeCache ?? 0).compareTo(a.fileSizeCache ?? 0));
+            break;
+          case SortState.none:
+            break;
+        }
       }
 
       debugPrint('Sorting completed successfully');
@@ -552,6 +679,9 @@ class FilterManager extends ChangeNotifier {
     } else if (_resolutionSortState != SortState.none && !allPhotosHaveResolution(photos)) {
       debugPrint('Loading resolutions for batch sorting');
       await loadAllResolutions(photos);
+    } else if (_fileSizeSortState != SortState.none && !allPhotosHaveFileSize(photos)) {
+      debugPrint('Loading file sizes for batch sorting');
+      await loadAllFileSizes(photos);
     }
 
     // Create a copy of the list to sort
@@ -627,6 +757,18 @@ class FilterManager extends ChangeNotifier {
     } else if (_resolutionSortState == SortState.descending) {
       debugPrint('Batch sorting resolutions descending');
       sortedPhotos.sort((a, b) => (b.resolution).compareTo(a.resolution));
+    } else if (_fileNameSortState == SortState.ascending) {
+      debugPrint('Batch sorting filenames ascending');
+      sortedPhotos.sort((a, b) => a.fileName.toLowerCase().compareTo(b.fileName.toLowerCase()));
+    } else if (_fileNameSortState == SortState.descending) {
+      debugPrint('Batch sorting filenames descending');
+      sortedPhotos.sort((a, b) => b.fileName.toLowerCase().compareTo(a.fileName.toLowerCase()));
+    } else if (_fileSizeSortState == SortState.ascending) {
+      debugPrint('Batch sorting file sizes ascending');
+      sortedPhotos.sort((a, b) => (a.fileSizeCache ?? 0).compareTo(b.fileSizeCache ?? 0));
+    } else if (_fileSizeSortState == SortState.descending) {
+      debugPrint('Batch sorting file sizes descending');
+      sortedPhotos.sort((a, b) => (b.fileSizeCache ?? 0).compareTo(a.fileSizeCache ?? 0));
     }
 
     // Clear the original list and add all sorted items at once

@@ -60,6 +60,15 @@ class Photo extends HiveObject {
   // isSelected is a transient property (not stored in Hive)
   bool isSelected = false;
 
+  // Transient properties for sorting
+  String? _fileNameCache;
+  String get fileName {
+    _fileNameCache ??= path.split('/').last.split('\\').last;
+    return _fileNameCache!;
+  }
+
+  int? fileSizeCache;
+
   Photo({
     required this.path,
     this.isFavorite = false,

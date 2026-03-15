@@ -18,7 +18,8 @@ import '../models/datetime_adapter.dart';
 
 class SettingsManager extends ChangeNotifier {
   Box<Settings>? _settingsBox;
-  int _photosPerRow = 4; // Default value
+  double _itemSize = 200.0; // Default value
+  GridAspectMode _gridAspectMode = GridAspectMode.square;
   double _dividerPosition = 0.3; // Default value
   double _folderMenuWidth = 250; // Default value
   bool _isInitialized = false;
@@ -33,7 +34,8 @@ class SettingsManager extends ChangeNotifier {
     _initSettingsBox();
   }
 
-  int get photosPerRow => _photosPerRow;
+  double get itemSize => _itemSize;
+  GridAspectMode get gridAspectMode => _gridAspectMode;
   bool get showImageInfo => _settingsBox?.getAt(0)?.showImageInfo ?? false;
   bool get fullscreenAutoNext => _settingsBox?.getAt(0)?.fullscreenAutoNext ?? false;
   bool get showNotes => _settingsBox?.getAt(0)?.showNotes ?? false;
@@ -59,11 +61,12 @@ class SettingsManager extends ChangeNotifier {
         debugPrint('Settings box loaded successfully');
       }
 
-      _photosPerRow = _settingsBox!.getAt(0)?.photosPerRow ?? 4;
+      _itemSize = _settingsBox!.getAt(0)?.itemSize ?? 200.0;
+      _gridAspectMode = _settingsBox!.getAt(0)?.gridAspectMode ?? GridAspectMode.square;
       _dividerPosition = _settingsBox!.getAt(0)?.dividerPosition ?? 0.3;
       _folderMenuWidth = _settingsBox!.getAt(0)?.folderMenuWidth ?? 250;
       _isInitialized = true;
-      debugPrint('Settings initialized: photosPerRow=$_photosPerRow, dividerPosition=$_dividerPosition, folderMenuWidth=$_folderMenuWidth');
+      debugPrint('Settings initialized: itemSize=$_itemSize, gridAspectMode=$_gridAspectMode, dividerPosition=$_dividerPosition, folderMenuWidth=$_folderMenuWidth');
       notifyListeners();
     } catch (e) {
       debugPrint('Error initializing settings box: $e');
@@ -175,20 +178,36 @@ class SettingsManager extends ChangeNotifier {
     }
   }
 
-  void setPhotosPerRow(int value) {
+  void setItemSize(double value) {
     if (!_isInitialized) {
-      debugPrint('Cannot set photosPerRow: settings not initialized');
+      debugPrint('Cannot set itemSize: settings not initialized');
       return;
     }
 
-    if (value > 0) {
-      _photosPerRow = value;
+    final double clampedValue = value.clamp(50.0, 800.0);
+    if (_itemSize != clampedValue) {
+      _itemSize = clampedValue;
 
       if (_settingsBox?.getAt(0) != null) {
-        _settingsBox!.getAt(0)!.photosPerRow = value;
+        _settingsBox!.getAt(0)!.itemSize = clampedValue;
         _settingsBox!.getAt(0)!.save();
         notifyListeners();
       }
+    }
+  }
+
+  void setGridAspectMode(GridAspectMode mode) {
+    if (!_isInitialized) {
+      debugPrint('Cannot set gridAspectMode: settings not initialized');
+      return;
+    }
+
+    _gridAspectMode = mode;
+
+    if (_settingsBox?.getAt(0) != null) {
+      _settingsBox!.getAt(0)!.gridAspectMode = mode;
+      _settingsBox!.getAt(0)!.save();
+      notifyListeners();
     }
   }
 
@@ -381,7 +400,8 @@ class SettingsManager extends ChangeNotifier {
         final settings = _settingsBox!.getAt(0);
         if (settings != null) {
           exportData['settings'] = {
-            'photosPerRow': settings.photosPerRow,
+            'itemSize': settings.itemSize,
+            'gridAspectMode': settings.gridAspectMode.index,
             'showImageInfo': settings.showImageInfo,
             'fullscreenAutoNext': settings.fullscreenAutoNext,
             'dividerPosition': settings.dividerPosition,
@@ -566,6 +586,7 @@ class SettingsManager extends ChangeNotifier {
         Hive.registerAdapter(TagAdapter());
         Hive.registerAdapter(LogicalKeyboardKeyAdapter());
         Hive.registerAdapter(SettingsAdapter());
+        Hive.registerAdapter(GridAspectModeAdapter());
 
         // Kutuları aç
         final settingsBox = await Hive.openBox<Settings>('settings');
@@ -583,7 +604,14 @@ class SettingsManager extends ChangeNotifier {
           final settingsData = importData['settings'] as Map<String, dynamic>;
           final settings = settingsBox.getAt(0);
           if (settings != null) {
-            settings.photosPerRow = settingsData['photosPerRow'] ?? 4;
+            if (settingsData.containsKey('itemSize')) {
+              settings.itemSize = settingsData['itemSize'].toDouble();
+            } else if (settingsData.containsKey('photosPerRow')) {
+              settings.itemSize = 800.0 / (settingsData['photosPerRow'] ?? 4);
+            }
+            if (settingsData.containsKey('gridAspectMode')) {
+              settings.gridAspectMode = GridAspectMode.values[settingsData['gridAspectMode'] as int];
+            }
             settings.showImageInfo = settingsData['showImageInfo'] ?? true;
             settings.fullscreenAutoNext = settingsData['fullscreenAutoNext'] ?? false;
             settings.dividerPosition = settingsData['dividerPosition'] ?? 0.3;

@@ -2,6 +2,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../models/settings.dart';
 import '../../managers/settings_manager.dart';
 import '../../managers/photo_manager.dart';
 import '../../managers/tag_manager.dart';
@@ -43,23 +44,38 @@ class SettingsDialog extends StatelessWidget {
                     children: [
                       const KeyboardShortcutsGuide(),
                       const SizedBox(height: 24),
-                      const Text('Photos per Row', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const Text('Item Size', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 12),
                       Consumer<SettingsManager>(
                         builder: (context, settingsManager, child) {
                           return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Slider(
-                                value: settingsManager.photosPerRow.toDouble(),
-                                min: 1,
-                                max: 10,
-                                divisions: 9,
-                                label: settingsManager.photosPerRow.toString(),
+                                value: settingsManager.itemSize,
+                                min: 50.0,
+                                max: 600.0,
+                                divisions: 11,
+                                label: settingsManager.itemSize.toInt().toString(),
                                 onChanged: (value) {
-                                  settingsManager.setPhotosPerRow(value.toInt());
+                                  settingsManager.setItemSize(value);
                                 },
                               ),
-                              Text('${settingsManager.photosPerRow} photos'),
+                              Center(child: Text('${settingsManager.itemSize.toInt()} px')),
+                              const SizedBox(height: 24),
+                              const Text('Grid Aspect Mode', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 12),
+                              SegmentedButton<GridAspectMode>(
+                                segments: const [
+                                  ButtonSegment(value: GridAspectMode.square, label: Text('Kare')),
+                                  ButtonSegment(value: GridAspectMode.portrait, label: Text('Dikey')),
+                                  ButtonSegment(value: GridAspectMode.landscape, label: Text('Yatay')),
+                                ],
+                                selected: {settingsManager.gridAspectMode},
+                                onSelectionChanged: (Set<GridAspectMode> newSelection) {
+                                  settingsManager.setGridAspectMode(newSelection.first);
+                                },
+                              ),
                             ],
                           );
                         },

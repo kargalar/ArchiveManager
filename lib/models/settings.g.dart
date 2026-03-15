@@ -29,13 +29,17 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       folderMenuWidth: fields[9] == null ? 250 : fields[9] as double,
       showNotes: fields[10] == null ? false : fields[10] as bool,
       fullscreenZenMode: fields[11] == null ? false : fields[11] as bool,
+      itemSize: fields[12] == null ? 200.0 : fields[12] as double,
+      gridAspectMode: fields[13] == null
+          ? GridAspectMode.square
+          : fields[13] as GridAspectMode,
     );
   }
 
   @override
   void write(BinaryWriter writer, Settings obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.photosPerRow)
       ..writeByte(1)
@@ -59,12 +63,79 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       ..writeByte(10)
       ..write(obj.showNotes)
       ..writeByte(11)
-      ..write(obj.fullscreenZenMode);
+      ..write(obj.fullscreenZenMode)
+      ..writeByte(12)
+      ..write(obj.itemSize)
+      ..writeByte(13)
+      ..write(obj.gridAspectMode);
   }
 
   @override
   int get hashCode => typeId.hashCode;
 
   @override
-  bool operator ==(Object other) => identical(this, other) || other is SettingsAdapter && runtimeType == other.runtimeType && typeId == other.typeId;
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SettingsAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class GridAspectModeAdapter extends TypeAdapter<GridAspectMode> {
+  @override
+  final int typeId = 6;
+
+  @override
+  GridAspectMode read(BinaryReader reader) {
+    switch (reader.readByte()) {
+      case 0:
+        return GridAspectMode.square;
+      case 1:
+        return GridAspectMode.portrait;
+      case 2:
+        return GridAspectMode.landscape;
+      case 3:
+        return GridAspectMode.wide;
+      case 4:
+        return GridAspectMode.video;
+      case 5:
+        return GridAspectMode.original;
+      default:
+        return GridAspectMode.square;
+    }
+  }
+
+  @override
+  void write(BinaryWriter writer, GridAspectMode obj) {
+    switch (obj) {
+      case GridAspectMode.square:
+        writer.writeByte(0);
+        break;
+      case GridAspectMode.portrait:
+        writer.writeByte(1);
+        break;
+      case GridAspectMode.landscape:
+        writer.writeByte(2);
+        break;
+      case GridAspectMode.wide:
+        writer.writeByte(3);
+        break;
+      case GridAspectMode.video:
+        writer.writeByte(4);
+        break;
+      case GridAspectMode.original:
+        writer.writeByte(5);
+        break;
+    }
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is GridAspectModeAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
 }

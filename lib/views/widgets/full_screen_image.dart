@@ -77,6 +77,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
       ratingSortState: filterManager.ratingSortState,
       dateSortState: filterManager.dateSortState,
       resolutionSortState: filterManager.resolutionSortState,
+      fileNameSortState: filterManager.fileNameSortState,
+      fileSizeSortState: filterManager.fileSizeSortState,
     );
 
     // ViewModel'i oluştur
@@ -431,6 +433,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
       ratingSortState: filterManager.ratingSortState,
       dateSortState: filterManager.dateSortState,
       resolutionSortState: filterManager.resolutionSortState,
+      fileNameSortState: filterManager.fileNameSortState,
+      fileSizeSortState: filterManager.fileSizeSortState,
     );
 
     return _buildFullScreenView(sortedPhotos, homeViewModel);

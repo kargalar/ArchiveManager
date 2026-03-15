@@ -13,6 +13,27 @@ part 'settings.g.dart';
 // windowTop: pencere üst konumu
 // isFullscreen: tam ekran modu açık mı
 
+@HiveType(typeId: 6)
+enum GridAspectMode {
+  @HiveField(0)
+  square,
+
+  @HiveField(1)
+  portrait,
+  
+  @HiveField(2)
+  landscape,
+
+  @HiveField(3)
+  wide,
+
+  @HiveField(4)
+  video,
+
+  @HiveField(5)
+  original,
+}
+
 @HiveType(typeId: 5)
 class Settings extends HiveObject {
   @HiveField(0)
@@ -52,6 +73,12 @@ class Settings extends HiveObject {
   @HiveField(11, defaultValue: false)
   bool fullscreenZenMode;
 
+  @HiveField(12, defaultValue: 200.0)
+  double itemSize;
+
+  @HiveField(13, defaultValue: GridAspectMode.square)
+  GridAspectMode gridAspectMode;
+
   Settings({
     this.photosPerRow = 4,
     this.showImageInfo = true,
@@ -65,5 +92,7 @@ class Settings extends HiveObject {
     this.folderMenuWidth = 250,
     this.showNotes = false,
     this.fullscreenZenMode = false,
+    this.itemSize = 200.0,
+    this.gridAspectMode = GridAspectMode.square,
   });
 }

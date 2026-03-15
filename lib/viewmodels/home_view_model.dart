@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/photo.dart';
-import '../models/sort_state.dart';
 import '../models/tag.dart';
 import '../managers/folder_manager.dart';
 import '../managers/photo_manager.dart';
@@ -12,6 +11,7 @@ import '../managers/settings_manager.dart';
 import '../managers/filter_manager.dart';
 import '../services/input_controller.dart';
 import '../views/widgets/full_screen_image.dart';
+import '../utils/photo_sorter.dart';
 
 class HomeViewModel extends ChangeNotifier {
   Photo? _selectedPhoto;
@@ -87,25 +87,16 @@ class HomeViewModel extends ChangeNotifier {
     List<Photo> photos,
     FilterManager filterManager,
   ) {
-    if (filterManager.ratingSortState != SortState.none) {
-      photos.sort((a, b) => filterManager.ratingSortState == SortState.ascending ? a.rating.compareTo(b.rating) : b.rating.compareTo(a.rating));
-    } else if (filterManager.dateSortState != SortState.none) {
-      _sortByDate(photos, filterManager.dateSortState == SortState.ascending);
-    } else if (filterManager.resolutionSortState != SortState.none) {
-      photos.sort((a, b) => filterManager.resolutionSortState == SortState.ascending ? a.resolution.compareTo(b.resolution) : b.resolution.compareTo(a.resolution));
-    }
-  }
-
-  /// Helper: Tarih ile sıralama
-  void _sortByDate(List<Photo> photos, bool ascending) {
-    photos.sort((a, b) {
-      final dateA = a.dateModified;
-      final dateB = b.dateModified;
-      if (dateA == null && dateB == null) return 0;
-      if (dateA == null) return ascending ? -1 : 1;
-      if (dateB == null) return ascending ? 1 : -1;
-      return ascending ? dateA.compareTo(dateB) : dateB.compareTo(dateA);
-    });
+    final sorted = PhotoSorter.sort(
+      photos,
+      ratingSortState: filterManager.ratingSortState,
+      dateSortState: filterManager.dateSortState,
+      resolutionSortState: filterManager.resolutionSortState,
+      fileNameSortState: filterManager.fileNameSortState,
+      fileSizeSortState: filterManager.fileSizeSortState,
+    );
+    photos.clear();
+    photos.addAll(sorted);
   }
 
   void handleKeyEvent(
@@ -173,11 +164,17 @@ class HomeViewModel extends ChangeNotifier {
       return;
     }
 
+    final settingsManager = Provider.of<SettingsManager>(context, listen: false);
+    // Approximate crossAxisCount based on screen size and folder menu width
+    final double availableWidth = MediaQuery.of(context).size.width - settingsManager.folderMenuWidth - 16; // 16 is horizontal padding
+    int crossAxisCount = (availableWidth / settingsManager.itemSize).floor();
+    if (crossAxisCount < 1) crossAxisCount = 1;
+
     int newIndex = _calculateNextIndex(
       event,
       currentIndex,
       sortedPhotos.length,
-      Provider.of<SettingsManager>(context, listen: false).photosPerRow,
+      crossAxisCount,
     );
 
     _handleSpecialKeys(
@@ -202,7 +199,7 @@ class HomeViewModel extends ChangeNotifier {
     KeyEvent event,
     int currentIndex,
     int totalPhotos,
-    int photosPerRow,
+    int crossAxisCount,
   ) {
     int newIndex = currentIndex;
 
@@ -210,10 +207,10 @@ class HomeViewModel extends ChangeNotifier {
       newIndex = currentIndex - 1;
     } else if (event.logicalKey == LogicalKeyboardKey.arrowRight && currentIndex < totalPhotos - 1) {
       newIndex = currentIndex + 1;
-    } else if (event.logicalKey == LogicalKeyboardKey.arrowUp && currentIndex >= photosPerRow) {
-      newIndex = currentIndex - photosPerRow;
-    } else if (event.logicalKey == LogicalKeyboardKey.arrowDown && currentIndex + photosPerRow < totalPhotos) {
-      newIndex = currentIndex + photosPerRow;
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowUp && currentIndex >= crossAxisCount) {
+      newIndex = currentIndex - crossAxisCount;
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowDown && currentIndex + crossAxisCount < totalPhotos) {
+      newIndex = currentIndex + crossAxisCount;
     }
 
     return newIndex;
