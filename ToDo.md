@@ -40,8 +40,6 @@ yön tuşlarıyla basılı tutarak ilerlem çok hızı havaşla
 
 görsellerin üstünde fooğrafın çözünürlüğü ve boyutu show hide diye ayarlardan ayaralnabilecek. aynı şekild eetiket ve puan ve tarih için de byapılabilsin.
 
-tag filtersi sol alttan kaldır
-
-klasör altındaki dosya saısında klasörün altındaki klasörler de dahil edeilcek. hatta onunda altında klasör varsa oyunn dosyaları da.
-
 öğe sürükleme gridde olduğu gibi tam ekran görsel de geerli olsun
+
+fullscreenimage de iken ve zoomda değilken daha da geri scrollyapmaya çalışırsa o zoom geri değil sonraki görsele geçiş için oalcak

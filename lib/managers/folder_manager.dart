@@ -155,7 +155,7 @@ class FolderManager extends ChangeNotifier {
     try {
       final dir = Directory(path);
       if (await dir.exists()) {
-        int count = await dir.list(recursive: false).where((e) {
+        int count = await dir.list(recursive: true).where((e) {
           if (e is File) {
             final ext = e.path.toLowerCase();
             return ext.endsWith('.jpg') || ext.endsWith('.jpeg') || ext.endsWith('.png') || ext.endsWith('.gif') || ext.endsWith('.webp') || ext.endsWith('.bmp');

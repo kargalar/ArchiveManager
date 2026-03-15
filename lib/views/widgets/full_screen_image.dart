@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 import 'package:archive_manager_v3/models/tag.dart';
 import 'package:archive_manager_v3/viewmodels/home_view_model.dart';
@@ -62,6 +62,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
 
   // Key to access this screen's DragItemWidget state for multi-item drag
   final GlobalKey<sdd.DragItemWidgetState> _dragKey = GlobalKey<sdd.DragItemWidgetState>();
+  final Map<String, GlobalKey<sdd.DragItemWidgetState>> _dragKeysByPath = {};
 
   List<Tag> get tags => _tagBox.values.toList();
 
@@ -686,6 +687,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                     enableFeedback: false,
                     splashColor: Colors.transparent,
                     hoverColor: Colors.transparent,
+                    highlightColor: Colors.transparent,
 
                     onTap: () {
                       final currentIndex = _viewModel.currentIndex;
@@ -733,15 +735,20 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                               if (self != null) items.add(self);
 
                               if (vm.hasSelectedPhotos) {
-                                // Note: In fullscreen we only have this one DragItemWidget.
-                                // Returning single item here allows native drop to still include this photo.
-                                // The grid view is the primary place for multi-select multi-drag.
-                                // If desired in the future, we can render hidden DragItemWidgets for the rest.
+                                for (final selected in vm.selectedPhotos) {
+                                  if (selected.path == _viewModel.currentPhoto.path) continue;
+                                  final skey = _dragKeysByPath[selected.path];
+                                  final sState = skey?.currentState;
+                                  if (sState != null) {
+                                    items.add(sState);
+                                  }
+                                }
                               }
                               return items;
                             },
                             child: InteractiveViewer(
                               transformationController: _transformationController,
+                              panEnabled: _currentScale > _minScale,
                               minScale: _minScale,
                               maxScale: _maxScale,
                               onInteractionEnd: (details) {
@@ -772,6 +779,26 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                     ),
                   ),
                 )),
+            if (homeViewModel.hasSelectedPhotos)
+              ...homeViewModel.selectedPhotos
+                  .where((p) => p.path != _viewModel.currentPhoto.path)
+                  .map((p) {
+                _dragKeysByPath.putIfAbsent(p.path, () => GlobalKey<sdd.DragItemWidgetState>());
+                return Positioned(
+                  left: -1000,
+                  top: -1000,
+                  child: sdd.DragItemWidget(
+                    key: _dragKeysByPath[p.path],
+                    dragItemProvider: (request) async {
+                      final item = sdd.DragItem();
+                      item.add(sdd.Formats.fileUri(Uri.file(p.path)));
+                      return item;
+                    },
+                    allowedOperations: () => [sdd.DropOperation.copy],
+                    child: const SizedBox(width: 1, height: 1),
+                  ),
+                );
+              }),
             // Sürükleme bilgisi gösterimi
             if (homeViewModel.hasSelectedPhotos && !_zenMode)
               Positioned(
@@ -811,9 +838,9 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
             if (kDebugMode && !_zenMode)
               Positioned(
                 top: 60,
-                right: 16,
+                right: 0,
                 child: Container(
-                  constraints: const BoxConstraints(maxWidth: 300),
+                  constraints: const BoxConstraints(maxWidth: 150),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: Colors.black.withAlpha(204), // 0.8 opacity
@@ -1253,3 +1280,8 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
     );
   }
 }
+
+
+
+
+
