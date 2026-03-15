@@ -84,7 +84,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 8),
                             child: Text(
                               '$filteredCount fotoğraf',
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                              style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.w500, fontSize: 15),
                             ),
                           ),
                         ),

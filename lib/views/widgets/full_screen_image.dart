@@ -141,8 +141,21 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
   void _handleMouseScroll(PointerScrollEvent event) {
     // Animasyon devam ediyorsa işlem yapma
 
-    // Fare tekerleği yukarı kaydırıldığında zoom in, aşağı kaydırıldığında zoom out yapar
     final delta = event.scrollDelta.dy;
+
+    // Shift tuşuna basılıyken scroll yapılıyorsa fotoğraflar arası geçiş yap
+    if (HardwareKeyboard.instance.isShiftPressed) {
+      if (delta > 0) {
+        _viewModel.moveToNext(context);
+        _resetZoom();
+      } else if (delta < 0) {
+        _viewModel.moveToPrevious(context);
+        _resetZoom();
+      }
+      return;
+    }
+
+    // Fare tekerleği yukarı kaydırıldığında zoom in, aşağı kaydırıldığında zoom out yapar
     // Mevcut dönüşüm matrisini al
     final Matrix4 currentTransformation = _transformationController.value;
     // Mevcut ölçeği al
@@ -780,9 +793,7 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
                   ),
                 )),
             if (homeViewModel.hasSelectedPhotos)
-              ...homeViewModel.selectedPhotos
-                  .where((p) => p.path != _viewModel.currentPhoto.path)
-                  .map((p) {
+              ...homeViewModel.selectedPhotos.where((p) => p.path != _viewModel.currentPhoto.path).map((p) {
                 _dragKeysByPath.putIfAbsent(p.path, () => GlobalKey<sdd.DragItemWidgetState>());
                 return Positioned(
                   left: -1000,
@@ -1280,8 +1291,3 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
     );
   }
 }
-
-
-
-
-
