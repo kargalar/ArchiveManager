@@ -13,14 +13,14 @@ part 'settings.g.dart';
 // windowTop: pencere üst konumu
 // isFullscreen: tam ekran modu açık mı
 
-@HiveType(typeId: 6)
+@HiveType(typeId: 8)
 enum GridAspectMode {
   @HiveField(0)
   square,
 
   @HiveField(1)
   portrait,
-  
+
   @HiveField(2)
   landscape,
 

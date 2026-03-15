@@ -12,6 +12,7 @@ import '../models/settings.dart';
 import '../models/folder.dart';
 import '../models/photo.dart';
 import '../models/tag.dart';
+import '../models/quick_move_destination.dart';
 import '../models/color_adapter.dart';
 import '../models/keyboard_key_adapter.dart';
 import '../models/datetime_adapter.dart';
@@ -69,8 +70,20 @@ class SettingsManager extends ChangeNotifier {
       debugPrint('Settings initialized: itemSize=$_itemSize, gridAspectMode=$_gridAspectMode, dividerPosition=$_dividerPosition, folderMenuWidth=$_folderMenuWidth');
       notifyListeners();
     } catch (e) {
-      debugPrint('Error initializing settings box: $e');
-      _isInitialized = false;
+      debugPrint('Error initializing settings box: $e. Attempting to clear settings box.');
+      try {
+        await Hive.deleteBoxFromDisk('settings');
+        // Let's also delete quick_move_destinations just in case
+        await Hive.deleteBoxFromDisk('quick_move_destinations');
+        
+        _settingsBox = await Hive.openBox<Settings>('settings');
+        await _settingsBox!.add(Settings());
+        _isInitialized = true;
+        notifyListeners();
+      } catch (e2) {
+        debugPrint('Failed to recover from corrupted settings box: $e2');
+        _isInitialized = false;
+      }
     }
   }
 
@@ -445,6 +458,25 @@ class SettingsManager extends ChangeNotifier {
         exportData['tags'] = tags;
       }
 
+      // Export quick move destinations
+      final destBox = Hive.box<QuickMoveDestination>('quick_move_destinations');
+      if (destBox.isNotEmpty) {
+        final List<Map<String, dynamic>> destinations = [];
+        for (var i = 0; i < destBox.length; i++) {
+          final dest = destBox.getAt(i);
+          if (dest != null) {
+            destinations.add({
+              'name': dest.name,
+              'path': dest.path,
+              'colorValue': dest.color.toARGB32(),
+              'shortcutKeyId': dest.shortcutKey.keyId,
+              'id': dest.id,
+            });
+          }
+        }
+        exportData['quick_move_destinations'] = destinations;
+      }
+
       // Export photos (basic info only to keep file size manageable)
       final photoBox = Hive.box<Photo>('photos');
       if (photoBox.isNotEmpty) {
@@ -662,6 +694,23 @@ class SettingsManager extends ChangeNotifier {
             if (addedTag != null) {
               importedTagsById[id] = addedTag;
             }
+          }
+        }
+
+        // Import quick move destinations
+        if (importData.containsKey('quick_move_destinations')) {
+          final destBox = await Hive.openBox<QuickMoveDestination>('quick_move_destinations');
+          final destsData = importData['quick_move_destinations'] as List<dynamic>;
+          for (var destData in destsData) {
+            final data = destData as Map<String, dynamic>;
+            final dest = QuickMoveDestination(
+              name: data['name'] as String,
+              path: data['path'] as String,
+              color: Color(data['colorValue'] as int),
+              shortcutKey: LogicalKeyboardKey(data['shortcutKeyId'] as int),
+              id: data['id'] as String,
+            );
+            await destBox.add(dest);
           }
         }
 

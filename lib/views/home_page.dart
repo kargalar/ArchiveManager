@@ -11,6 +11,7 @@ import '../services/input_controller.dart';
 import 'widgets/full_screen_image.dart';
 import 'widgets/photo_grid.dart';
 import 'dialogs/missing_folders_dialog.dart';
+import 'dialogs/settings_dialog.dart';
 import 'widgets/home_app_bar.dart';
 import 'widgets/folder_menu.dart';
 
@@ -25,6 +26,7 @@ class _HomePageState extends State<HomePage> {
   late HomeViewModel _homeViewModel;
   late InputController _inputController;
   bool _isMenuExpanded = true;
+  bool _isSettingsPanelOpen = false;
   double _folderMenuWidth = 250; // Fixed initial width for folder menu
 
   @override
@@ -103,8 +105,16 @@ class _HomePageState extends State<HomePage> {
 
   bool _handleKeyboardEvent(KeyEvent event) {
     // Fullscreen açıkken klavye event'lerini HomePage tarafında işlemeyelim.
-    // Aksi halde Space/Arrow/Esc gibi tuşlar grid logic'ine düşüyor.
     if (FullScreenImage.isActive) {
+      return false;
+    }
+    // Dialog açıkken kısayolları devre dışı bırak
+    if (!(ModalRoute.of(context)?.isCurrent ?? true)) {
+      return false;
+    }
+    // TextField gibi text input'lara focus varken kısayolları devre dışı bırak
+    final focusedWidget = FocusManager.instance.primaryFocus?.context?.widget;
+    if (focusedWidget is EditableText) {
       return false;
     }
     // InputController ile handle et
@@ -121,12 +131,18 @@ class _HomePageState extends State<HomePage> {
     _inputController.handlePointerEvent(event, context, settingsManager);
   }
 
+  void _toggleSettingsPanel() {
+    setState(() => _isSettingsPanelOpen = !_isSettingsPanelOpen);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: HomeAppBar(
         isMenuExpanded: _isMenuExpanded,
+        isSettingsPanelOpen: _isSettingsPanelOpen,
         onMenuToggle: () => setState(() => _isMenuExpanded = !_isMenuExpanded),
+        onSettingsToggle: _toggleSettingsPanel,
         onCreateFolder: () async {
           final folderManager = Provider.of<FolderManager>(context, listen: false);
           final result = await FilePicker.platform.getDirectoryPath();
@@ -168,6 +184,19 @@ class _HomePageState extends State<HomePage> {
           ],
           Expanded(
             child: const PhotoGrid(),
+          ),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            width: _isSettingsPanelOpen ? 420 : 0,
+            clipBehavior: Clip.hardEdge,
+            decoration: const BoxDecoration(),
+            child: SizedBox(
+              width: 420,
+              child: _isSettingsPanelOpen
+                  ? SettingsPanel(onClose: _toggleSettingsPanel)
+                  : const SizedBox.shrink(),
+            ),
           ),
         ],
       ),

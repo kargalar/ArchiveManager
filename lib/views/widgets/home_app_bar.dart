@@ -10,7 +10,7 @@ import '../../managers/filter_manager.dart';
 import '../../managers/photo_manager.dart';
 import '../../models/indexing_state.dart';
 import '../../models/photo.dart';
-import '../dialogs/settings_dialog.dart';
+// settings_dialog.dart import removed - settings panel is now toggled via callback
 
 // Extension to add darken method to Color
 extension ColorUtils on Color {
@@ -24,13 +24,17 @@ extension ColorUtils on Color {
 
 class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool isMenuExpanded;
+  final bool isSettingsPanelOpen;
   final VoidCallback onMenuToggle;
+  final VoidCallback onSettingsToggle;
   final VoidCallback onCreateFolder;
   final double width;
   const HomeAppBar({
     super.key,
     required this.isMenuExpanded,
+    required this.isSettingsPanelOpen,
     required this.onMenuToggle,
+    required this.onSettingsToggle,
     required this.onCreateFolder,
     required this.width,
   });
@@ -417,8 +421,12 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
           ],
         ),
         IconButton(
-          icon: const Icon(Icons.settings),
-          onPressed: () => showDialog(context: context, builder: (_) => const SettingsDialog()),
+          icon: Icon(
+            Icons.settings,
+            color: isSettingsPanelOpen ? Colors.blue : Colors.white,
+          ),
+          tooltip: isSettingsPanelOpen ? 'Close Settings' : 'Open Settings',
+          onPressed: onSettingsToggle,
         ),
       ],
     );

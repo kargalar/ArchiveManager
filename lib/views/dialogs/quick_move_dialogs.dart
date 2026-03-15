@@ -1,45 +1,24 @@
-// Widgets containing tag addition and editing dialogs
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../models/tag.dart';
-import '../../managers/tag_manager.dart';
+import 'package:file_picker/file_picker.dart';
+import '../../models/quick_move_destination.dart';
 import '../../managers/quick_move_manager.dart';
+import '../../managers/tag_manager.dart';
 import '../../utils/keyboard_key_label.dart';
+import 'tag_dialogs.dart';
 
-const List<Color> kPredefinedColors = [
-  Colors.red,
-  Colors.pink,
-  Colors.purple,
-  Colors.deepPurple,
-  Colors.indigo,
-  Colors.blue,
-  Colors.lightBlue,
-  Colors.cyan,
-  Colors.teal,
-  Colors.green,
-  Colors.lightGreen,
-  Colors.lime,
-  Colors.yellow,
-  Colors.amber,
-  Colors.orange,
-  Colors.deepOrange,
-  Colors.brown,
-  Colors.grey,
-  Colors.blueGrey,
-  Colors.black,
-];
-
-class AddTagDialog extends StatefulWidget {
-  const AddTagDialog({super.key});
+class AddQuickMoveDialog extends StatefulWidget {
+  const AddQuickMoveDialog({super.key});
   @override
-  State<AddTagDialog> createState() => _AddTagDialogState();
+  State<AddQuickMoveDialog> createState() => _AddQuickMoveDialogState();
 }
 
-class _AddTagDialogState extends State<AddTagDialog> {
+class _AddQuickMoveDialogState extends State<AddQuickMoveDialog> {
   final TextEditingController nameController = TextEditingController();
   Color selectedColor = Colors.blue;
   LogicalKeyboardKey? selectedShortcutKey;
+  String? selectedPath;
 
   @override
   void dispose() {
@@ -81,17 +60,18 @@ class _AddTagDialogState extends State<AddTagDialog> {
     );
   }
 
-  void _handleCreate() {
-    if (nameController.text.isEmpty || selectedShortcutKey == null) return;
-
-    final tagManager = context.read<TagManager>();
-    final quickMoveManager = context.read<QuickMoveManager>();
-
-    final existingTag = tagManager.getTagByShortcutKey(selectedShortcutKey!);
-    if (existingTag != null) {
-      _showDuplicateWarning('tag "${existingTag.name}"');
-      return;
+  Future<void> _pickDirectory() async {
+    final path = await FilePicker.platform.getDirectoryPath();
+    if (path != null) {
+      setState(() => selectedPath = path);
     }
+  }
+
+  void _handleCreate() {
+    if (nameController.text.isEmpty || selectedShortcutKey == null || selectedPath == null) return;
+
+    final quickMoveManager = context.read<QuickMoveManager>();
+    final tagManager = context.read<TagManager>();
 
     final existingDest = quickMoveManager.getDestinationByShortcutKey(selectedShortcutKey!);
     if (existingDest != null) {
@@ -99,8 +79,19 @@ class _AddTagDialogState extends State<AddTagDialog> {
       return;
     }
 
-    final tag = Tag(name: nameController.text, color: selectedColor, shortcutKey: selectedShortcutKey!);
-    tagManager.addTag(tag);
+    final existingTag = tagManager.getTagByShortcutKey(selectedShortcutKey!);
+    if (existingTag != null) {
+      _showDuplicateWarning('tag "${existingTag.name}"');
+      return;
+    }
+
+    final dest = QuickMoveDestination(
+      name: nameController.text,
+      path: selectedPath!,
+      color: selectedColor,
+      shortcutKey: selectedShortcutKey!,
+    );
+    quickMoveManager.addDestination(dest);
     Navigator.pop(context);
   }
 
@@ -133,7 +124,7 @@ class _AddTagDialogState extends State<AddTagDialog> {
       backgroundColor: const Color(0xFF1E1E1E),
       elevation: 16,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 440),
+        constraints: const BoxConstraints(maxWidth: 480),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,9 +137,9 @@ class _AddTagDialogState extends State<AddTagDialog> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.label, color: Colors.blue, size: 18),
+                  const Icon(Icons.drive_file_move, color: Colors.blue, size: 18),
                   const SizedBox(width: 10),
-                  const Text('Add New Tag', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  const Text('Add Quick Move Destination', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                   const Spacer(),
                   InkWell(
                     borderRadius: BorderRadius.circular(6),
@@ -172,7 +163,7 @@ class _AddTagDialogState extends State<AddTagDialog> {
                     autofocus: true,
                     style: const TextStyle(fontSize: 13),
                     decoration: InputDecoration(
-                      labelText: 'Tag Name',
+                      labelText: 'Name',
                       labelStyle: const TextStyle(fontSize: 13, color: Colors.white54),
                       filled: true,
                       fillColor: const Color(0xFF252525),
@@ -189,6 +180,43 @@ class _AddTagDialogState extends State<AddTagDialog> {
                         borderSide: const BorderSide(color: Colors.blue),
                       ),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Target folder picker
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF252525),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.folder_open, size: 15, color: Colors.white54),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            selectedPath ?? 'No folder selected',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: selectedPath != null ? Colors.white : Colors.white38,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          height: 28,
+                          child: TextButton(
+                            onPressed: _pickDirectory,
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.blue,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              textStyle: const TextStyle(fontSize: 12),
+                            ),
+                            child: const Text('Browse'),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -242,7 +270,7 @@ class _AddTagDialogState extends State<AddTagDialog> {
                             border: Border.all(color: const Color(0xFF444444)),
                           ),
                           child: Text(
-                            selectedShortcutKey?.keyLabel ?? 'None',
+                            selectedShortcutKey?.displayLabel ?? 'None',
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                           ),
                         ),
@@ -297,24 +325,26 @@ class _AddTagDialogState extends State<AddTagDialog> {
   }
 }
 
-class EditTagDialog extends StatefulWidget {
-  final Tag tag;
-  const EditTagDialog({super.key, required this.tag});
+class EditQuickMoveDialog extends StatefulWidget {
+  final QuickMoveDestination destination;
+  const EditQuickMoveDialog({super.key, required this.destination});
   @override
-  State<EditTagDialog> createState() => _EditTagDialogState();
+  State<EditQuickMoveDialog> createState() => _EditQuickMoveDialogState();
 }
 
-class _EditTagDialogState extends State<EditTagDialog> {
+class _EditQuickMoveDialogState extends State<EditQuickMoveDialog> {
   late TextEditingController nameController;
   late Color selectedColor;
   late LogicalKeyboardKey selectedShortcutKey;
+  late String selectedPath;
 
   @override
   void initState() {
     super.initState();
-    nameController = TextEditingController(text: widget.tag.name);
-    selectedColor = widget.tag.color;
-    selectedShortcutKey = widget.tag.shortcutKey;
+    nameController = TextEditingController(text: widget.destination.name);
+    selectedColor = widget.destination.color;
+    selectedShortcutKey = widget.destination.shortcutKey;
+    selectedPath = widget.destination.path;
   }
 
   @override
@@ -357,25 +387,38 @@ class _EditTagDialogState extends State<EditTagDialog> {
     );
   }
 
+  Future<void> _pickDirectory() async {
+    final path = await FilePicker.platform.getDirectoryPath();
+    if (path != null) {
+      setState(() => selectedPath = path);
+    }
+  }
+
   void _handleSave() {
     if (nameController.text.trim().isEmpty) return;
 
-    final tagManager = Provider.of<TagManager>(context, listen: false);
     final quickMoveManager = Provider.of<QuickMoveManager>(context, listen: false);
+    final tagManager = Provider.of<TagManager>(context, listen: false);
 
-    final existingTag = tagManager.getTagByShortcutKey(selectedShortcutKey, excludeTagId: widget.tag.id);
-    if (existingTag != null) {
-      _showDuplicateWarning('tag "${existingTag.name}"');
-      return;
-    }
-
-    final existingDest = quickMoveManager.getDestinationByShortcutKey(selectedShortcutKey);
+    final existingDest = quickMoveManager.getDestinationByShortcutKey(selectedShortcutKey, excludeId: widget.destination.id);
     if (existingDest != null) {
       _showDuplicateWarning('quick move destination "${existingDest.name}"');
       return;
     }
 
-    tagManager.updateTag(widget.tag, nameController.text.trim(), selectedColor, selectedShortcutKey);
+    final existingTag = tagManager.getTagByShortcutKey(selectedShortcutKey);
+    if (existingTag != null) {
+      _showDuplicateWarning('tag "${existingTag.name}"');
+      return;
+    }
+
+    quickMoveManager.updateDestination(
+      widget.destination,
+      nameController.text.trim(),
+      selectedPath,
+      selectedColor,
+      selectedShortcutKey,
+    );
     Navigator.pop(context);
   }
 
@@ -408,7 +451,7 @@ class _EditTagDialogState extends State<EditTagDialog> {
       backgroundColor: const Color(0xFF1E1E1E),
       elevation: 16,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 440),
+        constraints: const BoxConstraints(maxWidth: 480),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -421,9 +464,9 @@ class _EditTagDialogState extends State<EditTagDialog> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.label, color: Colors.blue, size: 18),
+                  const Icon(Icons.drive_file_move, color: Colors.blue, size: 18),
                   const SizedBox(width: 10),
-                  const Text('Edit Tag', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  const Text('Edit Quick Move Destination', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                   const Spacer(),
                   InkWell(
                     borderRadius: BorderRadius.circular(6),
@@ -447,7 +490,7 @@ class _EditTagDialogState extends State<EditTagDialog> {
                     autofocus: true,
                     style: const TextStyle(fontSize: 13),
                     decoration: InputDecoration(
-                      labelText: 'Tag Name',
+                      labelText: 'Name',
                       labelStyle: const TextStyle(fontSize: 13, color: Colors.white54),
                       filled: true,
                       fillColor: const Color(0xFF252525),
@@ -464,6 +507,40 @@ class _EditTagDialogState extends State<EditTagDialog> {
                         borderSide: const BorderSide(color: Colors.blue),
                       ),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Target folder picker
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF252525),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.folder_open, size: 15, color: Colors.white54),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            selectedPath,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                          ),
+                        ),
+                        SizedBox(
+                          height: 28,
+                          child: TextButton(
+                            onPressed: _pickDirectory,
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.blue,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              textStyle: const TextStyle(fontSize: 12),
+                            ),
+                            child: const Text('Browse'),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 16),

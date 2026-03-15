@@ -10,6 +10,7 @@ import '../managers/photo_manager.dart';
 import '../managers/tag_manager.dart';
 import '../managers/settings_manager.dart';
 import '../managers/filter_manager.dart';
+import '../managers/quick_move_manager.dart';
 import '../views/widgets/full_screen_image.dart';
 
 /// InputController: Tüm input'ları ve kısayolları merkezi olarak yönetir
@@ -70,6 +71,8 @@ class InputController {
     final settingsManager = context.read<SettingsManager>();
     final filterManager = context.read<FilterManager>();
 
+    final quickMoveManager = context.read<QuickMoveManager>();
+
     // F11 - Tam ekran değiştir (buraya odak alan)
     if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.f11) {
       settingsManager.toggleFullscreen();
@@ -83,7 +86,7 @@ class InputController {
     }
 
     // ViewModel'e diğer key event'lerini gönder
-    homeViewModel.handleKeyEvent(event, context, folderManager, photoManager, tagManager);
+    homeViewModel.handleKeyEvent(event, context, folderManager, photoManager, tagManager, quickMoveManager: quickMoveManager);
   }
 
   /// Arrow key kontrolü

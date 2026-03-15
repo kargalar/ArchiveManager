@@ -42,6 +42,4 @@ dosya seçiliyken başka bir doyaya ctrl ile seçtikte sonra shifte basılı tut
 
 görsellerin üstünde fooğrafın çözünürlüğü ve boyutu show hide diye ayarlardan ayaralnabilecek. aynı şekild eetiket ve puan ve tarih için de byapılabilsin.
 
-hızlı dosya taşıma sistemi kur. ayarlardan kısayol tuşu ve path ayaralnacak. tıpkı etiket eklemek gibi olacak. bu sayede dosyaları hızlıca taşıyabileceğim.
-
-uygulamayı f11 ile tam ekrandan çıkardığımda pencere kayboluyor. sadece f11 deyken uygulamayı görebiliyorum.
+topbar scrollable olmalı

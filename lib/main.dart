@@ -15,12 +15,14 @@ import 'models/settings.dart';
 import 'models/color_adapter.dart';
 import 'models/keyboard_key_adapter.dart';
 import 'models/datetime_adapter.dart';
+import 'models/quick_move_destination.dart';
 import 'managers/folder_manager.dart';
 import 'managers/photo_manager.dart';
 import 'managers/tag_manager.dart';
 import 'managers/settings_manager.dart';
 import 'managers/filter_manager.dart';
 import 'managers/file_system_watcher.dart';
+import 'managers/quick_move_manager.dart';
 import 'viewmodels/home_view_model.dart';
 // PhotoViewModel artık kullanılmıyor, doğrudan manager sınıfları kullanılıyor
 import 'views/home_page.dart';
@@ -65,6 +67,7 @@ void main() async {
   Hive.registerAdapter(LogicalKeyboardKeyAdapter());
   Hive.registerAdapter(SettingsAdapter());
   Hive.registerAdapter(GridAspectModeAdapter());
+  Hive.registerAdapter(QuickMoveDestinationAdapter());
   final photoBox = await Hive.openBox<Photo>('photos');
   final folderBox = await Hive.openBox<Folder>('folders');
   runApp(MyApp(photoBox: photoBox, folderBox: folderBox));
@@ -215,6 +218,9 @@ class _MyAppState extends State<MyApp> with WindowListener {
           update: (context, folderManager, _) => FileSystemWatcher(widget.folderBox, folderManager.folders, folderManager.missingFolders),
         ),
         // ViewModel providers
+        ChangeNotifierProvider(
+          create: (context) => QuickMoveManager(),
+        ),
         ChangeNotifierProvider(
           create: (context) => HomeViewModel(),
         ),

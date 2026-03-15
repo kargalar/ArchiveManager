@@ -16,6 +16,7 @@ import '../../managers/photo_manager.dart';
 import '../../managers/settings_manager.dart';
 import '../../managers/filter_manager.dart';
 import '../../managers/tag_manager.dart';
+import '../../managers/quick_move_manager.dart';
 import '../../utils/photo_sorter.dart';
 import 'common/photo_action_buttons.dart';
 import 'common/tag_chips.dart';
@@ -406,6 +407,42 @@ class _FullScreenImageState extends State<FullScreenImage> with TickerProviderSt
       if (event.logicalKey == tag.shortcutKey) {
         tagManager.toggleTag(_viewModel.currentPhoto, tag);
         setState(() {});
+        return true;
+      }
+    }
+
+    // Quick move kısayolları
+    final quickMoveManager = context.read<QuickMoveManager>();
+    for (final dest in quickMoveManager.destinations) {
+      if (event.logicalKey == dest.shortcutKey) {
+        Future.microtask(() async {
+          if (!mounted) return;
+          final wasLastPhoto = _viewModel.allPhotos.length == 1;
+
+          await quickMoveManager.movePhotosToDestination([_viewModel.currentPhoto], dest, photoManager);
+
+          if (!mounted) return;
+          if (wasLastPhoto || _viewModel.allPhotos.isEmpty) {
+            Navigator.of(context).pop();
+            return;
+          }
+
+          // ignore: use_build_context_synchronously
+          await _viewModel.deleteCurrentAndMoveNext(context);
+          if (!mounted) return;
+          homeViewModel.setSelectedPhoto(_viewModel.currentPhoto);
+          _resetZoom();
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Moved to ${dest.name}'),
+                backgroundColor: dest.color,
+                duration: const Duration(seconds: 1),
+              ),
+            );
+          }
+        });
         return true;
       }
     }

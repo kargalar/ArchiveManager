@@ -83,7 +83,7 @@ class SettingsAdapter extends TypeAdapter<Settings> {
 
 class GridAspectModeAdapter extends TypeAdapter<GridAspectMode> {
   @override
-  final int typeId = 6;
+  final int typeId = 8;
 
   @override
   GridAspectMode read(BinaryReader reader) {

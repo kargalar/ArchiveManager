@@ -225,103 +225,111 @@ class _FolderMenuState extends State<FolderMenu> {
     final favoriteFolders = folderManager.favoriteFolders;
     if (favoriteFolders.isEmpty) return const SizedBox.shrink();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF252525),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(30),
-                blurRadius: 4,
-                offset: const Offset(0, 1),
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
+    return Flexible(
+      fit: FlexFit.loose,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF252525),
               borderRadius: BorderRadius.circular(8),
-              onTap: () {
-                // Select section to view all photos
-                folderManager.selectFavoritesSection();
-              },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                child: Row(
-                  children: [
-                    // Clickable arrow icon for expanding/collapsing
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withAlpha(25),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(30),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () {
+                  // Select section to view all photos
+                  folderManager.selectFavoritesSection();
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                  child: Row(
+                    children: [
+                      // Clickable arrow icon for expanding/collapsing
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withAlpha(25),
                           borderRadius: BorderRadius.circular(4),
-                          onTap: () {
-                            // Toggle section expansion
-                            folderManager.toggleFavoriteSectionExpanded();
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(4.0),
-                            child: AnimatedRotation(
-                              turns: folderManager.isFavoriteSectionExpanded ? 0.25 : 0,
-                              duration: const Duration(milliseconds: 200),
-                              child: const Icon(
-                                Icons.chevron_right_rounded,
-                                color: Colors.amber,
-                                size: 16,
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(4),
+                            onTap: () {
+                              // Toggle section expansion
+                              folderManager.toggleFavoriteSectionExpanded();
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(4.0),
+                              child: AnimatedRotation(
+                                turns: folderManager.isFavoriteSectionExpanded ? 0.25 : 0,
+                                duration: const Duration(milliseconds: 200),
+                                child: const Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: Colors.amber,
+                                  size: 16,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Icon(Icons.star_rounded, color: Colors.amber, size: 18),
-                    const SizedBox(width: 10),
-                    // Clickable section title to show all photos
-                    Expanded(
-                      child: Text(
-                        'Favorites',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: folderManager.selectedSection == 'favorites' ? Colors.blue : Colors.white,
+                      const SizedBox(width: 12),
+                      const Icon(Icons.star_rounded, color: Colors.amber, size: 18),
+                      const SizedBox(width: 10),
+                      // Clickable section title to show all photos
+                      Expanded(
+                        child: Text(
+                          'Favorites',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: folderManager.selectedSection == 'favorites' ? Colors.blue : Colors.white,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-        if (folderManager.isFavoriteSectionExpanded)
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF222222),
-              borderRadius: BorderRadius.circular(8),
+          if (folderManager.isFavoriteSectionExpanded)
+            Flexible(
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF222222),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  shrinkWrap: true,
+                  children: [
+                    ...favoriteFolders.map((folder) => FolderItem(
+                          folder: folder,
+                          level: 0,
+                          onMissingFolder: (ctx, missingFolder) {
+                            showDialog(context: ctx, builder: (_) => MissingFoldersDialog(initialMissingFolders: [missingFolder]));
+                          },
+                        )),
+                  ],
+                ),
+              ),
             ),
-            child: Column(
-              children: [
-                ...favoriteFolders.map((folder) => FolderItem(
-                      folder: folder,
-                      level: 0,
-                      onMissingFolder: (ctx, missingFolder) {
-                        showDialog(context: ctx, builder: (_) => MissingFoldersDialog(initialMissingFolders: [missingFolder]));
-                      },
-                    )),
-              ],
-            ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 

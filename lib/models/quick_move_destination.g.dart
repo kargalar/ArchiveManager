@@ -1,41 +1,44 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'tag.dart';
+part of 'quick_move_destination.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class TagAdapter extends TypeAdapter<Tag> {
+class QuickMoveDestinationAdapter extends TypeAdapter<QuickMoveDestination> {
   @override
-  final int typeId = 2;
+  final int typeId = 7;
 
   @override
-  Tag read(BinaryReader reader) {
+  QuickMoveDestination read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Tag(
+    return QuickMoveDestination(
       name: fields[0] as String,
-      color: Color(fields[1] as int),
-      shortcutKey: LogicalKeyboardKey(fields[2] as int),
-      id: fields[3] as String?,
+      path: fields[1] as String,
+      color: fields[2] as Color,
+      shortcutKey: fields[3] as LogicalKeyboardKey,
+      id: fields[4] as String?,
     );
   }
 
   @override
-  void write(BinaryWriter writer, Tag obj) {
+  void write(BinaryWriter writer, QuickMoveDestination obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.name)
-      ..writeByte(3)
-      ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.colorValue)
+      ..write(obj.path)
       ..writeByte(2)
-      ..write(obj.shortcutKeyId);
+      ..write(obj.color)
+      ..writeByte(3)
+      ..write(obj.shortcutKey)
+      ..writeByte(4)
+      ..write(obj.id);
   }
 
   @override
@@ -44,7 +47,7 @@ class TagAdapter extends TypeAdapter<Tag> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is TagAdapter &&
+      other is QuickMoveDestinationAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

@@ -9,6 +9,7 @@ import '../managers/photo_manager.dart';
 import '../managers/tag_manager.dart';
 import '../managers/settings_manager.dart';
 import '../managers/filter_manager.dart';
+import '../managers/quick_move_manager.dart';
 import '../services/input_controller.dart';
 import '../views/widgets/full_screen_image.dart';
 import '../utils/photo_sorter.dart';
@@ -104,8 +105,9 @@ class HomeViewModel extends ChangeNotifier {
     BuildContext context,
     FolderManager folderManager,
     PhotoManager photoManager,
-    TagManager tagManager,
-  ) {
+    TagManager tagManager, {
+    QuickMoveManager? quickMoveManager,
+  }) {
     final isArrowKey = _isArrowKey(event.logicalKey);
     if (event is! KeyDownEvent && !(event is KeyRepeatEvent && isArrowKey)) return;
 
@@ -132,6 +134,7 @@ class HomeViewModel extends ChangeNotifier {
       photoManager,
       tagManager,
       filterManager,
+      quickMoveManager,
     );
   }
 
@@ -143,6 +146,7 @@ class HomeViewModel extends ChangeNotifier {
     PhotoManager photoManager,
     TagManager tagManager,
     FilterManager filterManager,
+    QuickMoveManager? quickMoveManager,
   ) {
     final isArrowKey = _isArrowKey(event.logicalKey);
 
@@ -185,6 +189,7 @@ class HomeViewModel extends ChangeNotifier {
       sortedPhotos,
       currentIndex,
       filterManager,
+      quickMoveManager,
     );
 
     if (newIndex != currentIndex) {
@@ -225,6 +230,7 @@ class HomeViewModel extends ChangeNotifier {
     List<Photo> sortedPhotos,
     int currentIndex,
     FilterManager filterManager,
+    QuickMoveManager? quickMoveManager,
   ) {
     if (event.logicalKey == LogicalKeyboardKey.delete) {
       _handleDelete(photoManager, sortedPhotos, currentIndex, tagManager, filterManager);
@@ -237,7 +243,7 @@ class HomeViewModel extends ChangeNotifier {
     } else if (event.logicalKey == LogicalKeyboardKey.keyA && (HardwareKeyboard.instance.isControlPressed || HardwareKeyboard.instance.isMetaPressed)) {
       _handleSelectAll(photoManager, tagManager, filterManager);
     } else {
-      _handleNumberAndTagKeys(event, photoManager, tagManager);
+      _handleNumberAndTagKeys(event, photoManager, tagManager, quickMoveManager);
     }
   }
 
@@ -316,6 +322,7 @@ class HomeViewModel extends ChangeNotifier {
     KeyEvent event,
     PhotoManager photoManager,
     TagManager tagManager,
+    QuickMoveManager? quickMoveManager,
   ) {
     final key = event.logicalKey.keyLabel;
     if (key.length == 1 && RegExp(r'[0-9]').hasMatch(key)) {
@@ -336,6 +343,20 @@ class HomeViewModel extends ChangeNotifier {
           tagManager.toggleTag(_selectedPhoto!, tag);
         }
         return;
+      }
+    }
+
+    // Quick move kısayolları
+    if (quickMoveManager != null) {
+      for (var dest in quickMoveManager.destinations) {
+        if (event.logicalKey == dest.shortcutKey) {
+          final photosToMove = hasSelectedPhotos ? List<Photo>.from(_selectedPhotos) : (_selectedPhoto != null ? [_selectedPhoto!] : <Photo>[]);
+          if (photosToMove.isNotEmpty) {
+            quickMoveManager.movePhotosToDestination(photosToMove, dest, photoManager);
+            clearPhotoSelections();
+          }
+          return;
+        }
       }
     }
   }
