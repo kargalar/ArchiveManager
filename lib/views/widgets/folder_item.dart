@@ -611,6 +611,14 @@ class FolderItem extends StatelessWidget {
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${folderManager.getFolderFileCount(folder)}',
+                                      style: TextStyle(
+                                        color: isSelected ? Colors.blue.withOpacity(0.8) : Colors.grey[500],
+                                        fontSize: 11,
+                                      ),
+                                    ),
                                   ],
                                 ),
                                 // Show auto-tags if any exist

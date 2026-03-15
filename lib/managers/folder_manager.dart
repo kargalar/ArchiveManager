@@ -28,6 +28,10 @@ class FolderManager extends ChangeNotifier {
 
   // Track which section is selected for viewing all photos
   String? _selectedSection;
+
+  // Cache for file counts
+  final Map<String, int> _fileCounts = {};
+
   FolderManager(this._folderBox, this._photoBox) {
     _loadFolders();
     checkFoldersExistence();
@@ -138,6 +142,33 @@ class FolderManager extends ChangeNotifier {
   }
 
   String getFolderName(String path) => path.split(Platform.pathSeparator).last;
+
+  int getFolderFileCount(String path) {
+    if (!_fileCounts.containsKey(path)) {
+      _fileCounts[path] = 0;
+      _calculateFileCount(path);
+    }
+    return _fileCounts[path]!;
+  }
+
+  Future<void> _calculateFileCount(String path) async {
+    try {
+      final dir = Directory(path);
+      if (await dir.exists()) {
+        int count = await dir.list(recursive: false).where((e) {
+          if (e is File) {
+            final ext = e.path.toLowerCase();
+            return ext.endsWith('.jpg') || ext.endsWith('.jpeg') || ext.endsWith('.png') || ext.endsWith('.gif') || ext.endsWith('.webp') || ext.endsWith('.bmp');
+          }
+          return false;
+        }).length;
+        _fileCounts[path] = count;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error calculating file count for $path: $e');
+    }
+  }
 
   void toggleFolderExpanded(String path) {
     _expandedFolders[path] = !(_expandedFolders[path] ?? false);

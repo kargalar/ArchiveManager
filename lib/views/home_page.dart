@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
-import 'package:file_picker/file_picker.dart';
 import '../managers/folder_manager.dart';
 import '../managers/photo_manager.dart';
 import '../managers/settings_manager.dart';
@@ -26,6 +25,7 @@ class _HomePageState extends State<HomePage> {
   late HomeViewModel _homeViewModel;
   late InputController _inputController;
   bool _isMenuExpanded = true;
+  bool _showExpandIcon = false;
   bool _isSettingsPanelOpen = false;
   double _folderMenuWidth = 250; // Fixed initial width for folder menu
 
@@ -154,63 +154,91 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: HomeAppBar(
-        isMenuExpanded: _isMenuExpanded,
         isSettingsPanelOpen: _isSettingsPanelOpen,
-        onMenuToggle: () => setState(() => _isMenuExpanded = !_isMenuExpanded),
         onSettingsToggle: _toggleSettingsPanel,
-        onCreateFolder: () async {
-          final folderManager = Provider.of<FolderManager>(context, listen: false);
-          final result = await FilePicker.platform.getDirectoryPath();
-          if (result != null && mounted) {
-            folderManager.addFolder(result);
-          }
-        },
         width: MediaQuery.of(context).size.width,
       ),
-      body: Row(
+      body: Stack(
         children: [
-          if (_isMenuExpanded) ...[
-            FolderMenu(width: _folderMenuWidth),
-            GestureDetector(
-              onPanUpdate: (details) {
-                setState(() {
-                  _folderMenuWidth += details.delta.dx;
-                  _folderMenuWidth = _folderMenuWidth.clamp(200.0, 400.0); // Limit width between 200 and 400 pixels
-                });
-              },
-              onPanEnd: (_) {
-                final settingsManager = Provider.of<SettingsManager>(context, listen: false);
-                settingsManager.setFolderMenuWidth(_folderMenuWidth);
-              },
-              child: MouseRegion(
-                cursor: SystemMouseCursors.resizeLeftRight,
-                child: Container(
-                  width: 8,
-                  color: Colors.transparent,
-                  child: Center(
+          Row(
+            children: [
+              if (_isMenuExpanded) ...[
+                GestureDetector(
+                  onTap: () => setState(() => _isMenuExpanded = false),
+                  child: FolderMenu(width: _folderMenuWidth),
+                ),
+                GestureDetector(
+                  onPanUpdate: (details) {
+                    setState(() {
+                      _folderMenuWidth += details.delta.dx;
+                      _folderMenuWidth = _folderMenuWidth.clamp(200.0, 400.0); // Limit width between 200 and 400 pixels
+                    });
+                  },
+                  onPanEnd: (_) {
+                    final settingsManager = Provider.of<SettingsManager>(context, listen: false);
+                    settingsManager.setFolderMenuWidth(_folderMenuWidth);
+                  },
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.resizeLeftRight,
                     child: Container(
-                      width: 2,
-                      color: Colors.grey[600],
+                      width: 8,
+                      color: Colors.transparent,
+                      child: Center(
+                        child: Container(
+                          width: 2,
+                          color: Colors.grey[600],
+                        ),
+                      ),
                     ),
                   ),
                 ),
+              ],
+              Expanded(
+                child: const PhotoGrid(),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                width: _isSettingsPanelOpen ? 420 : 0,
+                clipBehavior: Clip.hardEdge,
+                decoration: const BoxDecoration(),
+                child: SizedBox(
+                  width: 420,
+                  child: _isSettingsPanelOpen ? SettingsPanel(onClose: _toggleSettingsPanel) : const SizedBox.shrink(),
+                ),
+              ),
+            ],
+          ),
+          if (!_isMenuExpanded)
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: _showExpandIcon ? 80 : 30, // Much wider when showing icon, and 30 to detect hover easily
+              child: MouseRegion(
+                onEnter: (_) => setState(() => _showExpandIcon = true),
+                onExit: (_) => setState(() => _showExpandIcon = false),
+                child: GestureDetector(
+                  onTap: () => setState(() {
+                    _isMenuExpanded = true;
+                    _showExpandIcon = false;
+                  }),
+                  child: _showExpandIcon
+                      ? Container(
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.black.withOpacity(0.5), Colors.transparent],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                          ),
+                          child: const Icon(Icons.arrow_forward_ios, size: 24, color: Colors.white),
+                        )
+                      : const SizedBox.expand(),
+                ),
               ),
             ),
-          ],
-          Expanded(
-            child: const PhotoGrid(),
-          ),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-            width: _isSettingsPanelOpen ? 420 : 0,
-            clipBehavior: Clip.hardEdge,
-            decoration: const BoxDecoration(),
-            child: SizedBox(
-              width: 420,
-              child: _isSettingsPanelOpen ? SettingsPanel(onClose: _toggleSettingsPanel) : const SizedBox.shrink(),
-            ),
-          ),
         ],
       ),
     );

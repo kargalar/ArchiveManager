@@ -41,6 +41,7 @@ class HomeViewModel extends ChangeNotifier {
       photo.isSelected = true;
       _selectedPhotos.add(photo);
     }
+    _selectedPhoto = photo;
     notifyListeners();
   }
 
@@ -380,7 +381,8 @@ class HomeViewModel extends ChangeNotifier {
     }
     final int lower = startIndex < endIndex ? startIndex : endIndex;
     final int upper = startIndex < endIndex ? endIndex : startIndex;
-    clearPhotoSelections();
+
+    // Yalnızca yeni aralığı seçime ekliyoruz, öncekileri temizlemiyoruz.
     for (int i = lower; i <= upper; i++) {
       final p = photos[i];
       if (!p.isSelected) {

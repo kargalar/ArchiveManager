@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../managers/folder_manager.dart';
 import '../../managers/tag_manager.dart';
 import '../../managers/filter_manager.dart';
@@ -403,6 +404,23 @@ class _FolderMenuState extends State<FolderMenu> {
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                             color: folderManager.selectedSection == 'all' ? Colors.blue : Colors.white,
+                          ),
+                        ),
+                      ),
+                      // Add new folder button
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(4),
+                          onTap: () async {
+                            final result = await FilePicker.platform.getDirectoryPath();
+                            if (result != null && context.mounted) {
+                              folderManager.addFolder(result);
+                            }
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.all(4.0),
+                            child: Icon(Icons.create_new_folder_outlined, size: 18),
                           ),
                         ),
                       ),
