@@ -162,6 +162,19 @@ class _PhotoGridState extends State<PhotoGrid> {
       focusNode: _focusNode,
       onFocusChange: (hasFocus) {
         if (!hasFocus) {
+          // Eğer focus bir text input'a (EditableText) gittiyse, geri almayalım
+          final primaryFocus = FocusManager.instance.primaryFocus;
+          if (primaryFocus != null && primaryFocus.context != null) {
+            bool isTextInput = false;
+            primaryFocus.context!.visitAncestorElements((element) {
+              if (element.widget is EditableText) {
+                isTextInput = true;
+                return false;
+              }
+              return true;
+            });
+            if (isTextInput) return; // TextField'e focus gittiyse geri alma
+          }
           _focusNode.requestFocus();
         }
       },

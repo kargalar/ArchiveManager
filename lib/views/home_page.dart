@@ -113,13 +113,28 @@ class _HomePageState extends State<HomePage> {
       return false;
     }
     // TextField gibi text input'lara focus varken kısayolları devre dışı bırak
-    final focusedWidget = FocusManager.instance.primaryFocus?.context?.widget;
-    if (focusedWidget is EditableText) {
-      return false;
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    if (primaryFocus != null && primaryFocus.context != null) {
+      bool isTextInput = false;
+      primaryFocus.context!.visitAncestorElements((element) {
+        if (element.widget is EditableText) {
+          isTextInput = true;
+          return false;
+        }
+        return true;
+      });
+      if (isTextInput) {
+        return false; // Text input'taysa event'i serbest bırak
+      }
+    }
+    // Sadece KeyDown ve arrow tuşlarında KeyRepeat işle
+    final isArrowKey = event.logicalKey == LogicalKeyboardKey.arrowLeft || event.logicalKey == LogicalKeyboardKey.arrowRight || event.logicalKey == LogicalKeyboardKey.arrowUp || event.logicalKey == LogicalKeyboardKey.arrowDown;
+    if (event is! KeyDownEvent && !(event is KeyRepeatEvent && isArrowKey)) {
+      return false; // KeyUp vb. olayları serbest bırak
     }
     // InputController ile handle et
     _inputController.processKeyEvent(event, context, _homeViewModel);
-    return false; // Let other handlers process the event too
+    return true; // Kısayol işlendi, event'i tüket (handled)
   }
 
   void _handlePointerEvent(PointerEvent event) {
@@ -193,9 +208,7 @@ class _HomePageState extends State<HomePage> {
             decoration: const BoxDecoration(),
             child: SizedBox(
               width: 420,
-              child: _isSettingsPanelOpen
-                  ? SettingsPanel(onClose: _toggleSettingsPanel)
-                  : const SizedBox.shrink(),
+              child: _isSettingsPanelOpen ? SettingsPanel(onClose: _toggleSettingsPanel) : const SizedBox.shrink(),
             ),
           ),
         ],
