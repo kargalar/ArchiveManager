@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:archive_manager_v3/models/sort_state.dart';
 import 'package:archive_manager_v3/viewmodels/home_view_model.dart';
+import 'package:archive_manager_v3/views/widgets/common/horizontal_mouse_scrollable.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -213,95 +214,97 @@ class _PhotoGridState extends State<PhotoGrid> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
             color: Colors.blue.shade800,
-            child: Row(
-              children: [
-                Text(
-                  '${homeViewModel.selectedPhotos.length} fotoğraf seçildi',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-                const Spacer(),
-                // Delete button
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.white),
-                  tooltip: 'Seçili Fotoğrafları Sil',
-                  onPressed: () {
-                    // Show confirmation dialog
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Fotoğrafları Sil'),
-                        content: Text('${homeViewModel.selectedPhotos.length} fotoğrafı silmek istediğinize emin misiniz?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('İptal'),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              // Delete all selected photos
-                              List<Photo> photosToDelete = List.from(homeViewModel.selectedPhotos);
-                              for (var photo in photosToDelete) {
-                                photoManager.deletePhoto(photo);
-                              }
-                              homeViewModel.clearPhotoSelections();
-                            },
-                            child: const Text('Sil'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-                // Favorite button
-                IconButton(
-                  icon: const Icon(Icons.favorite, color: Colors.white),
-                  tooltip: 'Favorilere Ekle/Çıkar',
-                  onPressed: () => homeViewModel.toggleFavoriteForSelectedPhotos(photoManager),
-                ),
-                // Rating buttons
-                for (int i = 1; i <= 5; i++)
+            child: HorizontalMouseScrollable(
+              child: Row(
+                children: [
+                  Text(
+                    '${homeViewModel.selectedPhotos.length} fotoğraf seçildi',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 16),
+                  // Delete button
                   IconButton(
-                    icon: Icon(Icons.star, color: Colors.amber),
-                    tooltip: '$i Puan Ver',
-                    onPressed: () => homeViewModel.setRatingForSelectedPhotos(photoManager, i),
+                    icon: const Icon(Icons.delete, color: Colors.white),
+                    tooltip: 'Seçili Fotoğrafları Sil',
+                    onPressed: () {
+                      // Show confirmation dialog
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Fotoğrafları Sil'),
+                          content: Text('${homeViewModel.selectedPhotos.length} fotoğrafı silmek istediğinize emin misiniz?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('İptal'),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                // Delete all selected photos
+                                List<Photo> photosToDelete = List.from(homeViewModel.selectedPhotos);
+                                for (var photo in photosToDelete) {
+                                  photoManager.deletePhoto(photo);
+                                }
+                                homeViewModel.clearPhotoSelections();
+                              },
+                              child: const Text('Sil'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
-                const SizedBox(width: 8),
+                  // Favorite button
+                  IconButton(
+                    icon: const Icon(Icons.favorite, color: Colors.white),
+                    tooltip: 'Favorilere Ekle/Çıkar',
+                    onPressed: () => homeViewModel.toggleFavoriteForSelectedPhotos(photoManager),
+                  ),
+                  // Rating buttons
+                  for (int i = 1; i <= 5; i++)
+                    IconButton(
+                      icon: Icon(Icons.star, color: Colors.amber),
+                      tooltip: '$i Puan Ver',
+                      onPressed: () => homeViewModel.setRatingForSelectedPhotos(photoManager, i),
+                    ),
+                  const SizedBox(width: 8),
 
-                // Tag dropdown menu
-                if (tagManager.tags.isNotEmpty)
-                  PopupMenuButton<Tag>(
-                    tooltip: 'Etiket Ekle/Çıkar',
-                    icon: const Icon(Icons.label, color: Colors.white),
-                    itemBuilder: (context) => tagManager.tags
-                        .map((tag) => PopupMenuItem<Tag>(
-                              value: tag,
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 12,
-                                    height: 12,
-                                    decoration: BoxDecoration(
-                                      color: tag.color,
-                                      borderRadius: BorderRadius.circular(2),
+                  // Tag dropdown menu
+                  if (tagManager.tags.isNotEmpty)
+                    PopupMenuButton<Tag>(
+                      tooltip: 'Etiket Ekle/Çıkar',
+                      icon: const Icon(Icons.label, color: Colors.white),
+                      itemBuilder: (context) => tagManager.tags
+                          .map((tag) => PopupMenuItem<Tag>(
+                                value: tag,
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 12,
+                                      height: 12,
+                                      decoration: BoxDecoration(
+                                        color: tag.color,
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(tag.name),
-                                ],
-                              ),
-                            ))
-                        .toList(),
-                    onSelected: (tag) => homeViewModel.toggleTagForSelectedPhotos(tagManager, tag),
+                                    const SizedBox(width: 8),
+                                    Text(tag.name),
+                                  ],
+                                ),
+                              ))
+                          .toList(),
+                      onSelected: (tag) => homeViewModel.toggleTagForSelectedPhotos(tagManager, tag),
+                    ),
+                  const SizedBox(width: 16),
+                  // Clear selection button
+                  TextButton.icon(
+                    icon: const Icon(Icons.clear, color: Colors.white),
+                    label: const Text('Seçimi Temizle', style: TextStyle(color: Colors.white)),
+                    onPressed: () => homeViewModel.clearPhotoSelections(),
                   ),
-                const SizedBox(width: 16),
-                // Clear selection button
-                TextButton.icon(
-                  icon: const Icon(Icons.clear, color: Colors.white),
-                  label: const Text('Seçimi Temizle', style: TextStyle(color: Colors.white)),
-                  onPressed: () => homeViewModel.clearPhotoSelections(),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         Expanded(

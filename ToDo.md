@@ -41,5 +41,3 @@ yön tuşlarıyla basılı tutarak ilerlem çok hızı havaşla
 dosya seçiliyken başka bir doyaya ctrl ile seçtikte sonra shifte basılı tutara k başka bir dosya seçersem. son tıkladığıma değil ilk tıkladığıma göre asarındaki hespiniseçiyor .bunu düzelt.
 
 görsellerin üstünde fooğrafın çözünürlüğü ve boyutu show hide diye ayarlardan ayaralnabilecek. aynı şekild eetiket ve puan ve tarih için de byapılabilsin.
-
-topbar scrollable olmalı
